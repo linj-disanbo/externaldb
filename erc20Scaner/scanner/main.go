@@ -58,18 +58,18 @@ func initAndStart(cfg *config.Config) {
 
 	// 如果启用了 chain33 模式，优先使用 gRPC 按 seq 读取区块
 	if cfg.ES.Enabled {
-		log.Info("chain33 mode enabled", "grpc", cfg.Node.GRPC)
+		log.Info("[Init] chain33 mode enabled", "grpc", cfg.Node.GRPC)
 		grpcConn, err := grpc.Dial(cfg.Node.GRPC,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(100*1024*1024)),
 		)
 		if err != nil {
-			log.Error("Failed to connect to chain33 gRPC", "err", err, "addr", cfg.Node.GRPC)
+			log.Error("[Init] Failed to connect to chain33 gRPC", "err", err, "addr", cfg.Node.GRPC)
 			return
 		}
 		defer grpcConn.Close()
 		grpcClient := chain33types.NewChain33Client(grpcConn)
-		log.Info("chain33 gRPC connection established successfully")
+		log.Info("[Init] chain33 gRPC connection established")
 		p.Init()
 		if cfg.Database.Enabled && cfg.BalanceRefresher.Enabled {
 			go p.RunBalanceRefresher(context.Background(), cfg.BalanceRefresher)
@@ -78,7 +78,7 @@ func initAndStart(cfg *config.Config) {
 		p.StartWithChain33(grpcClient, grpcConn)
 	} else {
 		// 使用节点模式
-		log.Info("Node mode enabled", "url", cfg.Node.URL)
+		log.Info("[Init] Node mode enabled", "url", cfg.Node.URL)
 		p.Init()
 		if cfg.Database.Enabled && cfg.BalanceRefresher.Enabled {
 			go p.RunBalanceRefresher(context.Background(), cfg.BalanceRefresher)

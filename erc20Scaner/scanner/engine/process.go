@@ -81,26 +81,26 @@ func (p *Process) Init() {
 		var err error
 		p.db, err = database.NewDB(p.DBDSN)
 		if err != nil {
-			log.Error("Failed to connect to database, database write will be disabled", "err", err)
+			log.Error("[Init] Failed to connect to database, database write will be disabled", "err", err)
 			p.EnableDB = false
 		} else {
-			log.Info("Database connection established successfully")
+			log.Info("[Init] Database connected")
 			if p.NoProgress {
-				log.Info("NoProgress mode: skipping scan_progress read, using configured start point",
+				log.Info("[Init] NoProgress mode: skipping scan_progress read, using configured start point",
 					"startPoint", p.StartPoint)
 			} else {
 				// 读取上次处理的进度
 				progress, err := p.db.GetScanProgress()
 				if err != nil {
-					log.Warn("Failed to get scan progress, will start from configured start point", "err", err, "startPoint", p.StartPoint)
+					log.Warn("[Init] Failed to get scan progress, will start from configured start point", "err", err, "startPoint", p.StartPoint)
 				} else if progress != nil {
 					// 如果存在进度记录，从上次处理的高度+1开始
 					p.StartPoint = progress.LastBlockNumber + 1
-					log.Info("Resuming scan from last processed block",
+					log.Info("[Init] Resuming scan from last processed block",
 						"lastBlock", progress.LastBlockNumber,
 						"startBlock", p.StartPoint)
 				} else {
-					log.Info("No previous progress found, starting from configured start point", "startPoint", p.StartPoint)
+					log.Info("[Init] No previous progress found, starting from configured start point", "startPoint", p.StartPoint)
 				}
 			}
 		}
@@ -117,7 +117,7 @@ func (p *Process) alignScanStart() {
 	}
 	progress, err := p.db.GetScanProgress()
 	if err != nil {
-		log.Warn("align: get scan progress failed", "err", err)
+		log.Warn("[Init] align: get scan progress failed", "err", err)
 		return
 	}
 	if progress == nil || progress.LastBlockNumber == 0 {
@@ -132,14 +132,14 @@ func (p *Process) alignScanStart() {
 	// 1. 按 height 获取 block hash
 	hashReply, err := p.grpcClient.GetBlockHash(ctx, &chain33types.ReqInt{Height: nextH})
 	if err != nil || hashReply == nil {
-		log.Warn("align: GetBlockHash failed, assuming seq==height", "height", nextH, "err", err)
+		log.Warn("[Init] align: GetBlockHash failed, assuming seq==height", "height", nextH, "err", err)
 		return
 	}
 
 	// 2. 按 hash 获取 seq
 	seqReply, err := p.grpcClient.GetSequenceByHash(ctx, &chain33types.ReqHash{Hash: hashReply.GetHash()})
 	if err != nil || seqReply == nil {
-		log.Warn("align: GetSequenceByHash failed, assuming seq==height", "height", nextH, "err", err)
+		log.Warn("[Init] align: GetSequenceByHash failed, assuming seq==height", "height", nextH, "err", err)
 		return
 	}
 
@@ -147,7 +147,7 @@ func (p *Process) alignScanStart() {
 	delta := seq - nextH
 	// 调整 StartPoint：nextH 对应的 seq，即下一个要处理的 seq
 	p.StartPoint = uint64(nextH + delta)
-	log.Info("scan start aligned",
+	log.Info("[Init] scan start aligned",
 		"lastHeight", lastH,
 		"nextHeight", nextH,
 		"nextSeq", p.StartPoint,
@@ -165,7 +165,7 @@ func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcCo
 		// 检查是否到达结束点
 		if p.EndPoint > 0 && p.StartPoint >= uint64(p.EndPoint) {
 			if p.NoProgress {
-				log.Info("scannerfix completed (chain33 mode)", "endBlock", p.EndPoint, "lastSeq", p.StartPoint)
+				log.Info("[Exit] scannerfix completed (chain33 mode)", "endBlock", p.EndPoint, "lastSeq", p.StartPoint)
 				return
 			}
 			time.Sleep(time.Second)
@@ -225,7 +225,7 @@ func (p *Process) Start() {
 		}
 		if p.EndPoint > 0 && blockNum >= p.EndPoint {
 			if p.NoProgress {
-				log.Info("scannerfix completed (node mode)", "endBlock", p.EndPoint, "lastNum", p.StartPoint)
+				log.Info("[Exit] scannerfix completed (node mode)", "endBlock", p.EndPoint, "lastNum", p.StartPoint)
 				return
 			}
 			time.Sleep(time.Second)
@@ -327,7 +327,7 @@ func (p *Process) parseBlockFromChain33(blockSeq *block.Seq) error {
 		return fmt.Errorf("decode BlockDetail failed: %w", err)
 	}
 
-	log.Info("Processing block from chain33",
+	log.Info("[Round] Processing block",
 		"seq", blockSeq.SyncSeq,
 		"type", blockSeq.Type,
 		"height", detail.Block.Height,
