@@ -5,8 +5,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -46,6 +48,20 @@ func (c *HTTPConn) Write(d []byte) (n int, err error) { return c.out.Write(d) }
 
 // Close 关闭连接
 func (c *HTTPConn) Close() error { return nil }
+
+// jrpcRequest 用于解析 JSON-RPC method 字段（日志统计用）。
+type jrpcRequest struct {
+	Method string `json:"method"`
+}
+
+// extractMethod 从 JSON-RPC 请求 body 中提取 method 字段，返回 method 和一个可重新读取的 body。
+func extractMethod(body []byte) string {
+	var req jrpcRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		return ""
+	}
+	return req.Method
+}
 
 func main() {
 	log.Info("jrpc", "version", version.GetVersion())
@@ -136,29 +152,35 @@ func main() {
 	// HTTP注册
 	var handler http.Handler = http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			//fmt.Println(r.URL, r.Header, r.Body)
-			//r.RemoteAddr=[::1]:50617
 			if !checkWhitlist(strings.Split(r.RemoteAddr, ":")[0], whitelist) {
 				log.Error("HandlerFunc", "peer not whitelist", r.RemoteAddr)
 				w.Write([]byte(`{"errcode":"-1","result":null,"msg":"reject"}`))
 				return
 			}
-			//Path返回相对路径/hello/x/x
-			//withoutSlash取出左侧的“/”
 			path := withoutSlash(r.URL.Path)
-			if s1, ok := supports[path]; ok {
-				//jsonrpc方式支持跨语言调用。
-				serverCodec := jsonrpc.NewServerCodec(&HTTPConn{in: r.Body, out: w})
-				w.Header().Set("Content-type", "application/json")
-				w.WriteHeader(200)
-
-				err := s1.ServeRequest(serverCodec)
-				if err != nil {
-					log.Debug("HandlerFunc", "Error while serving JSON request: %v", err)
-					return
-				}
-			} else {
+			s1, ok := supports[path]
+			if !ok {
 				log.Error("not support title", "t", r.URL.Path)
+				return
+			}
+
+			// 读取 body 提取 method 用于统计日志
+			bodyBytes, err := io.ReadAll(r.Body)
+			r.Body.Close()
+			if err != nil {
+				log.Error("HandlerFunc", "read body", err)
+				return
+			}
+			method := extractMethod(bodyBytes)
+			log.Info("[JRPC]", "method", method, "chain", path)
+
+			// jsonrpc方式支持跨语言调用。
+			serverCodec := jsonrpc.NewServerCodec(&HTTPConn{in: bytes.NewReader(bodyBytes), out: w})
+			w.Header().Set("Content-type", "application/json")
+			w.WriteHeader(200)
+
+			if serveErr := s1.ServeRequest(serverCodec); serveErr != nil {
+				log.Debug("HandlerFunc", "Error while serving JSON request: %v", serveErr)
 			}
 		})
 
