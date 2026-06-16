@@ -5,10 +5,12 @@ import (
 	"flag"
 	"fmt"
 
+	chain33types "github.com/33cn/chain33/types"
 	"github.com/33cn/externaldb/erc20Scaner/config"
 	"github.com/33cn/externaldb/erc20Scaner/logger"
 	"github.com/33cn/externaldb/erc20Scaner/scanner/engine"
-	"github.com/33cn/externaldb/escli"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"log/slog"
 )
@@ -54,21 +56,26 @@ func initAndStart(cfg *config.Config) {
 	p.NodeURL = cfg.Node.URL
 	p.SkipInlineBalanceUpdate = cfg.Scanner.SkipInlineBalanceUpdate
 
-	// 如果启用了ES模式，优先使用ES读取区块
+	// 如果启用了 chain33 模式，优先使用 gRPC 按 seq 读取区块
 	if cfg.ES.Enabled {
-		log.Info("ES mode enabled", "host", cfg.ES.Host, "prefix", cfg.ES.Prefix)
-		esClient, err := escli.NewESLongConnect(cfg.ES.Host, cfg.ES.Prefix, cfg.ES.Version, cfg.ES.User, cfg.ES.Password)
+		log.Info("chain33 mode enabled", "grpc", cfg.Node.GRPC)
+		grpcConn, err := grpc.Dial(cfg.Node.GRPC,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(100*1024*1024)),
+		)
 		if err != nil {
-			log.Error("Failed to connect to ES", "err", err, "host", cfg.ES.Host)
+			log.Error("Failed to connect to chain33 gRPC", "err", err, "addr", cfg.Node.GRPC)
 			return
 		}
-		log.Info("ES connection established successfully")
+		defer grpcConn.Close()
+		grpcClient := chain33types.NewChain33Client(grpcConn)
+		log.Info("chain33 gRPC connection established successfully")
 		p.Init()
 		if cfg.Database.Enabled && cfg.BalanceRefresher.Enabled {
 			go p.RunBalanceRefresher(context.Background(), cfg.BalanceRefresher)
 		}
 		defer p.Close()
-		p.StartWithEsClient(esClient)
+		p.StartWithChain33(grpcClient, grpcConn)
 	} else {
 		// 使用节点模式
 		log.Info("Node mode enabled", "url", cfg.Node.URL)
@@ -87,7 +94,7 @@ func logConfig(cfg *config.Config, log *slog.Logger) {
 		"startBlock", cfg.Scanner.StartBlock,
 		"endBlock", cfg.Scanner.EndBlock,
 		"dbEnabled", cfg.Database.Enabled,
-		"esEnabled", cfg.ES.Enabled,
+		"chain33Mode", cfg.ES.Enabled,
 		"skipInlineBalanceUpdate", cfg.Scanner.SkipInlineBalanceUpdate,
 		"balanceRefresherEnabled", cfg.BalanceRefresher.Enabled)
 
@@ -102,10 +109,7 @@ func logConfig(cfg *config.Config, log *slog.Logger) {
 			"min_age", cfg.BalanceRefresher.MinAge)
 	}
 	if cfg.ES.Enabled {
-		log.Info("ES configuration",
-			"host", cfg.ES.Host,
-			"prefix", cfg.ES.Prefix,
-			"version", cfg.ES.Version,
-			"user", cfg.ES.User)
+		log.Info("chain33 gRPC configuration",
+			"grpc", cfg.Node.GRPC)
 	}
 }

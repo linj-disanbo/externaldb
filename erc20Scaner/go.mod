@@ -1,8 +1,6 @@
 module github.com/33cn/externaldb/erc20Scaner
 
-go 1.22.3
-
-toolchain go1.24.7
+go 1.22
 
 require (
 	github.com/33cn/externaldb v1.6.3

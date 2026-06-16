@@ -25,7 +25,7 @@ import (
 	"github.com/33cn/externaldb/erc20Scaner/database"
 	"github.com/33cn/externaldb/erc20Scaner/erc20abi/generated"
 	"github.com/33cn/externaldb/erc20Scaner/txparser"
-	"github.com/33cn/externaldb/escli"
+	"google.golang.org/grpc"
 )
 
 
@@ -60,15 +60,13 @@ type Process struct {
 	DBDSN      string
 	db         *database.DB
 	NodeURL    string
-	esClient   escli.ESClient // ES客户端，用于从ES读取区块
+	grpcClient chain33types.Chain33Client // chain33 gRPC，用于按 seq 读取区块
+	grpcConn   *grpc.ClientConn           // gRPC 连接，用于清理
 
 	SkipInlineBalanceUpdate bool // 为 true 时不扫块内联 balanceOf，依赖占位行 + balance_refresher
 
 	// NoProgress 为 true 时不读/写 scan_progress 表（修复模式，方案 D）
 	NoProgress bool
-
-	// esResumeHeight：已处理完成的链上区块高度（用于 ES 模式 seq/height 对齐，仅 ES 路径使用）
-	esResumeHeight uint64
 }
 
 // Init 初始化模块
@@ -109,148 +107,106 @@ func (p *Process) Init() {
 	}
 }
 
-// esSeqHeightSmallDrift 当 |SyncSeq-height| < 该值时，高度与期望不一致也直接处理本轮（避免反复对齐）
-const esSeqHeightSmallDrift = 100
-
-// alignESScanStart 解决：进度存的是 block height，而 ES 文档 id 为 sync_seq（通常 seq>=height；回滚后 seq 会继续增加）。
-// 探测一次 seq=lastH+1 的文档，取 d = SyncSeq - height，将下一条 ES 键设为 (lastH+1)+d，与链上下一块高度对齐。
-func (p *Process) alignESScanStart() {
+// alignScanStart 启动时对齐 seq 和 height。
+// scan_progress 存的是 height，但 GetBlockBySeq 按 seq 查询。
+// 从 scan_progress 读到 lastH 后，查节点获取 lastH+1 对应的 seq，
+// 计算 delta = seq - height，调整 StartPoint。
+func (p *Process) alignScanStart() {
 	if p.NoProgress || !p.EnableDB || p.db == nil {
-		if p.StartPoint > 0 {
-			p.esResumeHeight = p.StartPoint - 1
-		}
 		return
 	}
 	progress, err := p.db.GetScanProgress()
 	if err != nil {
-		log.Warn("ES align: get scan progress", "err", err)
-		if p.StartPoint > 0 {
-			p.esResumeHeight = p.StartPoint - 1
-		}
+		log.Warn("align: get scan progress failed", "err", err)
 		return
 	}
 	if progress == nil || progress.LastBlockNumber == 0 {
-		if p.StartPoint > 0 {
-			p.esResumeHeight = p.StartPoint - 1
-		}
 		return
 	}
-	lastH := progress.LastBlockNumber
-	p.esResumeHeight = lastH
+	lastH := int64(progress.LastBlockNumber)
+	nextH := lastH + 1
 
-	probe, err := p.getBlockFromES(int64(lastH + 1))
-	if err != nil {
-		log.Warn("ES align: probe getBlockFromES failed", "err", err, "probeSeqAsHeight", lastH+1)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// 1. 按 height 获取 block hash
+	hashReply, err := p.grpcClient.GetBlockHash(ctx, &chain33types.ReqInt{Height: nextH})
+	if err != nil || hashReply == nil {
+		log.Warn("align: GetBlockHash failed, assuming seq==height", "height", nextH, "err", err)
 		return
 	}
-	if probe == nil {
-		log.Warn("ES align: probe document missing", "probeSeqAsHeight", lastH+1)
+
+	// 2. 按 hash 获取 seq
+	seqReply, err := p.grpcClient.GetSequenceByHash(ctx, &chain33types.ReqHash{Hash: hashReply.GetHash()})
+	if err != nil || seqReply == nil {
+		log.Warn("align: GetSequenceByHash failed, assuming seq==height", "height", nextH, "err", err)
 		return
 	}
-	var detail chain33types.BlockDetail
-	if err := chain33types.Decode(probe.BlockDetail, &detail); err != nil {
-		log.Warn("ES align: decode probe BlockDetail", "err", err)
-		return
-	}
-	H := int64(detail.Block.Height)
-	S := int64(probe.SyncSeq)
-	delta := S - H
-	// 下一块链高 lastH+1 对应的 ES 键约为 (lastH+1) + delta
-	p.StartPoint = uint64(int64(lastH+1) + delta)
-	log.Info("ES scan start aligned",
-		"lastBlockHeight", lastH,
-		"probeSyncSeq", S,
-		"probeHeight", H,
-		"delta_seq_minus_height", delta,
-		"nextESSeq", p.StartPoint)
+
+	seq := seqReply.GetData()
+	delta := seq - nextH
+	// 调整 StartPoint：nextH 对应的 seq，即下一个要处理的 seq
+	p.StartPoint = uint64(nextH + delta)
+	log.Info("scan start aligned",
+		"lastHeight", lastH,
+		"nextHeight", nextH,
+		"nextSeq", p.StartPoint,
+		"delta_seq_minus_height", delta)
 }
 
-// StartWithEsClient 从ES读取区块并处理evm交易
-func (p *Process) StartWithEsClient(esClient escli.ESClient) {
-	p.esClient = esClient
-	p.alignESScanStart()
+// StartWithChain33 从 chain33 gRPC 按 seq 读取区块并处理 evm 交易。
+// 替代原来的 StartWithEsClient，不再依赖 sync 程序写入的 ES block.Seq。
+func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcConn *grpc.ClientConn) {
+	p.grpcClient = grpcClient
+	p.grpcConn = grpcConn
+	p.alignScanStart()
+
 	for {
 		// 检查是否到达结束点
 		if p.EndPoint > 0 && p.StartPoint >= uint64(p.EndPoint) {
 			if p.NoProgress {
-				log.Info("scannerfix completed (ES mode)", "endBlock", p.EndPoint, "lastSeq", p.StartPoint)
+				log.Info("scannerfix completed (chain33 mode)", "endBlock", p.EndPoint, "lastSeq", p.StartPoint)
 				return
 			}
 			time.Sleep(time.Second)
 			continue
 		}
 
-		// 从ES读取区块
-		blockSeq, err := p.getBlockFromES(int64(p.StartPoint))
+		// 从 chain33 gRPC 按 seq 读取区块
+		blockSeq, err := p.getBlockFromChain33(int64(p.StartPoint))
 		if err != nil {
-			log.Warn("Failed to get block from ES", "err", err, "seq", p.StartPoint)
+			log.Warn("Failed to get block from chain33", "err", err, "seq", p.StartPoint)
 			time.Sleep(time.Second)
 			continue
 		}
 
 		if blockSeq == nil {
-			// 区块不存在，等待
-			time.Sleep(time.Second)
+			// DEL 类型区块无 Detail，跳过该 seq
+			p.StartPoint++
 			continue
 		}
 
-		var detail chain33types.BlockDetail
-		if err := chain33types.Decode(blockSeq.BlockDetail, &detail); err != nil {
-			log.Error("Failed to decode BlockDetail from ES", "err", err, "seq", p.StartPoint)
-			time.Sleep(time.Second)
-			continue
-		}
-		have := uint64(detail.Block.Height)
-		want := p.esResumeHeight + 1
-		delta := int64(blockSeq.SyncSeq) - int64(have)
-		absDelta := delta
-		if absDelta < 0 {
-			absDelta = -absDelta
-		}
-		if have != want {
-			// 期望的链上下一块高度为 want，当前文档内高度为 have；用同一 d=SyncSeq-height 逼近 want 对应的 ES 键
-			targetSeq := int64(want) + delta
-			if targetSeq < 0 {
-				log.Warn("ES seq align: negative targetSeq", "want", want, "have", have, "delta", delta)
-				time.Sleep(time.Second)
-				continue
-			}
-			if absDelta >= esSeqHeightSmallDrift {
-				log.Warn("ES seq/height mismatch, realigning",
-					"wantHeight", want, "haveHeight", have,
-					"syncSeq", blockSeq.SyncSeq, "delta_seq_minus_height", delta,
-					"nextESSeq", uint64(targetSeq))
-				p.StartPoint = uint64(targetSeq)
-				continue
-			}
-			// |delta| 较小时直接按当前块处理，一般区块量小、很快可追上
-			log.Info("ES seq/height small drift, processing this seq anyway",
-				"wantHeight", want, "haveHeight", have,
-				"syncSeq", blockSeq.SyncSeq, "delta", delta)
-		}
-
-		err = p.parseBlockFromES(blockSeq)
+		err = p.parseBlockFromChain33(blockSeq)
 		if err != nil {
-			log.Error("Failed to parse block from ES", "err", err, "seq", p.StartPoint)
+			log.Error("Failed to parse block from chain33", "err", err, "seq", p.StartPoint)
 			time.Sleep(time.Second)
 			continue
 		}
 
-		// 更新处理进度（存链上高度，非 ES 的 sync_seq）
-		if !p.NoProgress && p.EnableDB && p.db != nil {
-			blockTime := time.Unix(int64(detail.Block.BlockTime), 0)
-			err = p.db.UpdateScanProgress(
-				have,
-				blockSeq.Hash,
-				blockTime,
-				0,
-			)
-			if err != nil {
-				log.Error("Failed to update scan progress", "err", err, "height", have)
+		// 解码获取高度用于进度记录
+		var detail chain33types.BlockDetail
+		if decErr := chain33types.Decode(blockSeq.BlockDetail, &detail); decErr == nil {
+			have := uint64(detail.Block.Height)
+			if !p.NoProgress && p.EnableDB && p.db != nil {
+				blockTime := time.Unix(int64(detail.Block.BlockTime), 0)
+				err = p.db.UpdateScanProgress(have, blockSeq.Hash, blockTime, 0)
+				if err != nil {
+					log.Error("Failed to update scan progress", "err", err, "height", have)
+				}
 			}
 		}
-		p.esResumeHeight = have
-		// 游标按 sync_seq 递增，避免把「高度」当 ES 文档 id
+
+		// 游标按 seq 递增
 		p.StartPoint = uint64(int64(blockSeq.SyncSeq) + 1)
 	}
 }
@@ -321,25 +277,36 @@ func (p *Process) BlockByNumber(number uint64) (*types.Block, error) {
 	return p.cli.BlockByNumber(number)
 }
 
-// getBlockFromES 从ES获取区块
-func (p *Process) getBlockFromES(seqNum int64) (*block.Seq, error) {
-	if p.esClient == nil {
-		return nil, fmt.Errorf("esClient is nil")
+// getBlockFromChain33 从 chain33 gRPC 按 seq 获取区块（同原 ES 中 block.Seq 结构）。
+func (p *Process) getBlockFromChain33(seqNum int64) (*block.Seq, error) {
+	if p.grpcClient == nil {
+		return nil, fmt.Errorf("grpcClient is nil")
 	}
 
-	id := fmt.Sprintf("%d", seqNum)
-	result, err := p.esClient.Get(block.StatusDB, block.StatusDB, id)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	reply, err := p.grpcClient.GetBlockBySeq(ctx, &chain33types.Int64{Data: seqNum})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetBlockBySeq seq=%d: %w", seqNum, err)
+	}
+	if reply == nil {
+		return nil, fmt.Errorf("GetBlockBySeq returned nil for seq=%d", seqNum)
+	}
+	if reply.GetDetail() == nil {
+		// DEL 类型区块可能没有 Detail，返回 nil 让上层跳过
+		log.Info("GetBlockBySeq returned nil Detail, skipping", "seq", seqNum, "type", reply.GetSeq().GetType())
+		return nil, nil
 	}
 
-	var seq block.Seq
-	err = json.Unmarshal([]byte(*result), &seq)
-	if err != nil {
-		return nil, err
+	seq := &block.Seq{
+		SyncSeq:     int(reply.GetNum()),
+		Number:      int(reply.GetDetail().Block.GetHeight()),
+		Hash:        fmt.Sprintf("0x%x", reply.GetSeq().GetHash()),
+		Type:        int(reply.GetSeq().GetType()),
+		BlockDetail: chain33types.Encode(reply.GetDetail()),
 	}
-
-	return &seq, nil
+	return seq, nil
 }
 
 // isEvmExecer 检查执行器是否是evm
@@ -347,8 +314,8 @@ func isEvmExecer(execer string) bool {
 	return execer == "evm" || strings.HasSuffix(execer, ".evm")
 }
 
-// parseBlockFromES 解析从ES获取的区块
-func (p *Process) parseBlockFromES(blockSeq *block.Seq) error {
+// parseBlockFromChain33 解析从 chain33 gRPC 获取的区块（替代原 parseBlockFromChain33）。
+func (p *Process) parseBlockFromChain33(blockSeq *block.Seq) error {
 	if blockSeq == nil {
 		return fmt.Errorf("blockSeq is nil")
 	}
@@ -360,7 +327,7 @@ func (p *Process) parseBlockFromES(blockSeq *block.Seq) error {
 		return fmt.Errorf("decode BlockDetail failed: %w", err)
 	}
 
-	log.Info("Processing block from ES",
+	log.Info("Processing block from chain33",
 		"seq", blockSeq.SyncSeq,
 		"type", blockSeq.Type,
 		"height", detail.Block.Height,
@@ -395,13 +362,13 @@ func (p *Process) parseBlockFromES(blockSeq *block.Seq) error {
 		expects, errExpect := buildSlotEthExpectsFromBlockDetail(&detail)
 		if errExpect != nil {
 			log.Error("Failed to build chain33 slot expects for nonce alignment", "err", errExpect, "height", detail.Block.Height)
-			return fmt.Errorf("parseBlockFromES height=%d: eth tx count %d < chain33 %d, nonce alignment: %w",
+			return fmt.Errorf("parseBlockFromChain33 height=%d: eth tx count %d < chain33 %d, nonce alignment: %w",
 				detail.Block.Height, ethN, seqN, errExpect)
 		}
 		aligned, err = blockalign.AlignEthTxsByNonce(block, expects)
 		if err != nil {
 			log.Error("Failed to align eth txs by nonce", "err", err, "height", detail.Block.Height)
-			return fmt.Errorf("parseBlockFromES height=%d: AlignEthTxsByNonce: %w", detail.Block.Height, err)
+			return fmt.Errorf("parseBlockFromChain33 height=%d: AlignEthTxsByNonce: %w", detail.Block.Height, err)
 		}
 		log.Info("Aligned eth txs by nonce (eth body count < chain33 seq)",
 			"height", detail.Block.Height,
@@ -439,7 +406,7 @@ func (p *Process) parseBlockFromES(blockSeq *block.Seq) error {
 		"txCount", len(aligned))
 	for _, idx := range evmtxs {
 		if idx < 0 || idx >= len(aligned) {
-			log.Warn("parseBlockFromES: EVM tx index out of range, skip",
+			log.Warn("parseBlockFromChain33: EVM tx index out of range, skip",
 				"height", detail.Block.Height,
 				"evmTxIndex", idx,
 				"alignedLen", len(aligned))
@@ -450,7 +417,7 @@ func (p *Process) parseBlockFromES(blockSeq *block.Seq) error {
 			if idx < len(detail.Block.Txs) {
 				c33TxHash = hexutil.Encode(detail.Block.Txs[idx].Hash())
 			}
-			log.Warn("parseBlockFromES: missing ethereum tx body for EVM slot, skip",
+			log.Warn("parseBlockFromChain33: missing ethereum tx body for EVM slot, skip",
 				"height", detail.Block.Height,
 				"evmTxIndex", idx,
 				"chain33TxHash", c33TxHash)
@@ -464,7 +431,7 @@ func (p *Process) parseBlockFromES(blockSeq *block.Seq) error {
 			if idx < len(detail.Block.Txs) {
 				c33TxHash = hexutil.Encode(detail.Block.Txs[idx].Hash())
 			}
-			log.Warn("Failed to process transaction (ES mode), may be chain33 tx",
+			log.Warn("Failed to process transaction (chain33 mode), may be chain33 tx",
 				"err", err,
 				"height", detail.Block.Height,
 				"blockHash", block.Hash().Hex(),
