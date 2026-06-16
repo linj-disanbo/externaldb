@@ -9,6 +9,7 @@ import (
 	"github.com/33cn/externaldb/proto"
 	"github.com/33cn/externaldb/util"
 	"github.com/33cn/externaldb/util/cli/convert"
+	"github.com/33cn/externaldb/util/localfile"
 	"github.com/pkg/errors"
 
 	// 以下包导入不显示使用，主要使用里面的init函数，初始化一些配置，复制来源 cmd/convert/main.go 里面的导入逻辑
@@ -45,7 +46,7 @@ type ReceiverConvert interface {
 	//ConvertBlock()
 }
 
-func CreateReceiverConvert(cfg *proto.ConfigNew, EsWrite escli.ESClient) (ReceiverConvert, error) {
+func CreateReceiverConvert(cfg *proto.ConfigNew, EsWrite escli.ESClient, progressFP *localfile.FileProgress) (ReceiverConvert, error) {
 	err := checkPushFormat(cfg.Sync.PushFormat)
 	if err != nil {
 		log.Error("checkPushFormat failed", "err", err.Error())
@@ -80,10 +81,11 @@ func CreateReceiverConvert(cfg *proto.ConfigNew, EsWrite escli.ESClient) (Receiv
 	}
 
 	return &receiverConvert{
-		p:        &p,
-		bindAddr: cfg.Sync.PushBind,
-		mod:      mod,
-		chain:    cfg.Chain,
+		p:          &p,
+		bindAddr:   cfg.Sync.PushBind,
+		mod:        mod,
+		progressFP: progressFP,
+		chain:      cfg.Chain,
 	}, nil
 }
 
@@ -91,6 +93,8 @@ type receiverConvert struct {
 	p        *pusher
 	bindAddr string
 	mod      *util.ModuleConvert
+	// progressFP 本地文件进度存储，为 nil 时使用旧的 ES 方式（向后兼容）。
+	progressFP *localfile.FileProgress
 	// pushVersion int32
 	chain *proto.Chain33
 }
@@ -110,12 +114,12 @@ func (r *receiverConvert) Register() error {
 
 func (r *receiverConvert) ReceiveLoop() {
 	handler := func(req []byte) error {
-		return handleConvertRequest(req, r.p.encode, r.mod, r.chain)
+		return handleConvertRequest(req, r.p.encode, r.mod, r.chain, r.progressFP)
 	}
 	startHTTPService(r.bindAddr, "*", handler)
 }
 
-func handleConvertRequest(body []byte, format string, mod *util.ModuleConvert, chain *proto.Chain33) error {
+func handleConvertRequest(body []byte, format string, mod *util.ModuleConvert, chain *proto.Chain33, progressFP *localfile.FileProgress) error {
 	beg := types.Now()
 	defer func() {
 		log.Info("HandleConvertRequest", "total cost", types.Since(beg))
@@ -192,8 +196,13 @@ func handleConvertRequest(body []byte, format string, mod *util.ModuleConvert, c
 		bulkRecords = append(bulkRecords, records...)
 	}
 
-	lastSeq := util.NewLastRecord(db.LastSeqDB, number)
-	bulkRecords = append(bulkRecords, lastSeq)
+	if progressFP != nil {
+		// 进度使用本地文件，不再写入 ES
+	} else {
+		// 兼容旧方式：进度写入 ES
+		lastSeq := util.NewLastRecord(db.LastSeqDB, number)
+		bulkRecords = append(bulkRecords, lastSeq)
+	}
 	log.Info("deal request over", "cost", types.Since(beg), "number", number, "bulkRecords", bulkRecords)
 
 	// 存入ES
@@ -201,6 +210,14 @@ func handleConvertRequest(body []byte, format string, mod *util.ModuleConvert, c
 	if err != nil {
 		log.Error("SaveToESSelectBulk", "err", err, "bulkRecords", bulkRecords, "module", mod.Name, "op", "save")
 		return err
+	}
+
+	// 写入本地文件进度（在 ES 写入成功之后）
+	if progressFP != nil {
+		if saveErr := progressFP.Save(number); saveErr != nil {
+			log.Error("progressFP.Save", "err", saveErr, "number", number)
+			return saveErr
+		}
 	}
 	err = util.LastSyncSeqCache.SetNumber(number)
 

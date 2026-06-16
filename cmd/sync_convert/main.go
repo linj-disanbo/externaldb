@@ -17,8 +17,10 @@ import (
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/store/syncseq"
 	"github.com/33cn/externaldb/util"
 	"github.com/33cn/externaldb/util/cli/sync"
+	"github.com/33cn/externaldb/util/localfile"
 	"github.com/33cn/externaldb/version"
 	tml "github.com/BurntSushi/toml"
 )
@@ -68,17 +70,38 @@ func main() {
 	}
 
 	// TODO db.LastSeqDB 待确定
-	err = util.InitLastSyncSeqCache(EsWrite, db.LastSeqDB, cfg.Sync.StartSeq)
-	if err != nil {
-		log.Error("InitLastSyncSeqCache failed", "err", err.Error())
-		log.Error("初始化 区块解析进度参数 last_seq 失败，请确保ES服务正常且 配置文件参数sync.startSeq 参数大于或等于0")
-		return
+	var progressFP *localfile.FileProgress
+	if cfg.Dbtype == "file" {
+		progressPath := syncseq.ProgressFilePath(d, syncseq.DefaultConvertProgressFile)
+		progressFP, err = localfile.NewFileProgress(progressPath)
+		if err != nil {
+			log.Error("NewFileProgress failed", "err", err.Error())
+			return
+		}
+		// 从本地文件恢复进度
+		lastSeq, loadErr := progressFP.Load()
+		if loadErr != nil {
+			log.Error("progressFP.Load failed", "err", loadErr.Error())
+			return
+		}
+		if lastSeq < cfg.Sync.StartSeq-1 {
+			lastSeq = cfg.Sync.StartSeq - 1
+		}
+		util.LastSyncSeqCache.SetNumber(lastSeq)
+		log.Info("file progress init", "path", progressPath, "lastSeq", lastSeq)
+	} else {
+		err = util.InitLastSyncSeqCache(EsWrite, db.LastSeqDB, cfg.Sync.StartSeq)
+		if err != nil {
+			log.Error("InitLastSyncSeqCache failed", "err", err.Error())
+			log.Error("初始化 区块解析进度参数 last_seq 失败，请确保ES服务正常且 配置文件参数sync.startSeq 参数大于或等于0")
+			return
+		}
 	}
 	// 初始化设置 convert流程的 ES 服务是否设置批量提交
 	util.InitConvertEsBulk(cfg.ConvertEs.Bulk)
 
 	// 创建服务实例
-	receiver, err := sync.CreateReceiverConvert(cfg, EsWrite)
+	receiver, err := sync.CreateReceiverConvert(cfg, EsWrite, progressFP)
 	if err != nil {
 		log.Error("CreateReceiver failed", "err", err.Error())
 		log.Error("创建sync服务失败，请检查配置文件各项参数")

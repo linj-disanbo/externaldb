@@ -69,6 +69,30 @@ func NewSeqStore(cfg *proto.ConfigNew) (store.SeqNumStore, store.SeqStore, error
 	return seqNumClient, nil, errors.New("cfg.Dbtype set err")
 }
 
+// NewSeqStoreWithFileProgress 创建 SeqStore（ES 存储区块数据）+ SeqNumStore（本地文件存储进度）。
+// workDir 为二进制所在目录，进度文件将写入 <workDir>/data/last_sync。
+func NewSeqStoreWithFileProgress(cfg *proto.ConfigNew, workDir string) (store.SeqNumStore, store.SeqStore, error) {
+	client, err := escli.NewESLongConnect(cfg.SyncEs.Host, cfg.SyncEs.Prefix, cfg.EsVersion, cfg.SyncEs.User, cfg.SyncEs.Pwd)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	progressPath := ProgressFilePath(workDir, DefaultSyncProgressFile)
+	seqNumClient, err := NewFileSeqNumStore(progressPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = util.InitIndex(client, block.StatusDB, block.StatusDB, block.Mapping)
+	if err != nil {
+		return seqNumClient, nil, err
+	}
+	return seqNumClient, &esSeqStore{
+		esSeqClient: client,
+		bulk:        cfg.SyncEs.Bulk,
+	}, nil
+}
+
 // NewEsSeqStore  SeqStore
 func NewGetSeq(cfg *proto.ConfigNew) (store.SeqNumStore, store.SeqStore, error) {
 	client, err := escli.NewESLongConnect(cfg.SyncEs.Host, cfg.SyncEs.Prefix, cfg.EsVersion, cfg.SyncEs.User, cfg.SyncEs.Pwd)

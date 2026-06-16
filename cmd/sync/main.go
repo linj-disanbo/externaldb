@@ -17,6 +17,7 @@ import (
 
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/store"
 	"github.com/33cn/externaldb/store/syncseq"
 	"github.com/33cn/externaldb/util"
 	"github.com/33cn/externaldb/util/cli/sync"
@@ -46,7 +47,14 @@ func main() {
 
 	log.Debug("started ")
 
-	seqNumStore, seqStore, err := syncseq.NewSeqStore(cfg)
+	var err error
+	var seqNumStore store.SeqNumStore
+	var seqStore store.SeqStore
+	if cfg.Dbtype == "file" {
+		seqNumStore, seqStore, err = syncseq.NewSeqStoreWithFileProgress(cfg, d)
+	} else {
+		seqNumStore, seqStore, err = syncseq.NewSeqStore(cfg)
+	}
 	if err != nil {
 		log.Error("NewSeqStore failed", "err", err.Error())
 		return
