@@ -268,13 +268,10 @@ func NewConvertService(cfg *proto.ConfigNew) *Service {
 	}
 }
 
-// Start 启动convert服务
+// Start 启动convertfix服务（处理完指定 seq 范围后退出，不循环）
 func (s *Service) Start() {
-	for {
-		if util.ConvertServerStatus.Closed() {
-			return
-		}
-		s.mod.BlockProcFixTool()
-		time.Sleep(100 * time.Millisecond)
+	if util.ConvertServerStatus.Closed() {
+		return
 	}
+	s.mod.BlockProcFixTool()
 }
