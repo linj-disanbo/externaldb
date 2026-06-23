@@ -85,7 +85,7 @@ func handleContractList(w http.ResponseWriter, r *http.Request) {
 	offset := (page - 1) * size
 	query := `SELECT contract_address, contract_name, contract_symbol, contract_type, 
 	          decimals, total_supply, deploy_block_time 
-	          FROM contracts WHERE 1=1`
+	          FROM contracts WHERE contract_type != 'UNKNOWN'`
 	args := []interface{}{}
 
 	if symbol != "" {
@@ -129,7 +129,7 @@ func handleContractList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 获取总数（用于分页）
-	countQuery := `SELECT COUNT(*) FROM contracts WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM contracts WHERE contract_type != 'UNKNOWN'`
 	countArgs := []interface{}{}
 	if symbol != "" {
 		countQuery += " AND contract_symbol LIKE ?"
@@ -336,8 +336,11 @@ func handleContractTransactions(w http.ResponseWriter, r *http.Request, contract
 	}
 	funcName := r.URL.Query().Get("func_name")
 
+	// 判断合约是否 ERC20，决定 token 字段是否输出有意义的值
+	c, _ := db.GetContractByAddress(contractAddress)
+	isERC20 := c != nil && c.ContractType == "ERC20"
+
 	// 构建查询
-	// 地址在入库和入参阶段都已统一成小写，且字段使用 *_ci 排序规则，不需要对列做 LOWER()。
 	offset := (page - 1) * size
 	query := `SELECT t.tx_hash, t.block_number, t.block_time, t.from_address, t.to_address,
 	          t.func_name, t.value, t.gas_used, t.status, c.contract_symbol, c.decimals
@@ -383,9 +386,14 @@ func handleContractTransactions(w http.ResponseWriter, r *http.Request, contract
 		}
 
 		if valueStr != nil {
-			value, _ := new(big.Int).SetString(*valueStr, 10)
 			record.Value = *valueStr
+		}
+		if isERC20 && valueStr != nil {
+			value, _ := new(big.Int).SetString(*valueStr, 10)
 			record.ValueFormatted = formatTokenAmount(value, record.TokenDecimals)
+		} else {
+			record.TokenSymbol = ""
+			record.TokenDecimals = 0
 		}
 
 		transactions = append(transactions, record)
@@ -402,7 +410,7 @@ func handleContractTransactions(w http.ResponseWriter, r *http.Request, contract
 	var total int
 	err = db.GetConn().QueryRow(countQuery, countArgs...).Scan(&total)
 	if err != nil {
-		total = len(transactions) // 如果查询总数失败，使用当前返回的数量
+		total = len(transactions)
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -676,108 +684,116 @@ func handleHolderTransactions(w http.ResponseWriter, r *http.Request, contractAd
 	}
 	funcName := r.URL.Query().Get("func_name")
 
-	// 构建查询
-	// 地址在入库和入参阶段都已统一成小写，且字段使用 *_ci 排序规则，不需要对列做 LOWER()。
-	offset := (page - 1) * size
-	query := `SELECT t.tx_hash, t.block_number, t.block_time, t.from_address, t.to_address,
-	          t.func_name, t.value, t.gas_used, t.status, c.contract_symbol, c.decimals
-	          FROM transactions t
-	          LEFT JOIN contracts c ON t.contract_address = c.contract_address
-	          WHERE t.contract_address = ?`
-	args := []interface{}{contractAddress}
+		// 判断合约是否 ERC20，决定 token 字段是否输出有意义的值
+		c, _ := db.GetContractByAddress(contractAddress)
+		isERC20 := c != nil && c.ContractType == "ERC20"
 
-	// 根据role参数添加地址筛选条件
-	switch role {
-	case "from":
-		query += " AND t.from_address = ?"
-		args = append(args, holderAddress)
-	case "to":
-		query += " AND t.to_address = ?"
-		args = append(args, holderAddress)
-	case "both":
-		query += " AND (t.from_address = ? OR t.to_address = ?)"
-		args = append(args, holderAddress, holderAddress)
-	}
+		// 构建查询
+		offset := (page - 1) * size
+		query := `SELECT t.tx_hash, t.block_number, t.block_time, t.from_address, t.to_address,
+		          t.func_name, t.value, t.gas_used, t.status, c.contract_symbol, c.decimals
+		          FROM transactions t
+		          LEFT JOIN contracts c ON t.contract_address = c.contract_address
+		          WHERE t.contract_address = ?`
+		args := []interface{}{contractAddress}
 
-	// 函数名称筛选
-	if funcName != "" {
-		query += " AND t.func_name = ?"
-		args = append(args, funcName)
-	}
+		// 根据role参数添加地址筛选条件
+		switch role {
+		case "from":
+			query += " AND t.from_address = ?"
+			args = append(args, holderAddress)
+		case "to":
+			query += " AND t.to_address = ?"
+			args = append(args, holderAddress)
+		case "both":
+			query += " AND (t.from_address = ? OR t.to_address = ?)"
+			args = append(args, holderAddress, holderAddress)
+		}
 
-	query += " ORDER BY t.block_number DESC LIMIT ? OFFSET ?"
-	args = append(args, size, offset)
+		// 函数名称筛选
+		if funcName != "" {
+			query += " AND t.func_name = ?"
+			args = append(args, funcName)
+		}
 
-	rows, err := db.GetConn().Query(query, args...)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Sprintf("Database error: %v", err))
-		return
-	}
-	defer rows.Close()
+		query += " ORDER BY t.block_number DESC LIMIT ? OFFSET ?"
+		args = append(args, size, offset)
 
-	var transactions []TransactionRecord
-	for rows.Next() {
-		var record TransactionRecord
-		var valueStr *string
-		err := rows.Scan(
-			&record.TxHash,
-			&record.BlockNumber,
-			&record.BlockTime,
-			&record.From,
-			&record.To,
-			&record.FuncName,
-			&valueStr,
-			&record.GasUsed,
-			&record.Status,
-			&record.TokenSymbol,
-			&record.TokenDecimals,
-		)
+		rows, err := db.GetConn().Query(query, args...)
 		if err != nil {
-			continue
+			writeError(w, http.StatusInternalServerError, fmt.Sprintf("Database error: %v", err))
+			return
+		}
+		defer rows.Close()
+
+		var transactions []TransactionRecord
+		for rows.Next() {
+			var record TransactionRecord
+			var valueStr *string
+			err := rows.Scan(
+				&record.TxHash,
+				&record.BlockNumber,
+				&record.BlockTime,
+				&record.From,
+				&record.To,
+				&record.FuncName,
+				&valueStr,
+				&record.GasUsed,
+				&record.Status,
+				&record.TokenSymbol,
+				&record.TokenDecimals,
+			)
+			if err != nil {
+				continue
+			}
+
+			if valueStr != nil {
+				record.Value = *valueStr
+			}
+			if isERC20 && valueStr != nil {
+				value, _ := new(big.Int).SetString(*valueStr, 10)
+				record.ValueFormatted = formatTokenAmount(value, record.TokenDecimals)
+			} else {
+				record.TokenSymbol = ""
+				record.TokenDecimals = 0
+			}
+
+			transactions = append(transactions, record)
 		}
 
-		if valueStr != nil {
-			value, _ := new(big.Int).SetString(*valueStr, 10)
-			record.Value = *valueStr
-			record.ValueFormatted = formatTokenAmount(value, record.TokenDecimals)
+		// 获取总数（用于分页）
+		countQuery := `SELECT COUNT(*) FROM transactions t WHERE t.contract_address = ?`
+		countArgs := []interface{}{contractAddress}
+		switch role {
+		case "from":
+			countQuery += " AND t.from_address = ?"
+			countArgs = append(countArgs, holderAddress)
+		case "to":
+			countQuery += " AND t.to_address = ?"
+			countArgs = append(countArgs, holderAddress)
+		case "both":
+			countQuery += " AND (t.from_address = ? OR t.to_address = ?)"
+			countArgs = append(countArgs, holderAddress, holderAddress)
+		}
+		if funcName != "" {
+			countQuery += " AND t.func_name = ?"
+			countArgs = append(countArgs, funcName)
 		}
 
-		transactions = append(transactions, record)
-	}
+		var total int
+		err = db.GetConn().QueryRow(countQuery, countArgs...).Scan(&total)
+		if err != nil {
+			total = len(transactions)
+		}
 
-	// 获取总数（用于分页）
-	countQuery := `SELECT COUNT(*) FROM transactions t WHERE t.contract_address = ?`
-	countArgs := []interface{}{contractAddress}
-	switch role {
-	case "from":
-		countQuery += " AND t.from_address = ?"
-		countArgs = append(countArgs, holderAddress)
-	case "to":
-		countQuery += " AND t.to_address = ?"
-		countArgs = append(countArgs, holderAddress)
-	case "both":
-		countQuery += " AND (t.from_address = ? OR t.to_address = ?)"
-		countArgs = append(countArgs, holderAddress, holderAddress)
+		writeJSON(w, http.StatusOK, APIResponse{
+			Code:    0,
+			Message: "Success",
+			Data: map[string]interface{}{
+				"transactions": transactions,
+				"page":         page,
+				"size":         size,
+				"total":        total,
+			},
+		})
 	}
-	if funcName != "" {
-		countQuery += " AND t.func_name = ?"
-		countArgs = append(countArgs, funcName)
-	}
-
-	var total int
-	err = db.GetConn().QueryRow(countQuery, countArgs...).Scan(&total)
-	if err != nil {
-		total = len(transactions) // 如果查询总数失败，使用当前返回的数量
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{
-		Code:    0,
-		Message: "Success",
-		Data: map[string]interface{}{
-			"transactions": transactions,
-			"page":         page,
-			"size":         size,
-			"total":        total,
-		},
-	})
-}

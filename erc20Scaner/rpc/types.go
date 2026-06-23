@@ -90,6 +90,25 @@ type AccountERC20TokenBalance struct {
 }
 
 // ApprovalInfo 授权信息（按 owner 查询时返回的列表项）
+// GenericTransaction 通用交易记录（不含 ERC20 token 信息）
+type GenericTransaction struct {
+	TxHash          string `json:"tx_hash"`
+	BlockNumber     uint64 `json:"block_number"`
+	BlockTime       string `json:"block_time"`
+	FromAddress     string `json:"from_address"`
+	ToAddress       string `json:"to_address"`
+	ContractAddress string `json:"contract_address"`
+	FuncSelector    string `json:"func_selector"`
+	FuncName        string `json:"func_name"`
+	Value           string `json:"value"`
+	GasLimit        uint64 `json:"gas_limit"`
+	GasUsed         uint64 `json:"gas_used"`
+	GasPrice        string `json:"gas_price"`
+	TxFee           string `json:"tx_fee"`
+	Status          int8   `json:"status"`
+}
+
+// ApprovalInfo 授权信息（按 owner 查询时返回的列表项）
 type ApprovalInfo struct {
 	ContractAddress  string    `json:"contract_address"`
 	ContractName     string    `json:"contract_name"`
