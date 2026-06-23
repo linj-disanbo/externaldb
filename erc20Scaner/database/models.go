@@ -346,6 +346,8 @@ func (db *DB) SaveTransaction(tx *Transaction) error {
 	ON DUPLICATE KEY UPDATE
 		status = VALUES(status),
 		gas_used = VALUES(gas_used),
+		func_selector = IF(VALUES(func_selector) != '', VALUES(func_selector), func_selector),
+		func_name = IF(VALUES(func_name) != '', VALUES(func_name), func_name),
 		updated_at = CURRENT_TIMESTAMP`
 
 	// 处理 DECIMAL 字段：如果为 nil，传递 nil（SQL NULL），否则传递字符串
@@ -927,4 +929,125 @@ func (db *DB) ListAllowancesByOwner(owner string, minAmount string, contractFilt
 		return nil, 0, err
 	}
 	return out, total, nil
+}
+
+// EnsureContract 确保合约地址在 contracts 表中有对应行。
+// 已存在则不做任何修改，不存在则 INSERT 占位行（contract_type=UNKNOWN）。
+// 保留 fk_tx_contract 外键约束，保证 transactions 写入前合约已存在。
+func (db *DB) EnsureContract(contractAddress string) error {
+	query := `INSERT IGNORE INTO contracts
+		(contract_address, contract_name, contract_symbol, contract_type,
+		 decimals, verification_status, verified_functions)
+		VALUES (?, "Unknown", "UNKNOWN", "UNKNOWN", 0, 0, "[]")`
+	_, err := db.conn.Exec(query, contractAddress)
+	return err
+}
+
+// TransactionListItem 交易列表查询返回的轻量结构（不含 tx_data 大字段）。
+type TransactionListItem struct {
+	TxHash          string
+	BlockNumber     uint64
+	BlockTime       time.Time
+	FromAddress     string
+	ToAddress       string
+	ContractAddress string
+	FuncSelector    string
+	FuncName        string
+	Value           *big.Int
+	GasLimit        uint64
+	GasUsed         uint64
+	GasPrice        *big.Int
+	TxFee           *big.Int
+	Status          int8
+}
+
+// ListTransactions 查询交易列表，按 block_number DESC 排序。
+// contract 和 from 均为空字符串时视为不限制。
+func (db *DB) ListTransactions(contract, from string, startBlock, endBlock uint64, page, pageSize int) ([]TransactionListItem, int, error) {
+	where := "WHERE 1=1"
+	args := []interface{}{}
+
+	if contract != "" {
+		where += " AND to_address = ?"
+		args = append(args, contract)
+	}
+	if from != "" {
+		where += " AND from_address = ?"
+		args = append(args, from)
+	}
+	if startBlock > 0 {
+		where += " AND block_number >= ?"
+		args = append(args, startBlock)
+	}
+	if endBlock > 0 {
+		where += " AND block_number <= ?"
+		args = append(args, endBlock)
+	}
+
+	countArgs := make([]interface{}, len(args))
+	copy(countArgs, args)
+	var total int
+	countQuery := "SELECT COUNT(*) FROM transactions " + where
+	if err := db.conn.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	listQuery := `SELECT tx_hash, block_number, block_time, from_address, to_address,
+		contract_address, func_selector, func_name, value,
+		gas_limit, gas_used, gas_price, tx_fee, status
+		FROM transactions ` + where + ` ORDER BY block_number DESC LIMIT ? OFFSET ?`
+	listArgs := append(args, pageSize, offset)
+
+	rows, err := db.conn.Query(listQuery, listArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var items []TransactionListItem
+	for rows.Next() {
+		var item TransactionListItem
+		var valueStr, gasPriceStr, txFeeStr sql.NullString
+		err := rows.Scan(
+			&item.TxHash,
+			&item.BlockNumber,
+			&item.BlockTime,
+			&item.FromAddress,
+			&item.ToAddress,
+			&item.ContractAddress,
+			&item.FuncSelector,
+			&item.FuncName,
+			&valueStr,
+			&item.GasLimit,
+			&item.GasUsed,
+			&gasPriceStr,
+			&txFeeStr,
+			&item.Status,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		if valueStr.Valid && valueStr.String != "" {
+			item.Value, _ = new(big.Int).SetString(valueStr.String, 10)
+		}
+		if gasPriceStr.Valid && gasPriceStr.String != "" {
+			item.GasPrice, _ = new(big.Int).SetString(gasPriceStr.String, 10)
+		}
+		if txFeeStr.Valid && txFeeStr.String != "" {
+			item.TxFee, _ = new(big.Int).SetString(txFeeStr.String, 10)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
 }

@@ -29,15 +29,6 @@ import (
 )
 
 
-// extractFuncFromTxData extracts function selector and name from tx input data.
-// Returns ("0x00000000", "unknown") if data is too short to parse.
-func extractFuncFromTxData(data []byte) (selector, name string) {
-	if len(data) < 4 {
-		return "0x00000000", "unknown"
-	}
-	return "0x" + hex.EncodeToString(data[:4]), "unknown"
-}
-
 // normalizeAddress 规范化地址，统一转换为小写
 // 以太坊地址是大小写不敏感的，统一转换为小写便于比较和查询
 func normalizeAddress(address string) string {
@@ -593,58 +584,79 @@ func (p *Process) ParaseBlock(block *types.Block) error {
 	return nil
 }
 
-// processTransactionWithReceipt 获取receipt并处理交易
+// processTransactionWithReceipt 获取receipt并处理交易。
+// 重构后 saveTransactionToDB 作为统一出口，所有交易（含 ETH 转账、非 ERC20 调用）均写入。
 func (p *Process) processTransactionWithReceipt(tx *types.Transaction, block *types.Block) error {
-	// 获取交易receipt
 	receipt, err := p.cli.TxReceipt(tx.Hash())
 	if err != nil {
 		return fmt.Errorf("failed to get transaction receipt: %w", err)
 	}
-
 	if receipt == nil {
 		return fmt.Errorf("receipt is nil for tx: %s", tx.Hash().Hex())
 	}
 
-	// 检查交易状态
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		// 交易执行失败（revert），保存基本交易记录但跳过事件解析
-		log.Info("Transaction reverted, saving basic tx record only",
-			"txHash", tx.Hash().Hex(),
-			"height", block.NumberU64(),
-			"status", receipt.Status)
-		if p.EnableDB {
-			funcSelector, funcName := extractFuncFromTxData(tx.Data())
-			toAddr := common.Address{}
-			if tx.To() != nil {
-				toAddr = *tx.To()
-			}
-			if err := p.saveTransactionToDB(tx, receipt, block, toAddr, funcSelector, funcName); err != nil {
-				log.Error("Failed to save reverted transaction",
-					"err", err,
-					"txHash", tx.Hash().Hex())
-			}
+	// 确定交易分类信息，用于外层统一保存
+	contractAddr, funcSelector, funcName := classifyTxForSave(tx, receipt)
+
+	// 确保合约在 contracts 表中有对应行（FK 约束）
+	if p.EnableDB && p.db != nil && contractAddr != (common.Address{}) {
+		if err := p.db.EnsureContract(normalizeAddress(contractAddr.Hex())); err != nil {
+			log.Warn("Failed to ensure contract in DB",
+				"err", err, "contract", contractAddr.Hex())
 		}
+	}
+
+	// 统一保存交易记录
+	if p.EnableDB && contractAddr != (common.Address{}) {
+		if err := p.saveTransactionToDB(tx, receipt, block, contractAddr, funcSelector, funcName); err != nil {
+			log.Error("Failed to save transaction", "err", err, "txHash", tx.Hash().Hex())
+		}
+	}
+
+	// 失败交易跳过后续事件解析
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		log.Info("Transaction reverted, skipping event parsing",
+			"txHash", tx.Hash().Hex(), "height", block.NumberU64())
 		return nil
 	}
 
-	// 根据交易类型处理
+	// 根据交易类型做专项处理
 	if tx.To() == nil {
-		// 合约创建交易
-		return p.processContractCreation(tx, receipt, block)
-	} else {
-		// 合约调用交易（token transfer or contract call）
-		return p.parseERC20Transfer(tx, receipt, block)
+		return p.handleContractCreation(tx, receipt, block)
 	}
+	return p.parseERC20Transfer(tx, receipt, block)
 }
 
-// processContractCreation 处理合约创建交易
-func (p *Process) processContractCreation(tx *types.Transaction, receipt *types.Receipt, block *types.Block) error {
-	if receipt.ContractAddress == (common.Address{}) {
-		return fmt.Errorf("contract address is empty")
-	}
+// classifyTxForSave 根据交易类型确定保存到 transactions 表的基本字段。
+func classifyTxForSave(tx *types.Transaction, receipt *types.Receipt) (contractAddr common.Address, funcSelector, funcName string) {
+	txData := tx.Data()
 
-	// 使用统一的处理函数，handleContractCreation 内部会判断是否为ERC20并保存
-	return p.handleContractCreation(tx, receipt, block)
+	if tx.To() == nil {
+		// 合约创建
+		contractAddr = receipt.ContractAddress
+		if len(txData) >= 4 {
+			funcSelector = hex.EncodeToString(txData[:4])
+		} else {
+			funcSelector = "0x"
+		}
+		funcName = "contract_creation"
+	} else if len(txData) == 0 {
+		// 普通 ETH 转账
+		contractAddr = *tx.To()
+		funcSelector = "0x"
+		funcName = "eth_transfer"
+	} else if len(txData) >= 4 {
+		// 合约调用
+		contractAddr = *tx.To()
+		funcSelector = hex.EncodeToString(txData[:4])
+		funcName = "unknown"
+	} else {
+		// 短 data，按 ETH 转账处理
+		contractAddr = *tx.To()
+		funcSelector = "0x"
+		funcName = "unknown"
+	}
+	return
 }
 
 func (p *Process) unPackageAbi(methodName string, cAddress *common.Address) (interface{}, error) {
