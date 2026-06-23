@@ -51,6 +51,14 @@ func normalizeAddress(address string) string {
 	return strings.ToLower(address)
 }
 
+// contractCacheEntry 缓存合约检测结果，避免对同一地址重复发起 RPC。
+// 同时服务 getTokenInfo（token 元数据）和 checkERC20BySelector（ERC20 判定）。
+type contractCacheEntry struct {
+	info    *TokenInfo // token 元数据（name/symbol/decimals），nil 表示未获取
+	isERC20 bool       // checkERC20BySelector 的结果
+	checked bool       // 是否已执行过 checkERC20BySelector
+}
+
 // Process 业务处理模块
 type Process struct {
 	cli        *Client
@@ -67,6 +75,10 @@ type Process struct {
 
 	// NoProgress 为 true 时不读/写 scan_progress 表（修复模式，方案 D）
 	NoProgress bool
+
+	// contractCache 进程级合约缓存，避免同一地址反复发起 eth_call/eth_getCode。
+	// scanner 主循环单线程，无需加锁。
+	contractCache map[common.Address]*contractCacheEntry
 }
 
 // Init 初始化模块
@@ -75,6 +87,9 @@ func (p *Process) Init() {
 		p.cli = new(Client)
 	}
 	p.cli.ConnectEth(p.NodeURL)
+
+	// 初始化进程级合约缓存
+	p.contractCache = make(map[common.Address]*contractCacheEntry)
 
 	// 初始化数据库连接
 	if p.EnableDB {
@@ -686,9 +701,32 @@ func (p *Process) unPackageAbiWithArgs(methodName string, cAddress *common.Addre
 	return result, nil
 }
 
-// checkERC20BySelector 通过检查函数选择器验证合约是否为ERC20合约
-// 该方法检查合约字节码中是否包含ERC20标准函数的函数选择器
+// checkERC20BySelector 通过检查函数选择器验证合约是否为ERC20合约。
+// 结果会缓存到进程级 contractCache，避免对同一地址重复发起 eth_getCode。
 func (p *Process) checkERC20BySelector(contractAddress *common.Address) (bool, error) {
+	// 检查缓存
+	entry, ok := p.contractCache[*contractAddress]
+	if ok && entry.checked {
+		return entry.isERC20, nil
+	}
+
+	// 确保有缓存条目
+	if !ok {
+		entry = &contractCacheEntry{}
+		p.contractCache[*contractAddress] = entry
+	}
+
+	isERC20, err := p.checkERC20BySelectorUncached(contractAddress)
+
+	// 缓存结果（包括非 ERC20 和失败的结果）
+	entry.checked = true
+	entry.isERC20 = isERC20
+
+	return isERC20, err
+}
+
+// checkERC20BySelectorUncached 无缓存的字节码选择器检测。
+func (p *Process) checkERC20BySelectorUncached(contractAddress *common.Address) (bool, error) {
 	// 获取合约字节码
 	code, err := p.cli.CodeAt(*contractAddress, nil)
 	if err != nil {
@@ -703,34 +741,26 @@ func (p *Process) checkERC20BySelector(contractAddress *common.Address) (bool, e
 	// 将字节码转换为十六进制字符串以便搜索
 	codeHex := hex.EncodeToString(code)
 
-	// ERC20标准必须实现的6个核心函数选择器（ERC20标准要求）
-	// 这些是ERC20接口必须实现的函数，从ERC20FuncSigs中获取
 	requiredCoreSelectors := []string{
-		"18160ddd", // totalSupply() - 总供应量
-		"70a08231", // balanceOf(address) - 余额查询
-		"a9059cbb", // transfer(address,uint256) - 转账
-		"23b872dd", // transferFrom(address,address,uint256) - 授权转账
-		"095ea7b3", // approve(address,uint256) - 授权
-		"dd62ed3e", // allowance(address,address) - 查询授权额度
+		"18160ddd", // totalSupply()
+		"70a08231", // balanceOf(address)
+		"a9059cbb", // transfer(address,uint256)
+		"23b872dd", // transferFrom(address,address,uint256)
+		"095ea7b3", // approve(address,uint256)
+		"dd62ed3e", // allowance(address,address)
 	}
 
-	// ERC20可选但常见的函数选择器（大多数ERC20代币都实现）
-	// 这些函数虽然不是ERC20标准强制要求，但绝大多数代币都会实现
 	optionalSelectors := []string{
-		"06fdde03", // name() - 代币名称
-		"95d89b41", // symbol() - 代币符号
-		"313ce567", // decimals() - 小数位数
+		"06fdde03", // name()
+		"95d89b41", // symbol()
+		"313ce567", // decimals()
 	}
 
-	// ERC20扩展函数选择器（OpenZeppelin等库提供的安全函数）
-	// 这些是增强安全性的函数，不是所有ERC20代币都实现
 	extensionSelectors := []string{
-		"39509351", // increaseAllowance(address,uint256) - 增加授权
-		"a457c2d7", // decreaseAllowance(address,uint256) - 减少授权
+		"39509351", // increaseAllowance(address,uint256)
+		"a457c2d7", // decreaseAllowance(address,uint256)
 	}
-	// 注意：以上所有选择器都对应generated.ERC20FuncSigs中定义的函数
 
-	// 检查核心函数选择器（必须实现）
 	// 使用 "63" + selector 匹配 PUSH4 指令，EVM 中 PUSH4 操作码为 0x63。
 	// 仅匹配裸 4 字节 selector 会将字节码中碰巧出现的常量数据误判为函数选择器。
 	coreFoundCount := 0
@@ -740,7 +770,6 @@ func (p *Process) checkERC20BySelector(contractAddress *common.Address) (bool, e
 		}
 	}
 
-	// 检查可选函数选择器
 	optionalFoundCount := 0
 	for _, selector := range optionalSelectors {
 		if strings.Contains(codeHex, "63"+selector) {
@@ -748,7 +777,6 @@ func (p *Process) checkERC20BySelector(contractAddress *common.Address) (bool, e
 		}
 	}
 
-	// 检查扩展函数选择器
 	extensionFoundCount := 0
 	for _, selector := range extensionSelectors {
 		if strings.Contains(codeHex, "63"+selector) {
@@ -756,26 +784,15 @@ func (p *Process) checkERC20BySelector(contractAddress *common.Address) (bool, e
 		}
 	}
 
-	// ERC20标准要求至少实现6个核心函数
-	// 为了更严格的验证，我们要求至少找到4个核心函数选择器
-	// 这样可以确保合约基本符合ERC20标准
 	if coreFoundCount >= 4 {
-		// 进一步验证：尝试调用totalSupply和balanceOf函数，确保合约确实实现了ERC20接口
-		// 这两个是最核心的view函数，必须能够成功调用
 		_, err := p.unPackageAbi("totalSupply", contractAddress)
 		if err != nil {
 			return false, fmt.Errorf("totalSupply call failed: %w", err)
 		}
 
-		// 尝试调用balanceOf（使用零地址作为测试）
 		zeroAddr := common.HexToAddress("0x0000000000000000000000000000000000000000")
-		_, err = p.unPackageAbiWithArgs("balanceOf", contractAddress, zeroAddr)
-		if err != nil {
-			// balanceOf调用失败不影响验证，因为可能只是参数问题
-			// 但至少totalSupply应该能成功
-		}
+		_, _ = p.unPackageAbiWithArgs("balanceOf", contractAddress, zeroAddr)
 
-		// 输出验证信息（Debug级别）
 		log.Debug("ERC20 validation result",
 			"core", fmt.Sprintf("%d/%d", coreFoundCount, len(requiredCoreSelectors)),
 			"optional", fmt.Sprintf("%d/%d", optionalFoundCount, len(optionalSelectors)),
@@ -1228,8 +1245,13 @@ type TokenInfo struct {
 	Decimals uint8
 }
 
-// getTokenInfo 获取代币信息
+// getTokenInfo 获取代币信息，进程级缓存避免对同一地址重复发起 eth_call。
 func (p *Process) getTokenInfo(tokenAddress *common.Address) (*TokenInfo, error) {
+	entry, ok := p.contractCache[*tokenAddress]
+	if ok && entry.info != nil {
+		return entry.info, nil
+	}
+
 	info := &TokenInfo{
 		Address: tokenAddress.Hex(),
 	}
@@ -1249,7 +1271,6 @@ func (p *Process) getTokenInfo(tokenAddress *common.Address) (*TokenInfo, error)
 	// 获取小数位数
 	decimals, err := p.unPackageAbi("decimals", tokenAddress)
 	if err == nil {
-		// decimals通常返回uint8
 		switch v := decimals.(type) {
 		case uint8:
 			info.Decimals = v
@@ -1258,11 +1279,17 @@ func (p *Process) getTokenInfo(tokenAddress *common.Address) (*TokenInfo, error)
 		case *big.Int:
 			info.Decimals = uint8(v.Uint64())
 		default:
-			info.Decimals = 18 // 默认值
+			info.Decimals = 18
 		}
 	} else {
-		info.Decimals = 18 // 默认值
+		info.Decimals = 18
 	}
+
+	// 写入缓存
+	if !ok {
+		p.contractCache[*tokenAddress] = &contractCacheEntry{}
+	}
+	p.contractCache[*tokenAddress].info = info
 
 	return info, nil
 }
@@ -1328,35 +1355,38 @@ func (p *Process) saveContractToDB(receipt *types.Receipt, block *types.Block, t
 }
 
 // saveContractInfoFromAddress 从合约地址获取合约信息并保存到数据库
-// 用于处理已存在的合约（非部署交易中发现）
+// 用于处理已存在的合约（非部署交易中发现）。
+// 优先使用进程级缓存（getTokenInfo 已缓存 name/symbol/decimals），
+// 缓存未命中时才发起 eth_call。
 func (p *Process) saveContractInfoFromAddress(contractAddress *common.Address, block *types.Block) error {
 	if p.db == nil {
 		return fmt.Errorf("database not initialized")
 	}
 
-	// 获取合约信息
-	cname, err := p.unPackageAbi("name", contractAddress)
-	if err != nil {
-		log.Warn("Failed to get contract name, using default",
-			"err", err,
-			"contract", contractAddress.Hex())
-		cname = "Unknown"
-	}
-
-	symbol, err := p.unPackageAbi("symbol", contractAddress)
-	if err != nil {
-		log.Warn("Failed to get contract symbol, using default",
-			"err", err,
-			"contract", contractAddress.Hex())
-		symbol = "UNKNOWN"
-	}
-
-	decimals, err := p.unPackageAbi("decimals", contractAddress)
-	if err != nil {
-		log.Warn("Failed to get contract decimals, using default",
-			"err", err,
-			"contract", contractAddress.Hex())
-		decimals = uint8(18) // 默认值
+	// 尝试从缓存获取 token info（parseERC20Transfer 中 getTokenInfo 已填充）
+	var cname, symbol, decimals interface{}
+	var err error
+	cached, ok := p.contractCache[*contractAddress]
+	if ok && cached.info != nil {
+		cname = cached.info.Name
+		symbol = cached.info.Symbol
+		decimals = cached.info.Decimals
+	} else {
+		cname, err = p.unPackageAbi("name", contractAddress)
+		if err != nil {
+			log.Warn("Failed to get contract name, using default", "err", err, "contract", contractAddress.Hex())
+			cname = "Unknown"
+		}
+		symbol, err = p.unPackageAbi("symbol", contractAddress)
+		if err != nil {
+			log.Warn("Failed to get contract symbol, using default", "err", err, "contract", contractAddress.Hex())
+			symbol = "UNKNOWN"
+		}
+		decimals, err = p.unPackageAbi("decimals", contractAddress)
+		if err != nil {
+			log.Warn("Failed to get contract decimals, using default", "err", err, "contract", contractAddress.Hex())
+			decimals = uint8(18)
+		}
 	}
 
 	supply, err := p.unPackageAbi("totalSupply", contractAddress)
