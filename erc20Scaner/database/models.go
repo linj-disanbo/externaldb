@@ -303,6 +303,10 @@ func (db *DB) SaveContract(contract *Contract) error {
 		contract_type = VALUES(contract_type),
 		decimals = VALUES(decimals),
 		total_supply = VALUES(total_supply),
+		deploy_tx_hash = IF(VALUES(deploy_tx_hash) != "", VALUES(deploy_tx_hash), deploy_tx_hash),
+		deploy_block_number = IF(VALUES(deploy_block_number) > 0, VALUES(deploy_block_number), deploy_block_number),
+		deploy_block_time = IF(VALUES(deploy_block_time) IS NOT NULL, VALUES(deploy_block_time), deploy_block_time),
+		deployer_address = IF(VALUES(deployer_address) != "", VALUES(deployer_address), deployer_address),
 		verification_status = VALUES(verification_status),
 		verified_functions = VALUES(verified_functions),
 		updated_at = CURRENT_TIMESTAMP`

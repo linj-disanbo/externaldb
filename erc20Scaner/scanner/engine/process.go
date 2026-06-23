@@ -458,6 +458,16 @@ func (p *Process) handleContractCreation(tx *types.Transaction, receipt *types.R
 		return fmt.Errorf("invalid receipt or contract address")
 	}
 
+	// 如果合约已在 DB 中且部署信息完整，跳过重复检测
+	if p.EnableDB && p.db != nil {
+		existing, dbErr := p.db.GetContractByAddress(normalizeAddress(receipt.ContractAddress.Hex()))
+		if dbErr == nil && existing != nil && existing.DeployTxHash != "" {
+			log.Debug("Contract already in DB with deploy info, skipping re-check",
+				"contract", receipt.ContractAddress.Hex())
+			return nil
+		}
+	}
+
 	// 检查是否为ERC20合约
 	isERC20, err := p.checkERC20BySelector(&receipt.ContractAddress)
 	if err != nil {
