@@ -721,9 +721,11 @@ func (p *Process) checkERC20BySelector(contractAddress *common.Address) (bool, e
 	// 注意：以上所有选择器都对应generated.ERC20FuncSigs中定义的函数
 
 	// 检查核心函数选择器（必须实现）
+	// 使用 "63" + selector 匹配 PUSH4 指令，EVM 中 PUSH4 操作码为 0x63。
+	// 仅匹配裸 4 字节 selector 会将字节码中碰巧出现的常量数据误判为函数选择器。
 	coreFoundCount := 0
 	for _, selector := range requiredCoreSelectors {
-		if strings.Contains(codeHex, selector) {
+		if strings.Contains(codeHex, "63"+selector) {
 			coreFoundCount++
 		}
 	}
@@ -731,7 +733,7 @@ func (p *Process) checkERC20BySelector(contractAddress *common.Address) (bool, e
 	// 检查可选函数选择器
 	optionalFoundCount := 0
 	for _, selector := range optionalSelectors {
-		if strings.Contains(codeHex, selector) {
+		if strings.Contains(codeHex, "63"+selector) {
 			optionalFoundCount++
 		}
 	}
@@ -739,7 +741,7 @@ func (p *Process) checkERC20BySelector(contractAddress *common.Address) (bool, e
 	// 检查扩展函数选择器
 	extensionFoundCount := 0
 	for _, selector := range extensionSelectors {
-		if strings.Contains(codeHex, selector) {
+		if strings.Contains(codeHex, "63"+selector) {
 			extensionFoundCount++
 		}
 	}
