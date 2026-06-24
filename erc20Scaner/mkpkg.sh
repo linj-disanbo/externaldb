@@ -154,6 +154,16 @@ if [ -f "${SCRIPT_DIR}/database/migration_add_token_allowances.sql" ]; then
     echo -e "  ${GREEN}✓ env/database/migration_add_token_allowances.sql${NC}"
 fi
 
+if [ -f "${SCRIPT_DIR}/database/1-13_add_transaction_indexes.sql" ]; then
+    cp "${SCRIPT_DIR}/database/1-13_add_transaction_indexes.sql" "${PKG_DIR}/env/database/"
+    echo -e "  ${GREEN}✓ env/database/1-13_add_transaction_indexes.sql${NC}"
+fi
+
+if [ -f "${SCRIPT_DIR}/docs/dev/upgrade-v1.13.md" ]; then
+    cp "${SCRIPT_DIR}/docs/dev/upgrade-v1.13.md" "${PKG_DIR}/"
+    echo -e "  ${GREEN}✓ upgrade-v1.13.md${NC}"
+fi
+
 # 创建说明文档
 echo ""
 echo -e "${YELLOW}创建说明文档...${NC}"
