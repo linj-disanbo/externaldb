@@ -200,10 +200,10 @@ func parseEvmTx(txDetail *types.TransactionDetail, getabi func(string) (string, 
 	info.EvmTxId = evmIdStr
 	info.Chain33TxId = ToHex(txDetail.Tx.Tx().Hash())
 
-	// coins 转账
+	// coins 转账 (原生币转账，无合约调用数据，无 method selector)
 	if len(ntx.Data()) == 0 {
 		info.Func.FuncName = "transfer"
-		info.Func.MethodID = ToHex(payload.Para[:4])
+		info.Func.MethodID = "0x"
 		info.Func.Args = fmt.Sprintf("{\"to\": \"%v\",\"amount\": \"%v\"}", ToHex(payload.Para), info.Amount)
 		if txDetail.Receipt.Ty == 2 {
 			info.ExecSuccess = true
