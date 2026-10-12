@@ -43,7 +43,10 @@ func (f *File) NewESShortConnect() (escli.ESClient, error) {
 }
 
 func (f *File) NewChainGRPCConnect() (types.Chain33Client, error) {
-	return grpcclient.NewMainChainClient(types.NewChain33Config(types.GetDefaultCfgstring()), f.cfg.Chain.GetGrpcHost())
+	// 这里只是拿默认配置去 dial gRPC；chain33 v1.72 起 NewChain33Config 会严格校验
+	// fork 配置（rpc 二进制 import 了 plugin/plugin，默认配置缺插件 fork 会 panic），
+	// 故用 NoInit 版本跳过 fork 初始化。
+	return grpcclient.NewMainChainClient(types.NewChain33ConfigNoInit(types.GetDefaultCfgstring()), f.cfg.Chain.GetGrpcHost())
 }
 
 // GetFile 获取上链文件
