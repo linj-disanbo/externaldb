@@ -39,10 +39,10 @@ func TestAlignEthTxsByNonce_skipsNonEvmSlots(t *testing.T) {
 	txA := signedLegacy(t, key, chainID, 10, to)
 	txB := signedLegacy(t, key, chainID, 11, to)
 
+	// go-ethereum v1.14 起 NewBlock 的第二个参数是 *types.Body
 	block := types.NewBlock(
 		&types.Header{Number: big.NewInt(1)},
-		[]*types.Transaction{txA, txB},
-		nil,
+		&types.Body{Transactions: []*types.Transaction{txA, txB}},
 		nil,
 		trie.NewStackTrie(nil),
 	)
@@ -79,8 +79,7 @@ func TestAlignEthTxsByNonce_missingBodyIsNil(t *testing.T) {
 	txB := signedLegacy(t, key, chainID, 11, to)
 	block := types.NewBlock(
 		&types.Header{Number: big.NewInt(2)},
-		[]*types.Transaction{txB},
-		nil,
+		&types.Body{Transactions: []*types.Transaction{txB}},
 		nil,
 		trie.NewStackTrie(nil),
 	)
@@ -116,8 +115,7 @@ func TestAlignEthTxsByNonce_consecutiveSameNonceUsesFromTiebreaker(t *testing.T)
 
 	block := types.NewBlock(
 		&types.Header{Number: big.NewInt(3)},
-		[]*types.Transaction{txA, txB},
-		nil,
+		&types.Body{Transactions: []*types.Transaction{txA, txB}},
 		nil,
 		trie.NewStackTrie(nil),
 	)

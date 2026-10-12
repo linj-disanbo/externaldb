@@ -227,7 +227,8 @@ func (c *Client) decodeBlockResult(ctx context.Context, number uint64, raw json.
 		parallel[i] = tx.Hash()
 	}
 
-	return types.NewBlockWithHeader(&head).WithBody(txs, uncles), parallel, nil
+	// go-ethereum v1.14 起 WithBody 只接受 Body 结构体
+	return types.NewBlockWithHeader(&head).WithBody(types.Body{Transactions: txs, Uncles: uncles}), parallel, nil
 }
 
 func toBlockNumArg(n *big.Int) string {

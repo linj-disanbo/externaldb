@@ -445,7 +445,8 @@ func (c *Client) BlockByNumber(number uint64) (*types.Block, error) {
 		txs[i] = &tx
 	}
 
-	return types.NewBlockWithHeader(&head).WithBody(txs, uncles), nil
+	// go-ethereum v1.14 起 WithBody 只接受 Body 结构体
+	return types.NewBlockWithHeader(&head).WithBody(types.Body{Transactions: txs, Uncles: uncles}), nil
 }
 
 func toBlockNumArg(n *big.Int) string {
