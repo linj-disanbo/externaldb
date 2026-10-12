@@ -8,4 +8,4 @@ services:
       - ./bin-update/:/root/bin/
       - ./etc/:/root/etc/
     network_mode: "host"
-    command: /root/bin/convert -f /root/etc/externaldb-update.toml &
+    command: /root/bin/convert -f /root/etc/externaldb-update.toml -c /root/etc/chain33.toml &

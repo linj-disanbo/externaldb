@@ -19,7 +19,7 @@ services:
       - ./bin/:/root/bin/
       - ./etc/:/root/etc/
     network_mode: "host"
-    command: /root/bin/convert -f /root/etc/externaldb.toml &
+    command: /root/bin/convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
 
   rpc: # 存证项目使用
     container_name: ${PROJECT_NAME}-rpc

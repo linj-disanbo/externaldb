@@ -235,6 +235,7 @@ pkgProof:
 	mkdir -p externaldb-proof/ex/bin externaldb-proof/ex/etc externaldb-proof/es externaldb-proof/mq externaldb-proof/ex-merge/bin externaldb-proof/ex-merge/etc
 	cp build/rpc build/convert build/sync tools/proof-init-*.bash externaldb-proof/ex/bin
 	cp config/externaldb.toml externaldb-proof/ex/etc/
+	cp config/chain33.toml externaldb-proof/ex/etc/
 	cp tools/proof-es.yaml externaldb-proof/es/docker-compose.yaml
 	cp tools/externaldb.docker-compose.yaml externaldb-proof/ex/docker-compose.yaml
 	cp mq/kafka/docker-compose.yml externaldb-proof/mq
@@ -250,6 +251,7 @@ pkg-quickStart:
 	mkdir -p externaldb-proof/env/es6 externaldb-proof/env/es7 externaldb-proof/env/mq
 	cp build/rpc build/convert build/sync build/jrpc externaldb-proof/bin/
 	cp config/externaldb.toml externaldb-proof/etc/
+	cp config/chain33.toml externaldb-proof/etc/
 	cp mq/kafka/docker-compose.yml externaldb-proof/env/mq/
 	cp tools/quick-start/proof-init-V6.bash externaldb-proof/env/es6/proof-init.bash
 	cp tools/quick-start/proof-init-V7.bash externaldb-proof/env/es7/proof-init.bash
@@ -284,6 +286,7 @@ pkg-mergeStart:
 	cp tools/sync-convert/.env externaldb-proof/
 	cp build/rpc build/sync_convert externaldb-proof/bin
 	cp config/externaldb_merge.toml externaldb-proof/etc/externaldb.toml
+	cp config/chain33.toml externaldb-proof/etc/
 	cp tools/sync-convert/docker-compose.yaml externaldb-proof/docker-compose.yaml
 	cp tools/sync-convert/README.md externaldb-proof/README.md
 	tar zcvf externaldb-proof.tgz externaldb-proof
@@ -293,10 +296,10 @@ pkg:
 	mkdir -p externaldb/ex/bin externaldb/ex/etc externaldb/es externaldb/mq
 	cp build/jrpc build/convert  build/sync tools/browser-init.bash externaldb/ex/bin
 	cp config/externaldb.toml externaldb/ex/etc
+	cp config/chain33.toml externaldb/ex/etc
 	cp tools/proof-es.yaml externaldb/es/docker-compose.yaml
 	cp tools/externaldb.docker-compose.yaml externaldb/ex/docker-compose.yaml
 	cp mq/kafka/docker-compose.yml externaldb/mq
-	cp ./tools/chain33.para.6.4.toml externaldb/ex/etc
 	tar zcvf externaldb.tgz externaldb
 
 docker-compose: ## run docker-compose as jenkins-ci

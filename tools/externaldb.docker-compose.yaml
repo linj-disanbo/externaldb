@@ -21,7 +21,7 @@ services:
       - "/root//externaldb/ex//bin/:/root/bin/"
       - "/root//externaldb/ex/etc/:/root/etc/"
     network_mode: "host"
-    command: /root/bin/convert -f /root/etc/externaldb.toml &
+    command: /root/bin/convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
 
   rpc: # 存证项目使用
     container_name: externaldb-rpc
