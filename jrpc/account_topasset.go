@@ -130,9 +130,12 @@ func (t *Account) loadAsset() ([]*totalAsset, error) {
 
 	q := &querypara.Query{
 		Range: []*querypara.QRange{{Key: "total", GT: 0}},
-		// MatchOne: []*querypara.QMatch{{Key: "exec", Value: ""}, {Key: "exec", Value: "16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp"}},
-		Not:    []*querypara.QMatch{{Key: "type", Value: "contract"}},
-		Filter: []*querypara.QMatch{{Key: "asset_symbol", Value: t.Symbol}, {Key: "asset_exec", Value: "coins"}},
+		// 排名口径限定为 coins + ticket：exec="" 是地址级账户，16htvc... 是 ticket 执行器。
+		// 放开这段过滤后，unfreeze/trade/paracross 等其它执行器里的币不再计入排名。
+		// escli 对 MatchOne 会显式设 minimum_should_match=1，keyword 字段上空串也能命中（已验证）。
+		MatchOne: []*querypara.QMatch{{Key: "exec", Value: ""}, {Key: "exec", Value: "16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp"}},
+		Not:      []*querypara.QMatch{{Key: "type", Value: "contract"}},
+		Filter:   []*querypara.QMatch{{Key: "asset_symbol", Value: t.Symbol}, {Key: "asset_exec", Value: "coins"}},
 	}
 
 	a := &querypara.Agg{
