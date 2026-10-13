@@ -1,12 +1,14 @@
 version: '2'
 
+# 挂载用相对路径（相对本 compose 文件所在目录），解包到任意目录都能起；
+# 容器内路径固定是 /root/bin、/root/etc，command 引用它们。
 services:
   sync:
     container_name: externaldb-sync
     image: docker.io/ubuntu:16.04 
     volumes:
-      - "/root//externaldb/ex//bin/:/root/bin/"
-      - "/root//externaldb/ex/etc/:/root/etc/"
+      - "./bin/:/root/bin/"
+      - "./etc/:/root/etc/"
     network_mode: "host"
     ports:
       - "20003:20003"
@@ -18,30 +20,30 @@ services:
     depends_on:
       - sync
     volumes:
-      - "/root//externaldb/ex//bin/:/root/bin/"
-      - "/root//externaldb/ex/etc/:/root/etc/"
+      - "./bin/:/root/bin/"
+      - "./etc/:/root/etc/"
     network_mode: "host"
     command: /root/bin/convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
 
-  rpc: # 存证项目使用
-    container_name: externaldb-rpc
+  jrpc: # 浏览器项目使用（jrpcHost 默认 9993，host 网络下 ports 仅作说明）
+    container_name: externaldb-jrpc
     image: docker.io/ubuntu:16.04 
     volumes:
-      - "/root//externaldb/ex//bin/:/root/bin/"
-      - "/root//externaldb/ex/etc/:/root/etc/"
+      - "./bin/:/root/bin/"
+      - "./etc/:/root/etc/"
     network_mode: "host"
     ports:
-      - "9992:9992"
-    command: /root/bin/rpc -f /root/etc/externaldb.toml &
+      - "9993:9993"
+    command: /root/bin/jrpc -f /root/etc/externaldb.toml &
 
-#  jrpc: # 浏览器项目使用
-#    container_name: externaldb-jrpc
+#  rpc: # 存证项目使用（本项目用 jrpc，不用 gin rpc）
+#    container_name: externaldb-rpc
 #    image: docker.io/ubuntu:16.04 
 #    volumes:
-#      - "/root//externaldb/ex//bin/:/root/bin/"
-#      - "/root//externaldb/ex/etc/:/root/etc/"
+#      - "./bin/:/root/bin/"
+#      - "./etc/:/root/etc/"
 #    network_mode: "host"
 #    ports:
 #      - "9992:9992"
-#    command: /root/bin/jrpc -f /root/etc/externaldb.toml &
+#    command: /root/bin/rpc -f /root/etc/externaldb.toml &
 #
