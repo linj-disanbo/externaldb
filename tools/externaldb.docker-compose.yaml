@@ -2,6 +2,8 @@ version: '2'
 
 # 挂载用相对路径（相对本 compose 文件所在目录），解包到任意目录都能起；
 # 容器内路径固定是 /root/bin、/root/etc，command 引用它们。
+# network_mode: host 下服务直接占用宿主端口（sync 20003、jrpc 9993），不需要 ports 映射
+# （写了会被 docker 忽略并告警 "Published ports are discarded when using host network mode"）。
 services:
   sync:
     container_name: externaldb-sync
@@ -10,8 +12,6 @@ services:
       - "./bin/:/root/bin/"
       - "./etc/:/root/etc/"
     network_mode: "host"
-    ports:
-      - "20003:20003"
     command: /root/bin/sync -f /root/etc/externaldb.toml &
 
   convert:
@@ -25,25 +25,21 @@ services:
     network_mode: "host"
     command: /root/bin/convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
 
-  jrpc: # 浏览器项目使用（jrpcHost 默认 9993，host 网络下 ports 仅作说明）
+  jrpc: # 浏览器项目使用（jrpcHost 默认 0.0.0.0:9993）
     container_name: externaldb-jrpc
     image: docker.io/ubuntu:16.04 
     volumes:
       - "./bin/:/root/bin/"
       - "./etc/:/root/etc/"
     network_mode: "host"
-    ports:
-      - "9993:9993"
     command: /root/bin/jrpc -f /root/etc/externaldb.toml &
 
-#  rpc: # 存证项目使用（本项目用 jrpc，不用 gin rpc）
+#  rpc: # 存证项目使用（本项目用 jrpc，不用 gin rpc；host 网络，端口 9992）
 #    container_name: externaldb-rpc
 #    image: docker.io/ubuntu:16.04 
 #    volumes:
 #      - "./bin/:/root/bin/"
 #      - "./etc/:/root/etc/"
 #    network_mode: "host"
-#    ports:
-#      - "9992:9992"
 #    command: /root/bin/rpc -f /root/etc/externaldb.toml &
 #
