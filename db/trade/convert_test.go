@@ -28,7 +28,8 @@ func convertTradeBuyMarket(t *testing.T, convert db.ExecConvert) {
 	records, err := convert.ConvertTx(env, db.OpAdd)
 	assert.Nil(t, err)
 
-	assert.Equal(t, 9, len(records))
+	// 记录数含 account / account_record 对（每条文/coins 账户日志 2 条），故比早期期望值多
+	assert.Equal(t, 14, len(records))
 
 	txRecord := records[0]
 	assert.Equal(t, "trade_tx/_doc/0x8bff9c90074c43659e568585ffca1140b8d290467373501397d941c94166482d", txRecord.Key())
@@ -58,7 +59,7 @@ func convertTradeSellLimit(t *testing.T, convert db.ExecConvert) {
 	records, err := convert.ConvertTx(env, db.OpAdd)
 	assert.Nil(t, err)
 
-	assert.Equal(t, 6, len(records))
+	assert.Equal(t, 8, len(records))
 	assert.Equal(t, "trade_tx/_doc/0x3d28c12ab62b2bcb3897d6b5ba7ebb596d30532f31ef8037a8d8e0f5024371a5", records[0].Key())
 	assert.Equal(t, `{"height":1149,"ts":1565593534,"block_hash":"0x9b7c2fbb2a56ee8716ef9f608b4dca43ba9718459c7ae6749186142f2d495bfe","index":1,"send":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","tx_hash":"0x3d28c12ab62b2bcb3897d6b5ba7ebb596d30532f31ef8037a8d8e0f5024371a5","height_index":114900001,"tx_type":"sell_limit","success":true,"sell_limit":{"tokenSymbol":"TOKEN","amountPerBoardlot":1000000,"minBoardlot":1,"pricePerBoardlot":100000000,"totalBoardlot":100,"assetExec":"token"}}`, string(records[0].Value()))
 
@@ -73,7 +74,7 @@ func convertTradeRevokeSell(t *testing.T, convert db.ExecConvert) {
 	records, err := convert.ConvertTx(env, db.OpAdd)
 	assert.Nil(t, err)
 
-	assert.Equal(t, 5, len(records))
+	assert.Equal(t, 7, len(records))
 	assert.Equal(t, "trade/_doc/mavl-trade-sell-09ef0f1a14540ee7f4c8f1a52fc0083fd8ec625abcab74c958b71df62d44c4c3", records[1].Key())
 	assert.Equal(t, `{"height":591968,"ts":1535536731,"block_hash":"0xf221f87ecd882a02d9cf7854196aa4150ed40451505cea2d746db23e652770a6","index":4,"send":"1HyeJG9LA776qi5LEipsDTrYrFua9ewRzm","tx_hash":"0x268951f6bb3f2cdc42271eebb54e48043f2877a37753d56cb603c8a4efd3d26f","height_index":59196800004,"asset_symbol":"TEST","asset_exec":"token","owner":"1HyeJG9LA776qi5LEipsDTrYrFua9ewRzm","boardlot_amount":1000000,"min_boardlot":1,"boardlot_price":20000,"total_boardlot":100000,"traded_boardlot":0,"is_sell":true,"is_finished":true,"status":"revoked","buy_id":"","sell_id":"mavl-trade-sell-09ef0f1a14540ee7f4c8f1a52fc0083fd8ec625abcab74c958b71df62d44c4c3","price_symbol":"bty","price_exec":"coins"}`, string(records[1].Value()))
 
@@ -105,7 +106,7 @@ func convertTradeRevokeBuy(t *testing.T, convert db.ExecConvert) {
 	records, err := convert.ConvertTx(env, db.OpAdd)
 	assert.Nil(t, err)
 
-	assert.Equal(t, 5, len(records))
+	assert.Equal(t, 7, len(records))
 
 	minerRecord := records[1]
 	assert.Equal(t, "trade/_doc/mavl-trade-buy-3f77be061979ae175294bdcb204efff5747eefce7c7ae0bded58f53f6e1d25b6", minerRecord.Key())
