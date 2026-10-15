@@ -2,7 +2,7 @@
 
 include .env
 
-# ES 目录：6 / 7 / 7.17（pkgV2 只带 es7 与 es7.17）
+# env/es7 默认是 ES 7.17；老环境要用 7.4，把包内 env/es7.4 的内容换到 env/es7 即可
 ENV_DIR ?= env/es${ES_VERSION}
 
 quickStart:

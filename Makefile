@@ -274,19 +274,20 @@ pkg-quickStart:
 
 # pkgV2: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
 #   - 增加 pull_convert / convert_check
-#   - 去掉 ES6，保留 ES7(7.4.2)，另加 ES7.17（env/es7.17）
+#   - 去掉 ES6；env/es7 = ES 7.17（默认，新部署用），包内另存 env/es7.4（ES 7.4.2）备用，
+#     老环境要用 7.4 时，把 env/es7.4 的内容换到 env/es7 即可（不改脚本、不加版本配置）
 #   - 默认 compose 只起 pull_convert/rpc/jrpc（老 sync+convert 已注释，回退用）
 pkgV2:
 	rm externaldb-proof/* -rf
 	mkdir -p externaldb-proof/bin externaldb-proof/etc externaldb-proof/ex-merge/bin externaldb-proof/ex-merge/etc
-	mkdir -p externaldb-proof/env/es7 externaldb-proof/env/es7.17
+	mkdir -p externaldb-proof/env/es7 externaldb-proof/env/es7.4
 	cp build/rpc build/convert build/sync build/jrpc build/pull_convert build/convert_check externaldb-proof/bin/
 	cp config/externaldb.toml externaldb-proof/etc/
 	cp config/chain33.toml externaldb-proof/etc/
+	cp tools/pull-convert/proof-es7.yaml externaldb-proof/env/es7/docker-compose.yaml
 	cp tools/quick-start/proof-init-V7.bash externaldb-proof/env/es7/proof-init.bash
-	cp tools/quick-start/proof-es7.yaml externaldb-proof/env/es7/docker-compose.yaml
-	cp tools/quick-start/proof-init-V7.bash externaldb-proof/env/es7.17/proof-init.bash
-	cp tools/pull-convert/proof-es7.17.yaml externaldb-proof/env/es7.17/docker-compose.yaml
+	cp tools/quick-start/proof-es7.yaml externaldb-proof/env/es7.4/docker-compose.yaml
+	cp tools/quick-start/proof-init-V7.bash externaldb-proof/env/es7.4/proof-init.bash
 	cp tools/mime.types externaldb-proof/etc/mime.types
 	cp tools/pull-convert/docker-compose.yaml externaldb-proof/
 	cp tools/pull-convert/Makefile externaldb-proof/
