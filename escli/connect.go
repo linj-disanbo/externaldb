@@ -16,6 +16,30 @@ import (
 
 var log = l.New("module", "escli")
 
+// BulkError / ItemFailure 由具体实现（escli/v7）产生，这里转出类型别名，
+// 方便调用方断言错误类型、定位失败记录。
+type (
+	BulkError   = v7.BulkError
+	ItemFailure = v7.ItemFailure
+)
+
+// FilterFailed 返回 rs 中 _bulk 失败的记录，供"只重试失败项"使用：
+// 失败记录的重写是幂等的（值是绝对值），而整批重跑转换器不是
+// （db/address 的 TxCount、block_stat 是读改写累计，会重复计数）。
+// 返回 nil 表示无法定位（调用方按整批失败处理）。
+func FilterFailed(cli ESClient, rs []db.Record, bulkErr error) []db.Record {
+	if bulkErr == nil {
+		return nil
+	}
+	type failFilter interface {
+		FilterFailed([]db.Record, error) []db.Record
+	}
+	if f, ok := cli.(failFilter); ok {
+		return f.FilterFailed(rs, bulkErr)
+	}
+	return nil
+}
+
 type ESClient interface {
 	Update(index, typ, id string, value string) error
 	Set(index, typ, id string, value db.Record) error

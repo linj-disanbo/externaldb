@@ -181,8 +181,8 @@ func (cli *ESClientV7) BulkUpdate(rs []db.Record) error {
 
 	fails := collectBulkFailures(responses)
 	for _, f := range fails {
-		log.Error("Bulk Save Part failed", "action", f.action, "index", f.index, "id", f.id,
-			"status", f.status, "err", f.reason)
+		log.Error("Bulk Save Part failed", "index", f.Index, "id", f.ID,
+			"status", f.Status, "err", f.Reason)
 	}
 	return bulkFailureError(responses, fails)
 }
@@ -190,24 +190,46 @@ func (cli *ESClientV7) BulkUpdate(rs []db.Record) error {
 // bulkFailurePreview 错误信息里最多列出的失败明细条数
 const bulkFailurePreview = 5
 
-// bulkFailure 一条 _bulk 子请求的失败结果
-type bulkFailure struct {
-	action string
-	index  string
-	id     string
-	status int
-	reason string
+// ItemFailure 一条失败的 _bulk 子请求：Index 是**物理索引**（已带前缀）+ doc id，
+// 可据此从原始 records 里定位失败项。
+type ItemFailure struct {
+	Index  string
+	ID     string
+	Status int
+	Reason string
+}
+
+// BulkError 携带 _bulk 的 per-item 失败明细
+type BulkError struct {
+	Total    int
+	Failures []ItemFailure
+}
+
+func (e *BulkError) Error() string {
+	if e == nil || len(e.Failures) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "bulk update: %d/%d item(s) failed", len(e.Failures), e.Total)
+	for i, f := range e.Failures {
+		if i >= bulkFailurePreview {
+			fmt.Fprintf(&sb, "; ...and %d more", len(e.Failures)-bulkFailurePreview)
+			break
+		}
+		fmt.Fprintf(&sb, "; [%s/%s] status=%d %s", f.Index, f.ID, f.Status, f.Reason)
+	}
+	return sb.String()
 }
 
 // collectBulkFailures 收集 _bulk 响应里的 per-item 失败（status>=400）。
 // 注意：_bulk 的 HTTP 状态码是 200，即使部分 item 失败也一样，必须逐条检查。
-func collectBulkFailures(responses *elasticV7.BulkResponse) []bulkFailure {
+func collectBulkFailures(responses *elasticV7.BulkResponse) []ItemFailure {
 	if responses == nil {
 		return nil
 	}
-	var fails []bulkFailure
+	var fails []ItemFailure
 	for _, item := range responses.Items {
-		for action, v := range item {
+		for _, v := range item {
 			if v == nil || v.Status < 400 {
 				continue
 			}
@@ -218,21 +240,20 @@ func collectBulkFailures(responses *elasticV7.BulkResponse) []bulkFailure {
 					reason = v.Error.Type + ": " + reason
 				}
 			}
-			fails = append(fails, bulkFailure{
-				action: action,
-				index:  v.Index,
-				id:     v.Id,
-				status: v.Status,
-				reason: reason,
+			fails = append(fails, ItemFailure{
+				Index:  v.Index,
+				ID:     v.Id,
+				Status: v.Status,
+				Reason: reason,
 			})
 		}
 	}
 	return fails
 }
 
-// bulkFailureError 把 per-item 失败转成错误；无失败返回 nil。
-// 上层（进度跟随批次）必须拿到错误后不推进进度、整批重试。
-func bulkFailureError(responses *elasticV7.BulkResponse, fails []bulkFailure) error {
+// bulkFailureError 把 per-item 失败转成 *BulkError；无失败返回 nil。
+// 上层（进度跟随批次）必须拿到错误后不推进进度。
+func bulkFailureError(responses *elasticV7.BulkResponse, fails []ItemFailure) error {
 	if len(fails) == 0 {
 		return nil
 	}
@@ -240,16 +261,28 @@ func bulkFailureError(responses *elasticV7.BulkResponse, fails []bulkFailure) er
 	if responses != nil {
 		total = len(responses.Items)
 	}
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "bulk update: %d/%d item(s) failed", len(fails), total)
-	for i, f := range fails {
-		if i >= bulkFailurePreview {
-			fmt.Fprintf(&sb, "; ...and %d more", len(fails)-bulkFailurePreview)
-			break
-		}
-		fmt.Fprintf(&sb, "; [%s] %s/%s status=%d %s", f.action, f.index, f.id, f.status, f.reason)
+	return &BulkError{Total: total, Failures: fails}
+}
+
+// FilterFailed 从原记录里挑出 bulkErr 中失败的记录（按物理索引 + doc id 匹配）。
+// 只重写失败项是幂等的（Record.Value 是绝对值）；整批重跑转换器不是
+// （db/address 的 TxCount、block_stat 是读改写累计，会重复计数）。
+func (cli *ESClientV7) FilterFailed(rs []db.Record, bulkErr error) []db.Record {
+	be, ok := bulkErr.(*BulkError)
+	if !ok || be == nil || len(be.Failures) == 0 {
+		return nil
 	}
-	return errors.New(sb.String())
+	failed := make(map[string]struct{}, len(be.Failures))
+	for _, f := range be.Failures {
+		failed[f.Index+"/"+f.ID] = struct{}{}
+	}
+	var out []db.Record
+	for _, r := range rs {
+		if _, hit := failed[cli.index(r.Index())+"/"+r.ID()]; hit {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // IndexExists check index exists
