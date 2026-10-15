@@ -16,12 +16,6 @@ rollbackSeq = []
 coinPrecision = 1e8
 perTicketReward = 0.25
 
-[kafka]
-host = "127.0.0.1:9092"
-group = "group-1"
-topic = "sync-1"
-
-# 同步seq的数据库
 [syncEs]
 host = "http://localhost:9200/"
 prefix = "seq01_"

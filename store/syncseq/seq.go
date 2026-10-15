@@ -2,25 +2,19 @@ package syncseq
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	l "github.com/33cn/chain33/common/log/log15"
-	"github.com/Shopify/sarama"
 
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/mq/kafka"
 	"github.com/33cn/externaldb/proto"
 	"github.com/33cn/externaldb/store"
 	"github.com/33cn/externaldb/util"
 )
 
-var (
-	log   = l.New("module", "syncSeq")
-	mqMsg *sarama.ConsumerMessage
-)
+var log = l.New("module", "syncSeq")
 
 type seqNumStore struct {
 	seqNumClient escli.ESClient
@@ -31,12 +25,7 @@ type esSeqStore struct {
 	bulk        bool
 }
 
-type mqSeqStore struct {
-	mqSeqClient *kafka.Kafka
-	topic       string
-}
-
-// NewEsSeqStore  SeqStore
+// NewEsSeqStore  SeqStore（只支持 ES 存储；Kafka/MQ 存储已移除）
 func NewSeqStore(cfg *proto.ConfigNew) (store.SeqNumStore, store.SeqStore, error) {
 	client, err := escli.NewESLongConnect(cfg.SyncEs.Host, cfg.SyncEs.Prefix, cfg.EsVersion, cfg.SyncEs.User, cfg.SyncEs.Pwd)
 	if err != nil {
@@ -45,28 +34,14 @@ func NewSeqStore(cfg *proto.ConfigNew) (store.SeqNumStore, store.SeqStore, error
 	seqNumClient := &seqNumStore{
 		seqNumClient: client,
 	}
-
-	if cfg.Dbtype == "mq" {
-		kafka, err := kafka.ConnMQ(kafka.PubConn, cfg.Kafka.Host, "")
-		if err != nil {
-			return seqNumClient, nil, err
-		}
-		return seqNumClient, &mqSeqStore{
-			mqSeqClient: kafka,
-			topic:       cfg.Kafka.Topic,
-		}, nil
-	} else if cfg.Dbtype == "es" {
-		err = util.InitIndex(client, block.StatusDB, block.StatusDB, block.Mapping)
-		if err != nil {
-			return seqNumClient, nil, err
-		}
-		return seqNumClient, &esSeqStore{
-			esSeqClient: client,
-			bulk:        cfg.SyncEs.Bulk,
-		}, nil
+	err = util.InitIndex(client, block.StatusDB, block.StatusDB, block.Mapping)
+	if err != nil {
+		return seqNumClient, nil, err
 	}
-	l.Error("cfg.Dbtype set err")
-	return seqNumClient, nil, errors.New("cfg.Dbtype set err")
+	return seqNumClient, &esSeqStore{
+		esSeqClient: client,
+		bulk:        cfg.SyncEs.Bulk,
+	}, nil
 }
 
 // NewSeqStoreWithFileProgress 创建 SeqStore（ES 存储区块数据）+ SeqNumStore（本地文件存储进度）。
@@ -102,25 +77,9 @@ func NewGetSeq(cfg *proto.ConfigNew) (store.SeqNumStore, store.SeqStore, error) 
 	seqNumClient := &seqNumStore{
 		seqNumClient: client,
 	}
-	if cfg.Dbtype == "mq" {
-		kafka, err := kafka.ConnMQ(kafka.SubConn, cfg.Kafka.Host, cfg.Kafka.Group)
-		if err != nil {
-			return seqNumClient, nil, err
-		}
-		consumer, err := kafka.AddConsumer(cfg.Kafka.Topic)
-		if err != nil {
-			return seqNumClient, nil, err
-		}
-		kafka.Sub = consumer
-		return seqNumClient, &mqSeqStore{
-			mqSeqClient: kafka,
-		}, nil
-	} else if cfg.Dbtype == "es" {
-		return seqNumClient, &esSeqStore{
-			esSeqClient: client,
-		}, nil
-	}
-	return seqNumClient, nil, errors.New("cfg.Dbtype set err")
+	return seqNumClient, &esSeqStore{
+		esSeqClient: client,
+	}, nil
 }
 
 // LastSeq LastSeq
@@ -187,46 +146,4 @@ func (s *esSeqStore) GetSeq(seqNum int64) (*block.Seq, error) {
 // CommitSeqAck continue next seq
 func (s *esSeqStore) CommitSeqAck(seqNum int64) int64 {
 	return seqNum + 1
-}
-
-// SaveSeqs 输出同步区块信息到MQ
-func (s *mqSeqStore) SaveSeqs(blockItems []db.Record) error {
-	if len(blockItems) == 0 {
-		return nil
-	}
-	for _, v := range blockItems {
-		pid, offset, err := s.mqSeqClient.Publish(s.topic, v.Value(), v.Key())
-		if err != nil {
-			log.Error("pub failed", "err", err, "ID", v.Key(), "value.len", len(v.Value()))
-			return err
-		}
-		log.Debug("publish msg success", "ID", v.Key(), "pid", pid, "offset", offset, "value.len", len(v.Value()))
-	}
-	return nil
-}
-
-// GetSeq get block from mq
-func (s *mqSeqStore) GetSeq(seqNum int64) (*block.Seq, error) {
-	msg, err := s.mqSeqClient.Subscribe(s.mqSeqClient.Sub)
-	if msg == nil && err != nil {
-		return nil, err
-	} else if msg == nil && err == nil {
-		return nil, nil
-	}
-	if msg != nil && err == nil {
-		var seq block.Seq
-		err = json.Unmarshal(msg.Value, &seq)
-		if err != nil {
-			return nil, err
-		}
-		mqMsg = msg
-		return &seq, nil
-	}
-	return nil, nil
-}
-
-// CommitSeqAck commit ack to mq
-func (s *mqSeqStore) CommitSeqAck(seqNum int64) int64 {
-	s.mqSeqClient.Ack(mqMsg)
-	return mqMsg.Offset + 1
 }

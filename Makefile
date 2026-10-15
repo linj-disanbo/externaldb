@@ -232,13 +232,12 @@ docker: build ## build docker image for externaldb with sync convert jrpc
 
 pkgProof:
 	rm -rf externaldb-proof/*
-	mkdir -p externaldb-proof/ex/bin externaldb-proof/ex/etc externaldb-proof/es externaldb-proof/mq externaldb-proof/ex-merge/bin externaldb-proof/ex-merge/etc
+	mkdir -p externaldb-proof/ex/bin externaldb-proof/ex/etc externaldb-proof/es externaldb-proof/ex-merge/bin externaldb-proof/ex-merge/etc
 	cp build/rpc build/convert build/sync tools/proof-init-*.bash externaldb-proof/ex/bin
 	cp config/externaldb.toml externaldb-proof/ex/etc/
 	cp config/chain33.toml externaldb-proof/ex/etc/
 	cp tools/proof-es.yaml externaldb-proof/es/docker-compose.yaml
 	cp tools/externaldb.docker-compose.yaml externaldb-proof/ex/docker-compose.yaml
-	cp mq/kafka/docker-compose.yml externaldb-proof/mq
 	cp build/rpc build/sync_convert externaldb-proof/ex-merge/bin
 	cp config/externaldb_merge.toml externaldb-proof/ex-merge/etc/externaldb.toml
 	cp tools/sync-convert/docker-compose.yaml externaldb-proof/ex-merge/docker-compose.yaml
@@ -248,11 +247,10 @@ pkgProof:
 pkg-quickStart:
 	rm externaldb-proof/* -rf
 	mkdir -p externaldb-proof/bin externaldb-proof/etc externaldb-proof/ex-merge/bin externaldb-proof/ex-merge/etc
-	mkdir -p externaldb-proof/env/es6 externaldb-proof/env/es7 externaldb-proof/env/mq
+	mkdir -p externaldb-proof/env/es6 externaldb-proof/env/es7
 	cp build/rpc build/convert build/sync build/jrpc externaldb-proof/bin/
 	cp config/externaldb.toml externaldb-proof/etc/
 	cp config/chain33.toml externaldb-proof/etc/
-	cp mq/kafka/docker-compose.yml externaldb-proof/env/mq/
 	cp tools/quick-start/proof-init-V6.bash externaldb-proof/env/es6/proof-init.bash
 	cp tools/quick-start/proof-init-V7.bash externaldb-proof/env/es7/proof-init.bash
 	cp tools/quick-start/proof-es6.yaml externaldb-proof/env/es6/docker-compose.yaml
@@ -275,8 +273,7 @@ pkg-quickStart:
 pkg-mergeStart:
 	rm externaldb-proof/* -rf
 	mkdir -p externaldb-proof/bin externaldb-proof/etc
-	mkdir -p externaldb-proof/env/es6 externaldb-proof/env/es7 externaldb-proof/env/mq
-	cp mq/kafka/docker-compose.yml externaldb-proof/env/mq/
+	mkdir -p externaldb-proof/env/es6 externaldb-proof/env/es7
 	cp tools/quick-start/proof-es6.yaml externaldb-proof/env/es6/docker-compose.yaml
 	cp tools/quick-start/proof-es7.yaml externaldb-proof/env/es7/docker-compose.yaml
 	cp tools/mime.types externaldb-proof/etc/mime.types
@@ -293,13 +290,12 @@ pkg-mergeStart:
 
 pkg:
 	rm externaldb/* -rf
-	mkdir -p externaldb/ex/bin externaldb/ex/etc externaldb/es externaldb/mq
+	mkdir -p externaldb/ex/bin externaldb/ex/etc externaldb/es
 	cp build/jrpc build/convert  build/sync tools/browser-init.bash externaldb/ex/bin
 	cp config/externaldb.toml externaldb/ex/etc
 	cp config/chain33.toml externaldb/ex/etc
 	cp tools/proof-es.yaml externaldb/es/docker-compose.yaml
 	cp tools/externaldb.docker-compose.yaml externaldb/ex/docker-compose.yaml
-	cp mq/kafka/docker-compose.yml externaldb/mq
 	tar zcvf externaldb.tgz externaldb
 
 docker-compose: ## run docker-compose as jenkins-ci
