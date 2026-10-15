@@ -78,6 +78,14 @@ message Convert {
   bool openAccessControl = 14;
   bool saveBlockInfo = 15;
   string addressDriver = 16;
+  // 直连（pull + seq）单批拉取的 seq 数，0 用默认 100（chain33 上限 999）
+  int64 pullBatch = 17;
+  // 直连追平链尖后的轮询间隔（毫秒），0 用默认 1000
+  int64 pullPollMs = 18;
+  // 回滚用的最近区块 detail 缓存条数，0 用默认 1000
+  int64 pullDetailCache = 19;
+  // seq_marker 保留窗口（条数），0 表示不滚动删除（保守默认，线上按需设置）
+  int64 pullMarkerKeep = 20;
 }
 
 message MySQL {

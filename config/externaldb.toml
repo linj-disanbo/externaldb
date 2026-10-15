@@ -80,6 +80,19 @@ startSeq = 0
 # 程序名字(影响日志文件前缀)
 appName = "convert"
 
+# ---- 直连（pull_convert）参数；cmd/convert 与 sync_convert 不使用 ----
+# 单批拉取的 seq 数（0=默认100，chain33 上限 999）
+# pullBatch = 100
+
+# 追平链尖后的轮询间隔(毫秒)，0=默认1000
+# pullPollMs = 1000
+
+# 回滚用的最近区块 detail 缓存条数，0=默认1000
+# pullDetailCache = 1000
+
+# seq_marker 保留窗口(条数)，0=不滚动删除（线上按最长停机窗口设置，如 2000000）
+# pullMarkerKeep = 0
+
 # 一般链用common 记录 交易列表
 # 存证相关的用 proof, 记录存证
 defaultExec = "common"

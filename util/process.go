@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/33cn/chain33/types"
+	"github.com/pkg/errors"
 
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/db/block"
@@ -211,14 +212,26 @@ func (mod *ModuleConvert) SingleDealBlock(blockSeq *block.Seq) ([]db.Record, err
 	if err != nil {
 		return nil, err
 	}
-	log.Debug("SingleDealBlock", "block", detail.Block.Height, "tx", len(detail.Block.Txs), "receipt", len(detail.Receipts))
+	return mod.DealBlockDetail(blockSeq, &detail)
+}
+
+// DealBlockDetail 处理单个区块（含 del 的逆序反做），不写 lastRecord。
+// 直连（pull + seq）路径用：detail 已由来源层拿到，避免 BlockDetail 的二次编解码。
+func (mod *ModuleConvert) DealBlockDetail(blockSeq *block.Seq, detail *types.BlockDetail) ([]db.Record, error) {
+	if blockSeq == nil {
+		return nil, errors.New("DealBlockDetail: nil blockSeq")
+	}
+	if detail == nil || detail.Block == nil {
+		return nil, errors.Errorf("DealBlockDetail: nil block detail, seq(%d)", blockSeq.SyncSeq)
+	}
+	log.Debug("DealBlockDetail", "block", detail.Block.Height, "tx", len(detail.Block.Txs), "receipt", len(detail.Receipts))
 	// TODO 跳过处理， 后续离线用脚本添加数据
 	if len(detail.Block.Txs) != len(detail.Receipts) {
-		log.Error("SingleDealBlock size not match， skip", "block", detail.Block.Height, "tx", len(detail.Block.Txs), "receipt", len(detail.Receipts))
+		log.Error("DealBlockDetail size not match， skip", "block", detail.Block.Height, "tx", len(detail.Block.Txs), "receipt", len(detail.Receipts))
 		return nil, nil
 	}
-	records, err := mod.ConvertBlock(blockSeq, &detail)
-	// 如果是回滚操作的话， 所有的状态都需要96-逆序处理
+	records, err := mod.ConvertBlock(blockSeq, detail)
+	// 如果是回滚操作的话， 所有的状态都需要逆序处理
 	if blockSeq.Type == db.SeqTypeDel {
 		records = reverse(records)
 	}

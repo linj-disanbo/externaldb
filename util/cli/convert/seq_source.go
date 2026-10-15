@@ -20,6 +20,10 @@ const (
 	rpcTimeout = 60 * time.Second
 )
 
+// ErrSeqHole 节点 seq 日志缺号 / seq-detail 数量不符：数据完整性问题。
+// 调用方（主循环）必须停止而不是重试或跳过（否则会静默错位）。
+var ErrSeqHole = errors.New("seq_source: seq hole")
+
 // SeqBlock 一个 seq 的区块数据：来源层的统一输出，喂给 ModuleConvert.SingleDealBlock。
 type SeqBlock struct {
 	Seq    int64
@@ -121,7 +125,7 @@ func (s *GRPCSource) Batch(start, end int64) ([]SeqBlock, error) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, errors.Errorf("seq_source: seq %d missing in node sequence log (range %d-%d)", miss, start, end)
+			return nil, errors.Wrapf(ErrSeqHole, "seq %d missing in node sequence log (range %d-%d)", miss, start, end)
 		}
 		end = start + int64(len(items)) - 1
 	}
@@ -136,7 +140,7 @@ func (s *GRPCSource) Batch(start, end int64) ([]SeqBlock, error) {
 	}
 	details := detailReply.GetItems()
 	if len(details) != len(items) {
-		return nil, errors.Errorf("seq_source: seq/detail count mismatch: %d/%d (range %d-%d)",
+		return nil, errors.Wrapf(ErrSeqHole, "seq/detail count mismatch: %d/%d (range %d-%d)",
 			len(items), len(details), start, end)
 	}
 
