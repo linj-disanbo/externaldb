@@ -31,15 +31,15 @@ func convertTradeBuyMarket(t *testing.T, convert db.ExecConvert) {
 	assert.Equal(t, 9, len(records))
 
 	txRecord := records[0]
-	assert.Equal(t, "trade_tx/trade_tx/0x8bff9c90074c43659e568585ffca1140b8d290467373501397d941c94166482d", txRecord.Key())
+	assert.Equal(t, "trade_tx/_doc/0x8bff9c90074c43659e568585ffca1140b8d290467373501397d941c94166482d", txRecord.Key())
 	assert.Equal(t, `{"height":575838,"ts":1535291126,"block_hash":"0xd72eb563c19ebccecfcb3c27493cf423cea7f8a1c2a64f551211798d79ef0bde","index":6,"send":"1HyeJG9LA776qi5LEipsDTrYrFua9ewRzm","tx_hash":"0x8bff9c90074c43659e568585ffca1140b8d290467373501397d941c94166482d","height_index":57583800006,"tx_type":"buy_market","success":true,"sell_limit":null,"buy_market":{"sellID":"mavl-trade-sell-06964455afb5514af72f98bf600271f39578c2d6a421946693f1e25aa9bc5d95","boardlotCnt":100000}}`, string(txRecord.Value()))
 
 	buyRecord := records[1]
-	assert.Equal(t, "trade/trade/mavl-trade-buy-8bff9c90074c43659e568585ffca1140b8d290467373501397d941c94166482d", buyRecord.Key())
+	assert.Equal(t, "trade/_doc/mavl-trade-buy-8bff9c90074c43659e568585ffca1140b8d290467373501397d941c94166482d", buyRecord.Key())
 	assert.Equal(t, `{"height":575838,"ts":1535291126,"block_hash":"0xd72eb563c19ebccecfcb3c27493cf423cea7f8a1c2a64f551211798d79ef0bde","index":6,"send":"1HyeJG9LA776qi5LEipsDTrYrFua9ewRzm","tx_hash":"0x8bff9c90074c43659e568585ffca1140b8d290467373501397d941c94166482d","height_index":57583800006,"asset_symbol":"TEST","asset_exec":"token","owner":"1HyeJG9LA776qi5LEipsDTrYrFua9ewRzm","boardlot_amount":1000000,"min_boardlot":1,"boardlot_price":10000,"total_boardlot":100000,"traded_boardlot":100000,"is_sell":false,"is_finished":true,"status":"done","buy_id":"","sell_id":"mavl-trade-sell-06964455afb5514af72f98bf600271f39578c2d6a421946693f1e25aa9bc5d95","price_symbol":"bty","price_exec":"coins"}`, string(buyRecord.Value()))
 
 	sellRecord := records[2]
-	assert.Equal(t, "trade/trade/mavl-trade-sell-06964455afb5514af72f98bf600271f39578c2d6a421946693f1e25aa9bc5d95", sellRecord.Key())
+	assert.Equal(t, "trade/_doc/mavl-trade-sell-06964455afb5514af72f98bf600271f39578c2d6a421946693f1e25aa9bc5d95", sellRecord.Key())
 	assert.Equal(t, `{"height":575838,"ts":1535291126,"block_hash":"0xd72eb563c19ebccecfcb3c27493cf423cea7f8a1c2a64f551211798d79ef0bde","index":6,"send":"1HyeJG9LA776qi5LEipsDTrYrFua9ewRzm","tx_hash":"0x8bff9c90074c43659e568585ffca1140b8d290467373501397d941c94166482d","height_index":57583800006,"asset_symbol":"TEST","asset_exec":"token","owner":"1MY4pMgjpS2vWiaSDZasRhN47pcwEire32","boardlot_amount":1000000,"min_boardlot":1,"boardlot_price":10000,"total_boardlot":100000000,"traded_boardlot":1675128,"is_sell":true,"is_finished":false,"status":"created","buy_id":"","sell_id":"mavl-trade-sell-06964455afb5514af72f98bf600271f39578c2d6a421946693f1e25aa9bc5d95","price_symbol":"bty","price_exec":"coins"}`, string(sellRecord.Value()))
 
 }
@@ -59,7 +59,7 @@ func convertTradeSellLimit(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 6, len(records))
-	assert.Equal(t, "trade_tx/trade_tx/0x3d28c12ab62b2bcb3897d6b5ba7ebb596d30532f31ef8037a8d8e0f5024371a5", records[0].Key())
+	assert.Equal(t, "trade_tx/_doc/0x3d28c12ab62b2bcb3897d6b5ba7ebb596d30532f31ef8037a8d8e0f5024371a5", records[0].Key())
 	assert.Equal(t, `{"height":1149,"ts":1565593534,"block_hash":"0x9b7c2fbb2a56ee8716ef9f608b4dca43ba9718459c7ae6749186142f2d495bfe","index":1,"send":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","tx_hash":"0x3d28c12ab62b2bcb3897d6b5ba7ebb596d30532f31ef8037a8d8e0f5024371a5","height_index":114900001,"tx_type":"sell_limit","success":true,"sell_limit":{"tokenSymbol":"TOKEN","amountPerBoardlot":1000000,"minBoardlot":1,"pricePerBoardlot":100000000,"totalBoardlot":100,"assetExec":"token"}}`, string(records[0].Value()))
 
 }
@@ -74,7 +74,7 @@ func convertTradeRevokeSell(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 5, len(records))
-	assert.Equal(t, "trade/trade/mavl-trade-sell-09ef0f1a14540ee7f4c8f1a52fc0083fd8ec625abcab74c958b71df62d44c4c3", records[1].Key())
+	assert.Equal(t, "trade/_doc/mavl-trade-sell-09ef0f1a14540ee7f4c8f1a52fc0083fd8ec625abcab74c958b71df62d44c4c3", records[1].Key())
 	assert.Equal(t, `{"height":591968,"ts":1535536731,"block_hash":"0xf221f87ecd882a02d9cf7854196aa4150ed40451505cea2d746db23e652770a6","index":4,"send":"1HyeJG9LA776qi5LEipsDTrYrFua9ewRzm","tx_hash":"0x268951f6bb3f2cdc42271eebb54e48043f2877a37753d56cb603c8a4efd3d26f","height_index":59196800004,"asset_symbol":"TEST","asset_exec":"token","owner":"1HyeJG9LA776qi5LEipsDTrYrFua9ewRzm","boardlot_amount":1000000,"min_boardlot":1,"boardlot_price":20000,"total_boardlot":100000,"traded_boardlot":0,"is_sell":true,"is_finished":true,"status":"revoked","buy_id":"","sell_id":"mavl-trade-sell-09ef0f1a14540ee7f4c8f1a52fc0083fd8ec625abcab74c958b71df62d44c4c3","price_symbol":"bty","price_exec":"coins"}`, string(records[1].Value()))
 
 }
@@ -91,7 +91,7 @@ func convertTradeBuyLimit(t *testing.T, convert db.ExecConvert) {
 	assert.Equal(t, 2, len(records))
 
 	minerRecord := records[0]
-	assert.Equal(t, "trade_tx/trade_tx/0xc563621ba6d503d5116232e12decf73afcedbd1bce9d9a5cc767e4ba74047544", minerRecord.Key())
+	assert.Equal(t, "trade_tx/_doc/0xc563621ba6d503d5116232e12decf73afcedbd1bce9d9a5cc767e4ba74047544", minerRecord.Key())
 	assert.Equal(t, `{"height":1175381,"ts":1544411636,"block_hash":"0xbea03fb833c13369fc1432d380c099978846e31996dd2d150ca0a05e88059c6d","index":2,"send":"12ZAyk9R1hTC6Fs2RmMeV34vcikR28DwSd","tx_hash":"0xc563621ba6d503d5116232e12decf73afcedbd1bce9d9a5cc767e4ba74047544","height_index":117538100002,"tx_type":"buy_limit","success":false,"sell_limit":null,"buy_limit":{"tokenSymbol":"TEST","amountPerBoardlot":1000000,"minBoardlot":1,"totalBoardlot":10}}`, string(minerRecord.Value()))
 
 }
@@ -108,7 +108,7 @@ func convertTradeRevokeBuy(t *testing.T, convert db.ExecConvert) {
 	assert.Equal(t, 5, len(records))
 
 	minerRecord := records[1]
-	assert.Equal(t, "trade/trade/mavl-trade-buy-3f77be061979ae175294bdcb204efff5747eefce7c7ae0bded58f53f6e1d25b6", minerRecord.Key())
+	assert.Equal(t, "trade/_doc/mavl-trade-buy-3f77be061979ae175294bdcb204efff5747eefce7c7ae0bded58f53f6e1d25b6", minerRecord.Key())
 	assert.Equal(t, `{"height":1180906,"ts":1544496140,"block_hash":"0x1facc0eba408a96318ee57bd6c5ccfb9670778252d4e067dca33cf5c8be8f790","index":1,"send":"12ZAyk9R1hTC6Fs2RmMeV34vcikR28DwSd","tx_hash":"0x90ef3751177c2a22a0c969a94abe662b34c1400fa29e2f8439c5be1677f4c488","height_index":118090600001,"asset_symbol":"TEST","asset_exec":"token","owner":"12ZAyk9R1hTC6Fs2RmMeV34vcikR28DwSd","boardlot_amount":1,"min_boardlot":1,"boardlot_price":1000000,"total_boardlot":200,"traded_boardlot":0,"is_sell":false,"is_finished":true,"status":"revoked","buy_id":"mavl-trade-buy-3f77be061979ae175294bdcb204efff5747eefce7c7ae0bded58f53f6e1d25b6","sell_id":"","price_symbol":"bty","price_exec":"coins"}`, string(minerRecord.Value()))
 
 }

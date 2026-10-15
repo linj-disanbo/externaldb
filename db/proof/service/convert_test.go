@@ -841,7 +841,7 @@ func TestProofConvert_AddProof(t *testing.T) {
 	c.configDB = &proofconfig.None{}
 	c.proofDB = &myProofDB{}
 
-	db.SetVersion(6)
+	db.SetVersion(7)
 
 	records, err := convert.ConvertTx(&env, db.SeqTypeAdd)
 	c.AddProof(&env, db.SeqTypeAdd)

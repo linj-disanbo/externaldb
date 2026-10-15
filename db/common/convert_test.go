@@ -24,7 +24,7 @@ func Test_Convert(t *testing.T) {
 	record, ok := records[0].(*transaction.TxRecord)
 	assert.True(t, ok)
 	assert.Equal(t, db.OpAdd, record.Op.OpType())
-	assert.Equal(t, "transaction/transaction/0x27851fb51f63b74a12f996697864b13fabd1b54384ec8a2fd97d67c329f55e82", record.Key())
+	assert.Equal(t, "transaction/_doc/0x27851fb51f63b74a12f996697864b13fabd1b54384ec8a2fd97d67c329f55e82", record.Key())
 	tx := `{"height_index":16800000,"height":168,"block_time":1526542176,"block_hash":"0xb7a4fb09e854e4a60490b5573de2f4bf20bef027779b5e9f1b560e9fc1528529","success":true,"index":0,"hash":"0x27851fb51f63b74a12f996697864b13fabd1b54384ec8a2fd97d67c329f55e82","from":"1M4ns1eGHdHak3SNc2UTQB75vnXyJQd91s","to":"16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp","execer":"ticket","amount":0,"fee":100000,"action_name":"unknown","group_count":0,"is_withdraw":false,"options":null,"assets":[],"next":"","is_para":false}`
 	assert.Equal(t, tx, string(record.Value()))
 	//t.Log(string(record.Value()))

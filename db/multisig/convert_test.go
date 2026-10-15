@@ -49,29 +49,29 @@ func Test_Create(t *testing.T) {
 	ms, ok := records[1].(*multisig.MSRecord)
 	assert.True(t, ok)
 	assert.Equal(t, msStr, string(ms.Value()))
-	assert.Equal(t, "multisig/multisig/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", ms.Key())
+	assert.Equal(t, "multisig/_doc/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", ms.Key())
 
 	// owner
 	o1, ok := records[2].(*multisig.MSUpdateOwnerRecord)
 	assert.True(t, ok)
 	assert.Equal(t, ownerStr1, string(o1.Value()))
-	assert.Equal(t, "multisig/multisig/owner-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-1C5xK2ytuoFqxmVGMcyz9XFKFWcDA8T3rK", o1.Key())
+	assert.Equal(t, "multisig/_doc/owner-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-1C5xK2ytuoFqxmVGMcyz9XFKFWcDA8T3rK", o1.Key())
 
 	o2, ok := records[3].(*multisig.MSUpdateOwnerRecord)
 	assert.True(t, ok)
 	assert.Equal(t, ownerStr2, string(o2.Value()))
-	assert.Equal(t, "multisig/multisig/owner-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-1LDGrokrZjo1HtSmSnw8ef3oy5Vm1nctbj", o2.Key())
+	assert.Equal(t, "multisig/_doc/owner-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-1LDGrokrZjo1HtSmSnw8ef3oy5Vm1nctbj", o2.Key())
 
 	o3, ok := records[4].(*multisig.MSUpdateOwnerRecord)
 	assert.True(t, ok)
 	assert.Equal(t, ownerStr3, string(o3.Value()))
-	assert.Equal(t, "multisig/multisig/owner-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", o3.Key())
+	assert.Equal(t, "multisig/_doc/owner-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", o3.Key())
 
 	// limit
 	limit, ok := records[5].(*multisig.MSUpdateLimitRecord)
 	assert.True(t, ok)
 	assert.Equal(t, limitStr, string(limit.Value()))
-	assert.Equal(t, "multisig/multisig/limit-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-coins-BTY", limit.Key())
+	assert.Equal(t, "multisig/_doc/limit-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-coins-BTY", limit.Key())
 
 	// fee
 }
@@ -165,25 +165,25 @@ func Test_OwnerChange(t *testing.T) {
 	ownerRec, ok := records[2].(*multisig.MSUpdateOwnerRecord)
 	assert.True(t, ok)
 	assert.Equal(t, owner, string(ownerRec.Value()))
-	assert.Equal(t, "multisig/multisig/owner-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-1KHwX7ZadNeQDjBGpnweb4k2dqj2CWtAYo", ownerRec.Key())
+	assert.Equal(t, "multisig/_doc/owner-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-1KHwX7ZadNeQDjBGpnweb4k2dqj2CWtAYo", ownerRec.Key())
 
 	// tx count
 	cnt, ok := records[3].(*multisig.MSUpdateTxCountRecord)
 	assert.True(t, ok)
 	assert.Equal(t, txCount, string(cnt.Value()))
-	assert.Equal(t, "multisig/multisig/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", cnt.Key())
+	assert.Equal(t, "multisig/_doc/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", cnt.Key())
 
 	// tx sig/list
 	sig, ok := records[4].(*multisig.SigTxRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigTx, string(sig.Value()))
-	assert.Equal(t, "sig_tx/sig_tx/tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000000", sig.Key())
+	assert.Equal(t, "sig_tx/_doc/tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000000", sig.Key())
 	assert.Equal(t, "tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000000", sig.ID())
 
 	list, ok := records[5].(*multisig.SigListRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigList, string(list.Value()))
-	assert.Equal(t, "sig_list/sig_list/sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000000:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.Key())
+	assert.Equal(t, "sig_list/_doc/sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000000:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.Key())
 }
 
 func Test_LimitChange(t *testing.T) {
@@ -226,25 +226,25 @@ func Test_LimitChange(t *testing.T) {
 	limitRec, ok := records[2].(*multisig.MSUpdateLimitRecord)
 	assert.True(t, ok)
 	assert.Equal(t, limit, string(limitRec.Value()))
-	assert.Equal(t, "multisig/multisig/limit-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-coins-BTY", limitRec.Key())
+	assert.Equal(t, "multisig/_doc/limit-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-coins-BTY", limitRec.Key())
 
 	// tx count
 	cnt, ok := records[3].(*multisig.MSUpdateTxCountRecord)
 	assert.True(t, ok)
 	assert.Equal(t, txCount, string(cnt.Value()))
-	assert.Equal(t, "multisig/multisig/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", cnt.Key())
+	assert.Equal(t, "multisig/_doc/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", cnt.Key())
 
 	// tx sig/list
 	sig, ok := records[4].(*multisig.SigTxRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigTx, string(sig.Value()))
-	assert.Equal(t, "sig_tx/sig_tx/tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000004", sig.Key())
+	assert.Equal(t, "sig_tx/_doc/tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000004", sig.Key())
 	assert.Equal(t, "tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000004", sig.ID())
 
 	list, ok := records[5].(*multisig.SigListRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigList, string(list.Value()))
-	assert.Equal(t, "sig_list/sig_list/sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000004:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.Key())
+	assert.Equal(t, "sig_list/_doc/sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000004:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.Key())
 	assert.Equal(t, "sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000004:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.ID())
 }
 
@@ -298,24 +298,24 @@ func Test_TransferFrom(t *testing.T) {
 	cnt, ok := records[4].(*multisig.MSUpdateTxCountRecord)
 	assert.True(t, ok)
 	assert.Equal(t, txCount, string(cnt.Value()))
-	assert.Equal(t, "multisig/multisig/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", cnt.Key())
+	assert.Equal(t, "multisig/_doc/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", cnt.Key())
 
 	// limit
 	limitRec, ok := records[5].(*multisig.MSUpdateLimitRecord)
 	assert.True(t, ok)
 	assert.Equal(t, limit, string(limitRec.Value()))
-	assert.Equal(t, "multisig/multisig/limit-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-coins-BTY", limitRec.Key())
+	assert.Equal(t, "multisig/_doc/limit-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-coins-BTY", limitRec.Key())
 
 	// tx sig/list
 	sig, ok := records[6].(*multisig.SigTxRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigTx, string(sig.Value()))
-	assert.Equal(t, "sig_tx/sig_tx/tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007", sig.Key())
+	assert.Equal(t, "sig_tx/_doc/tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007", sig.Key())
 	assert.Equal(t, "tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007", sig.ID())
 
 	list, ok := records[7].(*multisig.SigListRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigList, string(list.Value()))
-	assert.Equal(t, "sig_list/sig_list/sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.Key())
+	assert.Equal(t, "sig_list/_doc/sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.Key())
 	assert.Equal(t, "sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.ID())
 }

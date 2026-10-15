@@ -25,7 +25,7 @@ func convertCreate(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 2, len(records))
-	assert.Equal(t, "unfreeze_tx/unfreeze/0x18a8d483d655cb78d6bad37fcc6772be5f875c3005e1089157923b5ba2453c15", records[0].Key())
+	assert.Equal(t, "unfreeze_tx/_doc/0x18a8d483d655cb78d6bad37fcc6772be5f875c3005e1089157923b5ba2453c15", records[0].Key())
 	assert.Equal(t, `{"block":{"height":163,"ts":1565678844,"block_hash":"0x78171e8fc1573773a0f66c5a0a596b9e4b356c3ba23fbec2c20761305c20b853","index":1,"send":"14KEKbYtKKQm4wMthSK9J4La4nAiidGozt","tx_hash":"0x18a8d483d655cb78d6bad37fcc6772be5f875c3005e1089157923b5ba2453c15","height_index":16300001},"creator":"14KEKbYtKKQm4wMthSK9J4La4nAiidGozt","beneficiary":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","unfreeze_id":"mavl-unfreeze-18a8d483d655cb78d6bad37fcc6772be5f875c3005e1089157923b5ba2453c15","success":true,"action_type":"create","create":{"start_time":1565678844,"asset_exec":"coins","asset_symbol":"bty","total_count":200000000,"means":"FixAmount","fix_amount":{"period":20,"amount":1000000}}}`, string(records[0].Value()))
 }
 
@@ -39,7 +39,7 @@ func convertWithdraw(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 2, len(records))
-	assert.Equal(t, "unfreeze_tx/unfreeze/0x53a769f8b2a29b015346d0a6ac8c76224276e74f119f755f45bc52e4394d44f0", records[0].Key())
+	assert.Equal(t, "unfreeze_tx/_doc/0x53a769f8b2a29b015346d0a6ac8c76224276e74f119f755f45bc52e4394d44f0", records[0].Key())
 	assert.Equal(t, `{"block":{"height":298,"ts":1565678866,"block_hash":"0x0cb8d302eb1f21fefd900de04877a4712f1125d2370106480edbbaefbb188412","index":1,"send":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","tx_hash":"0x53a769f8b2a29b015346d0a6ac8c76224276e74f119f755f45bc52e4394d44f0","height_index":29800001},"creator":"14KEKbYtKKQm4wMthSK9J4La4nAiidGozt","beneficiary":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","unfreeze_id":"mavl-unfreeze-18a8d483d655cb78d6bad37fcc6772be5f875c3005e1089157923b5ba2453c15","success":true,"action_type":"withdraw","create":{"start_time":1565678844,"asset_exec":"coins","asset_symbol":"bty","total_count":200000000,"means":"FixAmount"},"withdraw":{"amount":2000000}}`, string(records[0].Value()))
 }
 
@@ -53,6 +53,6 @@ func convertTerminate(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 2, len(records))
-	assert.Equal(t, "unfreeze_tx/unfreeze/0x84dc5ea1393370f70c67d20180e81188b7152767f5a9830f5d513a35130e8346", records[0].Key())
+	assert.Equal(t, "unfreeze_tx/_doc/0x84dc5ea1393370f70c67d20180e81188b7152767f5a9830f5d513a35130e8346", records[0].Key())
 	assert.Equal(t, `{"block":{"height":304,"ts":1565678868,"block_hash":"0xcadc7c6d7eda4968144186c482acc4b397b505e04963ed20411746438f3e9cbc","index":1,"send":"14KEKbYtKKQm4wMthSK9J4La4nAiidGozt","tx_hash":"0x84dc5ea1393370f70c67d20180e81188b7152767f5a9830f5d513a35130e8346","height_index":30400001},"creator":"14KEKbYtKKQm4wMthSK9J4La4nAiidGozt","beneficiary":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","unfreeze_id":"mavl-unfreeze-18a8d483d655cb78d6bad37fcc6772be5f875c3005e1089157923b5ba2453c15","success":true,"action_type":"terminate","create":{"start_time":1565678844,"asset_exec":"coins","asset_symbol":"bty","total_count":200000000,"means":"FixAmount"},"terminate":{"amount_back":198000000,"amount_left":0}}`, string(records[0].Value()))
 }

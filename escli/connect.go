@@ -2,17 +2,19 @@ package escli
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
+
+	l "github.com/33cn/chain33/common/log/log15"
 
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/escli/aggdecode"
 	"github.com/33cn/externaldb/escli/querypara"
 	"github.com/33cn/externaldb/escli/status"
-	v6 "github.com/33cn/externaldb/escli/v6"
 	v7 "github.com/33cn/externaldb/escli/v7"
 )
+
+var log = l.New("module", "escli")
 
 type ESClient interface {
 	Update(index, typ, id string, value string) error
@@ -41,26 +43,19 @@ type ESClient interface {
 }
 
 // NewESLongConnect create db handler
+// 只支持 ES7（ES6 支持已移除）；version 参数保留仅为兼容现有调用点，请统一传 7。
 func NewESLongConnect(host string, prefix string, version int32, username, password string) (ESClient, error) {
-	switch version {
-	case 6:
-		return v6.NewESLongConnect(host, prefix, version, username, password)
-	case 7:
-		return v7.NewESLongConnect(host, prefix, version, username, password)
-	default:
-		panic("not support es version" + fmt.Sprint(version) + "about NewESLongConnect")
+	if version != 0 && version != 7 {
+		log.Warn("NewESLongConnect: only es7 supported, ignore esVersion", "version", version)
 	}
+	return v7.NewESLongConnect(host, prefix, 7, username, password)
 }
 
 // NewESShortConnect create db handler
+// 只支持 ES7（ES6 支持已移除）；version 参数保留仅为兼容现有调用点，请统一传 7。
 func NewESShortConnect(host string, prefix string, version int32, username, password string) (ESClient, error) {
-	switch version {
-	case 6:
-		return v6.NewESShortConnect(host, prefix, version, username, password)
-	case 7:
-		return v7.NewESShortConnect(host, prefix, version, username, password)
-	default:
-		panic("not support es version" + fmt.Sprint(version) + "about NewESShortConnect")
+	if version != 0 && version != 7 {
+		log.Warn("NewESShortConnect: only es7 supported, ignore esVersion", "version", version)
 	}
-
+	return v7.NewESShortConnect(host, prefix, 7, username, password)
 }

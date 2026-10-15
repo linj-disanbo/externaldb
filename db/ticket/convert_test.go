@@ -34,7 +34,7 @@ func convertMiner(t *testing.T, convert db.ExecConvert) {
 	assert.Equal(t, 7, len(records))
 
 	minerRecord := records[2]
-	assert.Equal(t, "ticket/ticket/1MRgmHpLx1iAiRHkhK5kHdNZRQ3oDYYvDJ:0x333373e7a65019946e3e928f29126fd51d7ddb5fbbc682b7bd99e1242f59e79d:0000000002:d5442213312c6be10d823467304dd93e5e7360474d332c5c3c60cdb12ac0b1d5:1563479870737567302", minerRecord.Key())
+	assert.Equal(t, "ticket/_doc/1MRgmHpLx1iAiRHkhK5kHdNZRQ3oDYYvDJ:0x333373e7a65019946e3e928f29126fd51d7ddb5fbbc682b7bd99e1242f59e79d:0000000002:d5442213312c6be10d823467304dd93e5e7360474d332c5c3c60cdb12ac0b1d5:1563479870737567302", minerRecord.Key())
 	assert.Equal(t, `{"id":"1MRgmHpLx1iAiRHkhK5kHdNZRQ3oDYYvDJ:0x333373e7a65019946e3e928f29126fd51d7ddb5fbbc682b7bd99e1242f59e79d:0000000002:d5442213312c6be10d823467304dd93e5e7360474d332c5c3c60cdb12ac0b1d5:1563479870737567302","miner":"1MRgmHpLx1iAiRHkhK5kHdNZRQ3oDYYvDJ","status":"miner","miner_at":{"height":2986983,"ts":1564730414}}`, string(minerRecord.Value()))
 
 }
@@ -50,7 +50,7 @@ func convertOpen(t *testing.T, convert db.ExecConvert) {
 	assert.Equal(t, 4, len(records))
 
 	minerRecord := records[2]
-	assert.Equal(t, "ticket/ticket/12pLjJkEAzJCnX9o1enC1yF5MpAffexaKi:0xbba0101f06f1e9f14b5cfc901a87feffe0c2d074fd2f1687f5826bee8d1fe035:0000000000:e3ef7e57832740011be8a091dd9ef0279c0572a06bed85eae3c04c5955775133:1564730401246528774", minerRecord.Key())
+	assert.Equal(t, "ticket/_doc/12pLjJkEAzJCnX9o1enC1yF5MpAffexaKi:0xbba0101f06f1e9f14b5cfc901a87feffe0c2d074fd2f1687f5826bee8d1fe035:0000000000:e3ef7e57832740011be8a091dd9ef0279c0572a06bed85eae3c04c5955775133:1564730401246528774", minerRecord.Key())
 	assert.Equal(t, `{"id":"12pLjJkEAzJCnX9o1enC1yF5MpAffexaKi:0xbba0101f06f1e9f14b5cfc901a87feffe0c2d074fd2f1687f5826bee8d1fe035:0000000000:e3ef7e57832740011be8a091dd9ef0279c0572a06bed85eae3c04c5955775133:1564730401246528774","owner":"1A2KN2Mk362LLKQEsdQN7MzrJtUPfi1uE1","miner":"12pLjJkEAzJCnX9o1enC1yF5MpAffexaKi","status":"open","open_at":{"height":2986983,"ts":1564730414},"miner_at":{"height":0,"ts":0},"close_at":{"height":0,"ts":0}}`, string(minerRecord.Value()))
 }
 
@@ -65,7 +65,7 @@ func convertClose(t *testing.T, convert db.ExecConvert) {
 	assert.Equal(t, 5, len(records))
 
 	minerRecord := records[2]
-	assert.Equal(t, "ticket/ticket/16jKCLiwiYnNRqyYuVTtt9dUM69rFftfxt:0x92281d548677afd8593bb4f51a1a3add36d81ebd98f5ea7f9fbe3e0e5bf9ff6a:0000000001:18a029f08d7ff585f8bb81f540be52f83f0e8b106d214d8ad32ba85ebf702ab6:1564109998680908432", minerRecord.Key())
+	assert.Equal(t, "ticket/_doc/16jKCLiwiYnNRqyYuVTtt9dUM69rFftfxt:0x92281d548677afd8593bb4f51a1a3add36d81ebd98f5ea7f9fbe3e0e5bf9ff6a:0000000001:18a029f08d7ff585f8bb81f540be52f83f0e8b106d214d8ad32ba85ebf702ab6:1564109998680908432", minerRecord.Key())
 	assert.Equal(t, `{"id":"16jKCLiwiYnNRqyYuVTtt9dUM69rFftfxt:0x92281d548677afd8593bb4f51a1a3add36d81ebd98f5ea7f9fbe3e0e5bf9ff6a:0000000001:18a029f08d7ff585f8bb81f540be52f83f0e8b106d214d8ad32ba85ebf702ab6:1564109998680908432","miner":"16jKCLiwiYnNRqyYuVTtt9dUM69rFftfxt","status":"close","close_at":{"height":2986983,"ts":1564730414}}`, string(minerRecord.Value()))
 }
 
@@ -80,6 +80,6 @@ func convertBind(t *testing.T, convert db.ExecConvert) {
 	assert.Equal(t, 3, len(records))
 
 	minerRecord := records[2]
-	assert.Equal(t, "ticket_bind/ticket/14BVRbSDJejZm3hKungv2qUtEmQgVC8HSg", minerRecord.Key())
+	assert.Equal(t, "ticket_bind/_doc/14BVRbSDJejZm3hKungv2qUtEmQgVC8HSg", minerRecord.Key())
 	assert.Equal(t, `{"old_miner":"","new_miner":"1Q5QcUaDXET3RJ3UBurMZzF3gGHyjnFQEa","return_address":"14BVRbSDJejZm3hKungv2qUtEmQgVC8HSg","height":374190,"ts":1532225103}`, string(minerRecord.Value()))
 }

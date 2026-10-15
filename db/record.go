@@ -8,7 +8,7 @@ import (
 	"github.com/33cn/chain33/types"
 )
 
-var version int32 = 6
+var version int32 = 7
 
 // Key 获得相关的key
 type Key interface {
@@ -85,14 +85,14 @@ func (d *IKey) Key() string {
 }
 
 // NewIKey create key
+// ES7 起文档路径是 index/_doc/id（ES8/9 已无 mapping type，同样如此）。
+// 版本差异若出现，在这里按 version 分支。
 func NewIKey(index, typ, id string) *IKey {
 	switch version {
-	case 6:
-		return &IKey{index: index, typ: typ, id: id}
 	case 7:
 		return &IKey{index: index, typ: "_doc", id: id}
 	default:
-		panic("not support es version" + fmt.Sprint(version) + "about NewIKey")
+		return &IKey{index: index, typ: "_doc", id: id}
 	}
 }
 

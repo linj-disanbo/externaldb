@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/33cn/chain33/common/log/log15"
-	elasticV6 "github.com/olivere/elastic"
 	elasticV7 "github.com/olivere/elastic/v7"
 )
 
@@ -16,15 +15,9 @@ type AggregationBucketKeyItem struct {
 	Aggregations map[string]json.RawMessage
 	Key          interface{}
 	DocCount     int64
-	Version      int32
-}
-
-func DisPoint(m map[string]*json.RawMessage) map[string]json.RawMessage {
-	value := make(map[string]json.RawMessage)
-	for k, v := range m {
-		value[k] = *v
-	}
-	return value
+	// Version 记录产生该结果集的 ES 版本（7/8/9…）。
+	// 当前解码只实现 v7；将来支持 v8/v9 时按 Version 分支即可。
+	Version int32
 }
 
 func (a AggregationBucketKeyItem) Term(name string) ([]*AggregationBucketKeyItem, bool) {
@@ -36,34 +29,17 @@ func (a AggregationBucketKeyItem) Term(name string) ([]*AggregationBucketKeyItem
 			return bucket, true
 		}
 
-		switch a.Version {
-		case 6:
-			agg := new(elasticV6.AggregationBucketKeyItems)
-			if err := json.Unmarshal(raw, agg); err == nil {
-				for _, item := range agg.Buckets {
-					b := &AggregationBucketKeyItem{
-						Aggregations: DisPoint(item.Aggregations),
-						Key:          item.Key,
-						Version:      6,
-					}
-					bucket = append(bucket, b)
+		agg := new(elasticV7.AggregationBucketKeyItems)
+		if err := json.Unmarshal(raw, agg); err == nil {
+			for _, item := range agg.Buckets {
+				b := &AggregationBucketKeyItem{
+					Aggregations: item.Aggregations,
+					Key:          item.Key,
+					Version:      7,
 				}
-				return bucket, true
+				bucket = append(bucket, b)
 			}
-
-		case 7:
-			agg := new(elasticV7.AggregationBucketKeyItems)
-			if err := json.Unmarshal(raw, agg); err == nil {
-				for _, item := range agg.Buckets {
-					b := &AggregationBucketKeyItem{
-						Aggregations: item.Aggregations,
-						Key:          item.Key,
-						Version:      7,
-					}
-					bucket = append(bucket, b)
-				}
-				return bucket, true
-			}
+			return bucket, true
 		}
 	}
 	return nil, false
@@ -76,18 +52,9 @@ func (a AggregationBucketKeyItem) Sum(name string) (float64, bool) {
 			return 0, true
 		}
 
-		switch a.Version {
-		case 6:
-			sumagg := new(elasticV6.AggregationValueMetric)
-			if err := json.Unmarshal(raw, sumagg); err == nil {
-				return *sumagg.Value, true
-			}
-
-		case 7:
-			sumagg := new(elasticV7.AggregationValueMetric)
-			if err := json.Unmarshal(raw, sumagg); err == nil {
-				return *sumagg.Value, true
-			}
+		sumagg := new(elasticV7.AggregationValueMetric)
+		if err := json.Unmarshal(raw, sumagg); err == nil {
+			return *sumagg.Value, true
 		}
 	}
 	return -1, false
@@ -102,36 +69,18 @@ func (a AggregationBucketKeyItem) Range(name string) ([]*AggregationBucketKeyIte
 			return nil, true
 		}
 
-		switch a.Version {
-		case 6:
-			items := new(elasticV6.AggregationBucketRangeItems)
-			if err := json.Unmarshal(raw, items); err == nil {
-				for _, item := range items.Buckets {
-					b := &AggregationBucketKeyItem{
-						Aggregations: DisPoint(item.Aggregations),
-						Key:          item.Key,
-						DocCount:     item.DocCount,
-						Version:      6,
-					}
-					bucket = append(bucket, b)
+		items := new(elasticV7.AggregationBucketRangeItems)
+		if err := json.Unmarshal(raw, items); err == nil {
+			for _, item := range items.Buckets {
+				b := &AggregationBucketKeyItem{
+					Aggregations: item.Aggregations,
+					Key:          item.Key,
+					DocCount:     item.DocCount,
+					Version:      7,
 				}
-				return bucket, true
+				bucket = append(bucket, b)
 			}
-
-		case 7:
-			items := new(elasticV7.AggregationBucketRangeItems)
-			if err := json.Unmarshal(raw, items); err == nil {
-				for _, item := range items.Buckets {
-					b := &AggregationBucketKeyItem{
-						Aggregations: item.Aggregations,
-						Key:          item.Key,
-						DocCount:     item.DocCount,
-						Version:      7,
-					}
-					bucket = append(bucket, b)
-				}
-				return bucket, true
-			}
+			return bucket, true
 		}
 	}
 	return nil, false

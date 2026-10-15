@@ -34,7 +34,7 @@ func convertTokenPrecreate(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 4, len(records))
-	assert.Equal(t, "token_info/token_info/ABCDE", records[0].Key())
+	assert.Equal(t, "token_info/_doc/ABCDE", records[0].Key())
 	assert.Equal(t, `{"name":"yinhebib","symbol":"ABCDE","amount":100000000000,"owner":"1Q8hGLfoGe63efeWa8fJ4Pnukhkngt6poK","creator":"1Q8hGLfoGe63efeWa8fJ4Pnukhkngt6poK","price":100,"category":1,"prepare_height":489}`, string(records[0].Value()))
 }
 
@@ -48,7 +48,7 @@ func convertTokenFinishedCreate(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 6, len(records))
-	assert.Equal(t, "token_info/token_info/ABCDE", records[1].Key())
+	assert.Equal(t, "token_info/_doc/ABCDE", records[1].Key())
 	assert.Equal(t, `{"status":1,"create_height":493}`, string(records[1].Value()))
 }
 
@@ -63,7 +63,7 @@ func convertTokenBurn(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 4, len(records))
-	assert.Equal(t, "token_info/token_info/ABCDE", records[1].Key())
+	assert.Equal(t, "token_info/_doc/ABCDE", records[1].Key())
 	assert.Equal(t, `{"amount":99999990000}`, string(records[1].Value()))
 }
 
@@ -77,7 +77,7 @@ func convertTokenMint(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 4, len(records))
-	assert.Equal(t, "token_info/token_info/ABCDE", records[1].Key())
+	assert.Equal(t, "token_info/_doc/ABCDE", records[1].Key())
 	assert.Equal(t, `{"amount":100000000000}`, string(records[1].Value()))
 }
 
@@ -91,7 +91,7 @@ func convertTokenTransfer(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 4, len(records))
-	assert.Equal(t, "transaction/transaction/0xe343916db0587f4fe147d2c535734e5803bf00c28df982ca1e623c06dc997ffd", records[0].Key())
+	assert.Equal(t, "transaction/_doc/0xe343916db0587f4fe147d2c535734e5803bf00c28df982ca1e623c06dc997ffd", records[0].Key())
 	assert.Equal(t, `{"height_index":49900001,"height":499,"block_time":1565590375,"block_hash":"0xbf374f3030b7650e84b1eeb767e495f167366a57a223a0de2f748ab2f2234376","success":true,"index":1,"hash":"0xe343916db0587f4fe147d2c535734e5803bf00c28df982ca1e623c06dc997ffd","from":"1Q8hGLfoGe63efeWa8fJ4Pnukhkngt6poK","to":"14KEKbYtKKQm4wMthSK9J4La4nAiidGozt","execer":"token","amount":1000000000,"fee":100000,"action_name":"transfer","group_count":0,"is_withdraw":false,"options":{"symbol":"ABCDE","to":"14KEKbYtKKQm4wMthSK9J4La4nAiidGozt"},"assets":[{"exec":"token","symbol":"ABCDE","amount":1000000000}],"next":"","is_para":false}`, string(records[0].Value()))
 }
 
@@ -105,7 +105,7 @@ func convertTokenTransferToExec(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 5, len(records))
-	assert.Equal(t, "transaction/transaction/0xe4a8a1bf1fd560bd1db281d23e08de0f6a38cda464ed6369c9d5b856cc3d4d73", records[0].Key())
+	assert.Equal(t, "transaction/_doc/0xe4a8a1bf1fd560bd1db281d23e08de0f6a38cda464ed6369c9d5b856cc3d4d73", records[0].Key())
 	assert.Equal(t, `{"height_index":50100001,"height":501,"block_time":1565590381,"block_hash":"0xe1af68260d64f2150602831c63e11389e8a01f02278c757386624454bcfdda0a","success":true,"index":1,"hash":"0xe4a8a1bf1fd560bd1db281d23e08de0f6a38cda464ed6369c9d5b856cc3d4d73","from":"1Q8hGLfoGe63efeWa8fJ4Pnukhkngt6poK","to":"12hpJBHybh1mSyCijQ2MQJPk7z7kZ7jnQa","execer":"token","amount":10,"fee":100000,"action_name":"transferToExec","group_count":0,"is_withdraw":false,"options":{"symbol":"ABCDE","to":"12hpJBHybh1mSyCijQ2MQJPk7z7kZ7jnQa","exec_name":"token"},"assets":[{"exec":"token","symbol":"ABCDE","amount":10}],"next":"","is_para":false}`, string(records[0].Value()))
 }
 
@@ -119,6 +119,6 @@ func convertTokenWithdraw(t *testing.T, convert db.ExecConvert) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, 5, len(records))
-	assert.Equal(t, "transaction/transaction/0x78fdb38119ae5eb2a7d47e2800051697619c27a52bfeea4f93531471d8b4fd95", records[0].Key())
+	assert.Equal(t, "transaction/_doc/0x78fdb38119ae5eb2a7d47e2800051697619c27a52bfeea4f93531471d8b4fd95", records[0].Key())
 	assert.Equal(t, `{"height_index":50400001,"height":504,"block_time":1565590384,"block_hash":"0x9f11a0081bc5095f9be68d5ddd3d1ed8d5782d01f628ea9a38086401ccd9633b","success":true,"index":1,"hash":"0x78fdb38119ae5eb2a7d47e2800051697619c27a52bfeea4f93531471d8b4fd95","from":"1Q8hGLfoGe63efeWa8fJ4Pnukhkngt6poK","to":"12hpJBHybh1mSyCijQ2MQJPk7z7kZ7jnQa","execer":"token","amount":10,"fee":100000,"action_name":"withdraw","group_count":0,"is_withdraw":true,"options":{"symbol":"ABCDE","to":"12hpJBHybh1mSyCijQ2MQJPk7z7kZ7jnQa","exec_name":"token"},"assets":[{"exec":"token","symbol":"ABCDE","amount":10}],"next":"","is_para":false}`, string(records[0].Value()))
 }

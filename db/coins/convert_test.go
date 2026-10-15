@@ -32,7 +32,7 @@ func Test_ConvertTx(t *testing.T) {
 	record, ok := records[0].(*transaction.TxRecord)
 	assert.True(t, ok)
 	assert.Equal(t, db.OpAdd, record.Op.OpType())
-	assert.Equal(t, "transaction/transaction/0x531c8d8214e384e314136cf8f70fc6e1dd936887110075d5bd6a966a056953ab", record.Key())
+	assert.Equal(t, "transaction/_doc/0x531c8d8214e384e314136cf8f70fc6e1dd936887110075d5bd6a966a056953ab", record.Key())
 	tx := `{"height_index":285457100001,"height":2854571,"block_time":1564060086,"block_hash":"0xf355d454da413f4c8932a7c8ccc24076e3186a0ec4beb2a7ddd0587e61b2c948","success":true,"index":1,"hash":"0x531c8d8214e384e314136cf8f70fc6e1dd936887110075d5bd6a966a056953ab","from":"1FCX9XJTZXvZteagTrefJEBPZMt8BFmdoi","to":"17JGEvDEBEigjooZbdmthxaSd8Kj52Bete","execer":"coins","amount":500080000000,"fee":100000,"action_name":"transfer","group_count":0,"is_withdraw":false,"options":null,"assets":[{"exec":"coins","symbol":"BTY","amount":500080000000}],"next":"","is_para":false}`
 	assert.Equal(t, tx, string(record.Value()))
 	//t.Log(string(record.Value()))
@@ -73,7 +73,7 @@ func Test_ConvertAccount(t *testing.T) {
 	record3, ok := records[3].(*account.Record)
 	assert.True(t, ok)
 	assert.Equal(t, db.OpAdd, record1.Op.OpType())
-	assert.Equal(t, "account/account/1FCX9XJTZXvZteagTrefJEBPZMt8BFmdoi-coins-coins:bty", record1.Key())
+	assert.Equal(t, "account/_doc/1FCX9XJTZXvZteagTrefJEBPZMt8BFmdoi-coins-coins:bty", record1.Key())
 	assert.Equal(t, acc1, string(record1.Value()))
 	assert.Equal(t, acc2, string(record2.Value()))
 	assert.Equal(t, acc3, string(record3.Value()))
@@ -120,7 +120,7 @@ func Test_ConvertWithdraw(t *testing.T) {
 
 	assert.Equal(t, acc1, string(feeAcc.Value()))
 	assert.Equal(t, acc2, string(internal.Value()))
-	assert.Equal(t, "account/account/1NPQ9cu5oQJQpXGseWVC1PEKQVdmb7o1yb-16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp-coins:bty", internal.Key())
+	assert.Equal(t, "account/_doc/1NPQ9cu5oQJQpXGseWVC1PEKQVdmb7o1yb-16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp-coins:bty", internal.Key())
 	assert.Equal(t, account.AccountContractInternal, internal.Acc.Type)
 	assert.Equal(t, acc3, string(record3.Value()))
 	assert.Equal(t, acc4, string(record4.Value()))
@@ -167,7 +167,7 @@ func Test_ConvertTransferToExec(t *testing.T) {
 
 	assert.Equal(t, acc1, string(feeAcc.Value()))
 	assert.Equal(t, acc2, string(record2.Value()))
-	assert.Equal(t, "account/account/1G3HRSLPAKvKcTYW7KNhaWftgchj9HiwnV-coins-coins:bty", record2.Key())
+	assert.Equal(t, "account/_doc/1G3HRSLPAKvKcTYW7KNhaWftgchj9HiwnV-coins-coins:bty", record2.Key())
 	assert.Equal(t, account.AccountPersonage, record2.Acc.Type)
 	assert.Equal(t, acc3, string(record3.Value()))
 	assert.Equal(t, account.AccountContract, record3.Acc.Type)
