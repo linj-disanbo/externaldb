@@ -3,10 +3,12 @@ package v7
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	logx "log"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
@@ -174,27 +176,80 @@ func (cli *ESClientV7) BulkUpdate(rs []db.Record) error {
 	responses, err := b.Do(context.Background())
 	if err != nil {
 		log.Error("Bulk Save failed", "err", err)
+		return err
 	}
 
-	showBulkResult := true
-	if showBulkResult && responses != nil {
-		for key, response := range responses.Items {
-			for k, v := range response {
-				log.Debug("Bulk Save Part", "key", key, "op", k, "value", v)
-				if v.Status >= 400 {
-					source := ""
-					if v.GetResult != nil && v.GetResult.Source != nil {
-						//string(*v.GetResult.Source)
-						source = string(v.GetResult.Source)
-					}
-					log.Error("Bulk Save Part failed", "key", key, "op", k, "Status", v.Status,
-						"err", v.Error, "value", v, "source", source)
+	fails := collectBulkFailures(responses)
+	for _, f := range fails {
+		log.Error("Bulk Save Part failed", "action", f.action, "index", f.index, "id", f.id,
+			"status", f.status, "err", f.reason)
+	}
+	return bulkFailureError(responses, fails)
+}
+
+// bulkFailurePreview 错误信息里最多列出的失败明细条数
+const bulkFailurePreview = 5
+
+// bulkFailure 一条 _bulk 子请求的失败结果
+type bulkFailure struct {
+	action string
+	index  string
+	id     string
+	status int
+	reason string
+}
+
+// collectBulkFailures 收集 _bulk 响应里的 per-item 失败（status>=400）。
+// 注意：_bulk 的 HTTP 状态码是 200，即使部分 item 失败也一样，必须逐条检查。
+func collectBulkFailures(responses *elasticV7.BulkResponse) []bulkFailure {
+	if responses == nil {
+		return nil
+	}
+	var fails []bulkFailure
+	for _, item := range responses.Items {
+		for action, v := range item {
+			if v == nil || v.Status < 400 {
+				continue
+			}
+			reason := ""
+			if v.Error != nil {
+				reason = v.Error.Reason
+				if v.Error.Type != "" {
+					reason = v.Error.Type + ": " + reason
 				}
 			}
+			fails = append(fails, bulkFailure{
+				action: action,
+				index:  v.Index,
+				id:     v.Id,
+				status: v.Status,
+				reason: reason,
+			})
 		}
 	}
+	return fails
+}
 
-	return err
+// bulkFailureError 把 per-item 失败转成错误；无失败返回 nil。
+// 上层（进度跟随批次）必须拿到错误后不推进进度、整批重试。
+func bulkFailureError(responses *elasticV7.BulkResponse, fails []bulkFailure) error {
+	if len(fails) == 0 {
+		return nil
+	}
+	total := 0
+	if responses != nil {
+		total = len(responses.Items)
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "bulk update: %d/%d item(s) failed", len(fails), total)
+	for i, f := range fails {
+		if i >= bulkFailurePreview {
+			fmt.Fprintf(&sb, "; ...and %d more", len(fails)-bulkFailurePreview)
+			break
+		}
+		fmt.Fprintf(&sb, "; [%s] %s/%s status=%d %s", f.action, f.index, f.id, f.status, f.reason)
+	}
+	return errors.New(sb.String())
 }
 
 // IndexExists check index exists
