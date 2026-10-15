@@ -156,11 +156,24 @@ func (cli *ESClientV7) List(index, _ string, kv []*db.ListKV) ([]*json.RawMessag
 
 // BulkUpdate 一个区块对应的记录一起更新
 func (cli *ESClientV7) BulkUpdate(rs []db.Record) error {
+	return cli.bulkUpdate(rs, "")
+}
+
+// BulkUpdateRefresh 同 BulkUpdate，但带 refresh 策略（如 "wait_for"）。
+// seq_marker 用它写入：返回时 marker 已可被 search 到，游标（max(seq)）就不会读到旧值。
+func (cli *ESClientV7) BulkUpdateRefresh(rs []db.Record, refresh string) error {
+	return cli.bulkUpdate(rs, refresh)
+}
+
+func (cli *ESClientV7) bulkUpdate(rs []db.Record, refresh string) error {
 	beg := types.Now()
 	defer func() {
-		log15.Info("BulkUpdate", "cost", types.Since(beg))
+		log15.Info("BulkUpdate", "cost", types.Since(beg), "refresh", refresh)
 	}()
 	b := cli.Client.Bulk()
+	if refresh != "" {
+		b = b.Refresh(refresh)
+	}
 	for _, r := range rs {
 		if r.OpType() == db.OpAdd {
 			req := elasticV7.NewBulkIndexRequest().Index(cli.index(r.Index())).Id(r.ID()).Doc(json.RawMessage(r.Value()))

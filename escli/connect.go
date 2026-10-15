@@ -40,12 +40,18 @@ func FilterFailed(cli ESClient, rs []db.Record, bulkErr error) []db.Record {
 	return nil
 }
 
+// RefreshWaitFor：写入后等到该批文档可被 search 时才返回（seq_marker 游标用）
+const RefreshWaitFor = "wait_for"
+
 type ESClient interface {
 	Update(index, typ, id string, value string) error
 	Set(index, typ, id string, value db.Record) error
 	Get(index, typ, id string) (*json.RawMessage, error)
 	List(index, typ string, kv []*db.ListKV) ([]*json.RawMessage, error)
 	BulkUpdate(rs []db.Record) error
+	// BulkUpdateRefresh 同 BulkUpdate，但带 refresh 策略（RefreshWaitFor）。
+	// 游标类写入必须用它，否则刚写完就重启会读到未刷新的旧游标。
+	BulkUpdateRefresh(rs []db.Record, refresh string) error
 
 	IndexExists(index string) (bool, error)
 	CreateIndex(index string, typ, mapping string) (bool, error)
