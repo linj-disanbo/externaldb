@@ -1,0 +1,21 @@
+version: '2'
+
+# ES 7.17 模板（pull_convert / pkgV2 用）。
+# 补丁版可按需替换：改成你镜像仓库里有的 7.17.x 即可（如 7.17.10 / 7.17.20）。
+# 注意：7.17 需要宿主机 vm.max_map_count >= 262144（sysctl -w vm.max_map_count=262144）。
+services:
+  externaldb-es7-17: # Elasticsearch Instance
+    container_name: ${ES_NAME}
+    image: elasticsearch:7.17.10
+    volumes: # Persist ES data in seperate "esdata" volume
+      - ${ES_DIR}:/usr/share/elasticsearch/data
+    environment:
+      - bootstrap.memory_lock=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - discovery.type=single-node
+      # 要启用密码，请将此项设为 true（7.x 默认不带安全模块）
+      - "xpack.security.enabled=true"
+      - ELASTIC_PASSWORD=${ES_PASSWORD}
+    ports: # Expose Elasticsearch ports
+      - ${ES_BIND}:${ES_PORT_HTTP}:9200
+      - ${ES_BIND}:${ES_PORT_TCP}:9300

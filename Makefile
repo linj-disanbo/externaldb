@@ -105,6 +105,8 @@ build: code_gen ## Build all binaries (static, CGO_ENABLED=0)
 	@$(STATIC_BUILD) -o  build/rpc $(SRC)/rpc/
 	@$(STATIC_BUILD) -o  build/dummy_node $(SRC_CLI)/dummy_node/
 	@$(STATIC_BUILD) -o  build/sync_convert $(SRC_CLI)/sync_convert
+	@$(STATIC_BUILD) -o  build/pull_convert $(SRC_CLI)/pull_convert
+	@$(STATIC_BUILD) -o  build/convert_check $(SRC_CLI)/convert_check
 	@cp config/externaldb.toml build/externaldb.toml
 
 .PHONY: build_convert
@@ -260,6 +262,35 @@ pkg-quickStart:
 	cp tools/quick-start/docker-compose-update.yaml externaldb-proof/
 	cp tools/quick-start/Makefile externaldb-proof/
 	cp tools/quick-start/README.md externaldb-proof/
+	cp tools/quick-start/alter-config.sh externaldb-proof/
+	cp tools/quick-start/es-init.sh externaldb-proof/
+	cp tools/quick-start/browser-init.bash externaldb-proof/
+	cp .env externaldb-proof/
+	cp build/rpc build/sync_convert externaldb-proof/ex-merge/bin
+	cp config/externaldb_merge.toml externaldb-proof/ex-merge/etc/externaldb.toml
+	cp tools/sync-convert/docker-compose.yaml externaldb-proof/ex-merge/docker-compose.yaml
+	cp tools/sync-convert/README.md externaldb-proof/ex-merge/README.md
+	tar zcvf externaldb-proof.tgz externaldb-proof
+
+# pkgV2: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
+#   - 增加 pull_convert / convert_check
+#   - 去掉 ES6，保留 ES7(7.4.2)，另加 ES7.17（env/es7.17）
+#   - 默认 compose 只起 pull_convert/rpc/jrpc（老 sync+convert 已注释，回退用）
+pkgV2:
+	rm externaldb-proof/* -rf
+	mkdir -p externaldb-proof/bin externaldb-proof/etc externaldb-proof/ex-merge/bin externaldb-proof/ex-merge/etc
+	mkdir -p externaldb-proof/env/es7 externaldb-proof/env/es7.17
+	cp build/rpc build/convert build/sync build/jrpc build/pull_convert build/convert_check externaldb-proof/bin/
+	cp config/externaldb.toml externaldb-proof/etc/
+	cp config/chain33.toml externaldb-proof/etc/
+	cp tools/quick-start/proof-init-V7.bash externaldb-proof/env/es7/proof-init.bash
+	cp tools/quick-start/proof-es7.yaml externaldb-proof/env/es7/docker-compose.yaml
+	cp tools/quick-start/proof-init-V7.bash externaldb-proof/env/es7.17/proof-init.bash
+	cp tools/pull-convert/proof-es7.17.yaml externaldb-proof/env/es7.17/docker-compose.yaml
+	cp tools/mime.types externaldb-proof/etc/mime.types
+	cp tools/pull-convert/docker-compose.yaml externaldb-proof/
+	cp tools/pull-convert/Makefile externaldb-proof/
+	cp tools/pull-convert/README.md externaldb-proof/
 	cp tools/quick-start/alter-config.sh externaldb-proof/
 	cp tools/quick-start/es-init.sh externaldb-proof/
 	cp tools/quick-start/browser-init.bash externaldb-proof/
