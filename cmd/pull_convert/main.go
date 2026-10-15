@@ -24,8 +24,8 @@ import (
 	_ "github.com/33cn/chain33/system"
 	_ "github.com/33cn/plugin/plugin/dapp/init"
 	_ "github.com/33cn/plugin/plugin/store/init"
-	"github.com/pkg/errors"
 	tml "github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
 
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/db/seqmark"
@@ -126,10 +126,10 @@ func main() {
 
 	// 4. 主循环
 	mod := &util.ModuleConvert{
-		Name:        cfg.Convert.AppName,
-		WriteDB:     esClient,
-		StartSeq:    cfg.Convert.StartSeq,
-		AppConvert:  app,
+		Name:       cfg.Convert.AppName,
+		WriteDB:    esClient,
+		StartSeq:   cfg.Convert.StartSeq,
+		AppConvert: app,
 	}
 	opt := convert.PullOptions{
 		Cursor:       cursor,
@@ -147,14 +147,11 @@ func main() {
 	log.Info("pull_convert stopped")
 }
 
-// resolveCursor 启动探测 + 游标初始化 + 一致性校验。
+// resolveCursor 启动探测 + 游标初始化。
 //
 //   - 探测节点 seq 能力：GetLastBlockSequence 必须可用（节点需开启 isRecordBlockSequence 且从 0 高度起完整）；
 //     再用最后一个 seq 自检 GetBlockSequences/GetBlockByHashes 能取到块。
-//   - fromSeq >= 0：显式指定起点（修复/回放），不做 marker 校验。
-//   - 否则取 seq_marker 的 max(seq)；无 marker 时用 [convert].startSeq-1。
-//   - 有 marker 时把它的 (hash,type) 与节点同 seq 的记录比对，不一致直接退出
-//     （换过节点 / 节点 seq 日志被重建，人工确认后再处理）。
+//   - 起点优先级见 convert.ResolveCursor：-from → 已有 marker（与节点比对）→ 旧 last_seq 自举 → startSeq-1。
 func resolveCursor(src convert.SeqSource, esClient escli.ESClient, cfg *proto.ConfigNew, fromSeq int64) (int64, error) {
 	last, err := src.LastSeq()
 	if err != nil {
@@ -168,35 +165,28 @@ func resolveCursor(src convert.SeqSource, esClient escli.ESClient, cfg *proto.Co
 	}
 	log.Info("node seq probe ok", "lastSeq", last)
 
-	if fromSeq >= 0 {
-		log.Warn("忽略 marker，使用 -from 指定的起点", "from", fromSeq)
-		return fromSeq, nil
-	}
-
-	seq, m, err := seqmark.Max(esClient)
+	seq, marker, err := seqmark.Max(esClient)
 	if err != nil {
 		return 0, err
 	}
-	if m == nil {
-		cursor := cfg.Convert.StartSeq - 1
-		log.Info("无 seq marker，按配置 startSeq 起跑", "startSeq", cfg.Convert.StartSeq, "cursor", cursor)
-		return cursor, nil
+	// 兼容切换：读旧 convert 的进度（doc id = [convert].appName），没有则 -1
+	oldSeq, err := util.LastSyncSeq(esClient, cfg.Convert.AppName)
+	if err != nil {
+		log.Warn("读取旧 db05_last_seq 失败，忽略", "appName", cfg.Convert.AppName, "err", err)
+		oldSeq = -1
 	}
 
-	cur, err := src.Batch(seq, seq)
-	if err != nil {
-		return 0, errors.Wrapf(err, "校验游标失败：读取 seq(%d) 出错", seq)
-	}
-	if len(cur) != 1 {
-		return 0, errors.Errorf("校验游标失败：marker 的 seq(%d) 在节点 seq 日志中不存在", seq)
-	}
-	if cur[0].Hash != m.Hash || cur[0].Type != m.Type {
-		return 0, errors.Errorf(
-			"游标与节点不一致：seq=%d marker(hash=%s,type=%d) node(hash=%s,type=%d)。"+
-				"可能换了节点或节点 seq 日志被重建，请人工确认后再处理",
-			seq, m.Hash, m.Type, cur[0].Hash, cur[0].Type)
-	}
-	return seq, nil
+	return convert.ResolveCursor(src, convert.CursorSources{
+		MarkerSeq: seq,
+		Marker:    marker,
+		OldSeq:    oldSeq,
+		StartSeq:  cfg.Convert.StartSeq,
+		SaveMarker: func(m *seqmark.Marker) error {
+			return seqmark.Save(esClient, []*seqmark.Marker{m})
+		},
+	}, fromSeq, func(msg string, ctx ...interface{}) {
+		log.Warn(msg, ctx...)
+	})
 }
 
 func initCfg(path string) *proto.ConfigNew {
