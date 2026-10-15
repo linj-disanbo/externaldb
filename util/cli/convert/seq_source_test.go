@@ -4,10 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/33cn/chain33/common"
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/db"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+
+	"github.com/33cn/externaldb/db"
 )
 
 // fakeSeqClient 按 seq 表模拟节点：hashes[seq] 存在即该 seq 有区块
@@ -16,6 +19,8 @@ type fakeSeqClient struct {
 	hashes       map[int64][]byte
 	hashType     map[int64]int64
 	hashHeight   map[string]int64
+	missingBody  map[string]bool // 该 hash 的块体取不到（返回空 BlockDetail）
+	detailLimit  int             // >0 时模拟 MaxBlockSizePerTime 提前返回（只给前 N 项）
 	seqCalls     int
 	detailCalls  int
 	windowCalls  int
@@ -50,6 +55,13 @@ func (f *fakeSeqClient) GetBlockByHashes(_ context.Context, in *types.ReqHashes,
 	f.detailCalls++
 	var out types.BlockDetails
 	for _, h := range in.Hashes {
+		if f.detailLimit > 0 && len(out.Items) >= f.detailLimit {
+			break // 模拟 MaxBlockSizePerTime：返回前缀
+		}
+		if f.missingBody[string(h)] {
+			out.Items = append(out.Items, &types.BlockDetail{}) // 块体缺失：空 detail
+			continue
+		}
 		out.Items = append(out.Items, &types.BlockDetail{Block: &types.Block{Height: f.hashHeight[string(h)]}})
 	}
 	return &out, nil
@@ -57,7 +69,7 @@ func (f *fakeSeqClient) GetBlockByHashes(_ context.Context, in *types.ReqHashes,
 
 // 造 5,6,7 三个 seq，高度 100,101,102
 func newFake() *fakeSeqClient {
-	f := &fakeSeqClient{last: 7, hashes: map[int64][]byte{}, hashType: map[int64]int64{}, hashHeight: map[string]int64{}}
+	f := &fakeSeqClient{last: 7, hashes: map[int64][]byte{}, hashType: map[int64]int64{}, hashHeight: map[string]int64{}, missingBody: map[string]bool{}}
 	for i, seq := range []int64{5, 6, 7} {
 		h := []byte{byte(seq)}
 		f.hashes[seq] = h
@@ -123,21 +135,66 @@ func TestGRPCSourceBatchMissingSeq(t *testing.T) {
 	assert.Less(t, f.seqCalls, 6)
 }
 
-func TestGRPCSourceBatchCountMismatch(t *testing.T) {
+func TestGRPCSourceBatchTruncatedDetails(t *testing.T) {
 	f := newFake()
+	f.detailLimit = 2 // 模拟 MaxBlockSizePerTime：details 只返回前缀
 	s := &GRPCSource{cli: f}
-	// details 少于 items：必须报错，不能像 convertV2 那样取 minLen
-	f.hashHeight = map[string]int64{} // 所有 hash 高度取 0 无妨，这里制造 detail 数量不足
-	f.hashes[6] = nil
-	delete(f.hashHeight, string([]byte{6}))
-	f.hashType[6] = types.AddBlock
+
+	bs, err := s.Batch(5, 7)
+	assert.NoError(t, err, "细节前缀截断属于正常情况，按取到的长度处理")
+	if assert.Len(t, bs, 2) {
+		assert.Equal(t, int64(5), bs[0].Seq)
+		assert.Equal(t, int64(6), bs[1].Seq)
+		assert.Equal(t, int64(100), bs[0].Height)
+	}
+}
+
+func TestGRPCSourceBatchDelWithoutDetail(t *testing.T) {
+	f := newFake()
+	f.hashType[7] = types.DelBlock
+	f.missingBody[string([]byte{7})] = true // 块体已被 prune
+	s := &GRPCSource{cli: f}
+
+	bs, err := s.Batch(7, 7)
+	assert.NoError(t, err, "del seq 缺块体允许 Detail 为 nil，交调用方兜底")
+	if assert.Len(t, bs, 1) {
+		assert.Equal(t, db.SeqTypeDel, bs[0].Type)
+		assert.Nil(t, bs[0].Detail)
+	}
+}
+
+func TestGRPCSourceBatchAddWithoutDetail(t *testing.T) {
+	f := newFake()
+	f.missingBody[string([]byte{6})] = true // add seq 缺块体 = 数据问题
+	s := &GRPCSource{cli: f}
 
 	_, err := s.Batch(5, 6)
-	// seq 6 的 hash 为 nil 仍会进 items（节点不会给 nil hash），走 detail 数量正常路径：
-	// 这里主要断言不会 panic、且 detail 数量不符时报错
-	if err != nil {
-		assert.Contains(t, err.Error(), "count mismatch")
+	if assert.Error(t, err) {
+		assert.True(t, errors.Is(err, ErrSeqHole))
+		assert.Contains(t, err.Error(), "missing block detail at seq 6")
 	}
+}
+
+func TestGRPCSourceBlockByHash(t *testing.T) {
+	f := newFake()
+	s := &GRPCSource{cli: f}
+
+	d, err := s.BlockByHash(common.ToHex([]byte{5}))
+	assert.NoError(t, err)
+	if assert.NotNil(t, d) {
+		assert.Equal(t, int64(100), d.Block.Height)
+	}
+
+	// 块体不存在 → (nil, nil)，不报错
+	f.missingBody[string([]byte{6})] = true
+	d, err = s.BlockByHash(common.ToHex([]byte{6}))
+	assert.NoError(t, err)
+	assert.Nil(t, d)
+
+	// 空 hash 直接返回
+	d, err = s.BlockByHash("")
+	assert.NoError(t, err)
+	assert.Nil(t, d)
 }
 
 func TestGRPCSourceBatchDelSeq(t *testing.T) {

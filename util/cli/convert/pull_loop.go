@@ -118,7 +118,7 @@ func RunPull(ctx context.Context, src SeqSource, w SeqWriter, dealer BlockDealer
 		}
 
 		for _, b := range bs {
-			if err := processSeq(w, dealer, cache, b); err != nil {
+			if err := processSeq(w, src, dealer, cache, b); err != nil {
 				return err
 			}
 			cursor = b.Seq
@@ -136,10 +136,25 @@ func RunPull(ctx context.Context, src SeqSource, w SeqWriter, dealer BlockDealer
 	}
 }
 
-// processSeq 处理一个 seq：解析 → 写记录 → 写 marker。任一步失败都不推进游标。
-func processSeq(w SeqWriter, dealer BlockDealer, cache *DetailCache, b SeqBlock) error {
+// processSeq 处理一个 seq：补 detail（回滚兜底）→ 解析 → 写记录 → 写 marker。
+// 任一步失败都不推进游标。
+func processSeq(w SeqWriter, src SeqSource, dealer BlockDealer, cache *DetailCache, b SeqBlock) error {
 	if b.Detail == nil {
-		return errors.Errorf("pull_convert: nil detail at seq %d (hash %s)", b.Seq, b.Hash)
+		// del seq 的块体可能已被节点 prune：先查本地缓存，再按 hash 向节点兜底
+		if cache != nil {
+			b.Detail = cache.Get(b.Hash)
+		}
+		if b.Detail == nil && src != nil {
+			d, err := src.BlockByHash(b.Hash)
+			if err != nil {
+				return errors.Wrapf(err, "pull_convert: 取旧块 detail seq %d (hash %s)", b.Seq, b.Hash)
+			}
+			b.Detail = d
+		}
+		if b.Detail == nil {
+			return errors.Errorf("pull_convert: seq %d (hash %s, type %d) 无 block detail：缓存与节点都没有，无法回滚",
+				b.Seq, b.Hash, b.Type)
+		}
 	}
 	blk := &block.Seq{
 		SyncSeq: int(b.Seq),

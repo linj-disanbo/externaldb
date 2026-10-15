@@ -111,7 +111,16 @@ type fakeSource struct {
 	blocks   map[int64]SeqBlock
 	lastErr  error // 只返回一次的错误
 	holeFrom int64 // >0 时该 seq 缺失（返回 ErrSeqHole）
+	byHash   map[string]*types.BlockDetail
 	calls    int
+}
+
+// BlockByHash 回滚兜底：按 hash 取旧块 detail
+func (f *fakeSource) BlockByHash(hash string) (*types.BlockDetail, error) {
+	if f.byHash == nil {
+		return nil, nil
+	}
+	return f.byHash[hash], nil
 }
 
 func (f *fakeSource) LastSeq() (int64, error) {
@@ -193,9 +202,14 @@ func seqBlock(seq, height int64, typ int) SeqBlock {
 
 func startPull(t *testing.T, src SeqSource, w SeqWriter, dealer BlockDealer, opt PullOptions, run time.Duration) error {
 	t.Helper()
+	return startPullWithCache(t, src, w, dealer, NewDetailCache(4), opt, run)
+}
+
+func startPullWithCache(t *testing.T, src SeqSource, w SeqWriter, dealer BlockDealer, cache *DetailCache, opt PullOptions, run time.Duration) error {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), run)
 	defer cancel()
-	return RunPull(ctx, src, w, dealer, NewDetailCache(4), opt)
+	return RunPull(ctx, src, w, dealer, cache, opt)
 }
 
 func blocksFor(from, to int64) map[int64]SeqBlock {
@@ -305,14 +319,50 @@ func TestRunPullPruneMarkers(t *testing.T) {
 	}
 }
 
-func TestRunPullNilDetailFails(t *testing.T) {
-	b := seqBlock(10, 1010, db.SeqTypeAdd)
+// del seq 缺 detail（块体被 prune）：缓存命中即可回滚
+func TestRunPullDelDetailFromCache(t *testing.T) {
+	b := seqBlock(11, 1010, db.SeqTypeDel)
 	b.Detail = nil
-	src := &fakeSource{last: 10, blocks: map[int64]SeqBlock{10: b}}
+	src := &fakeSource{last: 11, blocks: map[int64]SeqBlock{11: b}}
+	cache := NewDetailCache(4)
+	cache.Put(b.Hash, &types.BlockDetail{Block: &types.Block{Height: 1010}})
 	w := &fakeWriter{}
-	err := startPull(t, src, w, &fakeDealer{}, PullOptions{Cursor: 9, Batch: 10, PollInterval: 5 * time.Millisecond}, time.Second)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "nil detail at seq 10")
+	d := &fakeDealer{}
+
+	err := startPullWithCache(t, src, w, d, cache, PullOptions{Cursor: 10, Batch: 10, PollInterval: 5 * time.Millisecond}, 120*time.Millisecond)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, d.called, "缓存命中后应能继续处理")
+	if assert.Len(t, w.markers, 1) {
+		assert.Equal(t, db.SeqTypeDel, w.markers[0].Type)
 	}
-	assert.Empty(t, w.markers)
+}
+
+// 缓存未命中 → 按 hash 向节点兜底
+func TestRunPullDelDetailFromNode(t *testing.T) {
+	b := seqBlock(11, 1010, db.SeqTypeDel)
+	b.Detail = nil
+	src := &fakeSource{last: 11, blocks: map[int64]SeqBlock{11: b}}
+	src.byHash = map[string]*types.BlockDetail{b.Hash: {Block: &types.Block{Height: 1010}}}
+	w := &fakeWriter{}
+	d := &fakeDealer{}
+
+	err := startPull(t, src, w, d, PullOptions{Cursor: 10, Batch: 10, PollInterval: 5 * time.Millisecond}, 120*time.Millisecond)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, d.called)
+	assert.Len(t, w.markers, 1)
+}
+
+// 缓存与节点都没有 → 明确失败、不推进游标
+func TestRunPullDelDetailMissing(t *testing.T) {
+	b := seqBlock(11, 1010, db.SeqTypeDel)
+	b.Detail = nil
+	src := &fakeSource{last: 11, blocks: map[int64]SeqBlock{11: b}}
+	w := &fakeWriter{}
+
+	err := startPull(t, src, w, &fakeDealer{}, PullOptions{Cursor: 10, Batch: 10, PollInterval: 5 * time.Millisecond}, time.Second)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "无 block detail")
+		assert.Contains(t, err.Error(), "无法回滚")
+	}
+	assert.Empty(t, w.markers, "拿不到旧块 detail 不得推进游标")
 }

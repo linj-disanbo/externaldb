@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/33cn/externaldb/db"
 )
 
 const (
@@ -37,8 +39,11 @@ type SeqBlock struct {
 type SeqSource interface {
 	// LastSeq 节点已记录的最大 seq
 	LastSeq() (int64, error)
-	// Batch 拉取 (start, end] 的区块，含 del seq；顺序即 seq 递增顺序
+	// Batch 拉取 (start, end] 的区块，含 del seq；顺序即 seq 递增顺序。
+	// del seq 的 Detail 可能为 nil（块体已被 prune），由调用方兜底。
 	Batch(start, end int64) ([]SeqBlock, error)
+	// BlockByHash 按 hash 取单个区块 detail（回滚兜底）；块体不存在时返回 (nil, nil)
+	BlockByHash(hash string) (*types.BlockDetail, error)
 }
 
 // seqClient 只声明用到的 gRPC 方法，便于单测注入 fake（types.Chain33Client 天然满足）
@@ -139,27 +144,62 @@ func (s *GRPCSource) Batch(start, end int64) ([]SeqBlock, error) {
 		return nil, errors.Wrap(err, "seq_source: GetBlockByHashes")
 	}
 	details := detailReply.GetItems()
-	if len(details) != len(items) {
-		return nil, errors.Wrapf(ErrSeqHole, "seq/detail count mismatch: %d/%d (range %d-%d)",
-			len(items), len(details), start, end)
+	if len(details) == 0 {
+		return nil, nil
+	}
+	// chain33 GetBlockByHashes 对每个 hash 都会 append 一项（块体缺失时是空 BlockDetail），
+	// 但可能因 MaxBlockSizePerTime 提前返回（前缀）→ 以 details 长度作为本批实际长度。
+	if len(details) < len(items) {
+		items = items[:len(details)]
+		end = start + int64(len(details)) - 1
 	}
 
 	out := make([]SeqBlock, 0, len(items))
 	for i, it := range items {
 		seq := start + int64(i)
 		d := details[i]
-		if d == nil || d.Block == nil {
-			return nil, errors.Errorf("seq_source: empty block detail at seq %d", seq)
+		b := SeqBlock{
+			Seq:  seq,
+			Hash: common.ToHex(it.GetHash()),
+			Type: int(it.GetType()),
 		}
-		out = append(out, SeqBlock{
-			Seq:    seq,
-			Height: d.Block.GetHeight(),
-			Hash:   common.ToHex(it.GetHash()),
-			Type:   int(it.GetType()),
-			Detail: d,
-		})
+		if d == nil || d.Block == nil {
+			// 块体取不到（被 chunk/prune 删除）：del seq 允许 Detail 为空，
+			// 由主循环用 detailCache / BlockByHash 兜底；add seq 缺块体是数据问题，报错。
+			if b.Type != db.SeqTypeDel {
+				return nil, errors.Wrapf(ErrSeqHole, "missing block detail at seq %d (type=%d)", seq, b.Type)
+			}
+			log.Warn("seq_source: del seq 无 block detail", "seq", seq, "hash", b.Hash)
+			out = append(out, b)
+			continue
+		}
+		b.Height = d.Block.GetHeight()
+		b.Detail = d
+		out = append(out, b)
 	}
 	return out, nil
+}
+
+// BlockByHash 按 hash 取单个区块 detail（回滚兜底用）；块体不存在时返回 (nil, nil)。
+func (s *GRPCSource) BlockByHash(hash string) (*types.BlockDetail, error) {
+	if hash == "" {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	raw, err := common.FromHex(hash)
+	if err != nil {
+		return nil, errors.Wrapf(err, "seq_source: bad hash %s", hash)
+	}
+	reply, err := s.cli.GetBlockByHashes(ctx, &types.ReqHashes{Hashes: [][]byte{raw}})
+	if err != nil {
+		return nil, errors.Wrapf(err, "seq_source: GetBlockByHashes(%s)", hash)
+	}
+	items := reply.GetItems()
+	if len(items) == 0 || items[0] == nil || items[0].Block == nil {
+		return nil, nil
+	}
+	return items[0], nil
 }
 
 // firstMissingSeq 在 [start, end] 内二分定位第一个缺失的 seq。
