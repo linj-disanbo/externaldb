@@ -276,31 +276,28 @@ pkg-quickStart:
 #   - 增加 pull_convert / convert_check
 #   - 去掉 ES6；env/es7 = ES 7.17（默认，新部署用），包内另存 env/es7.4（ES 7.4.2）备用，
 #     老环境要用 7.4 时，把 env/es7.4 的内容换到 env/es7 即可（不改脚本、不加版本配置）
+#   - 不带 ex-merge（sync_convert 合并模式）
 #   - 默认 compose 只起 pull_convert/rpc/jrpc（老 sync+convert 已注释，回退用）
+#   - 产物目录/包名独立：externaldb-pull / externaldb-pull.tgz（可与 pkg-quickStart 并存）
 pkg-pullConvert:
-	rm externaldb-proof/* -rf
-	mkdir -p externaldb-proof/bin externaldb-proof/etc externaldb-proof/ex-merge/bin externaldb-proof/ex-merge/etc
-	mkdir -p externaldb-proof/env/es7 externaldb-proof/env/es7.4
-	cp build/rpc build/convert build/sync build/jrpc build/pull_convert build/convert_check externaldb-proof/bin/
-	cp config/externaldb.toml externaldb-proof/etc/
-	cp config/chain33.toml externaldb-proof/etc/
-	cp tools/pull-convert/proof-es7.yaml externaldb-proof/env/es7/docker-compose.yaml
-	cp tools/quick-start/proof-init-V7.bash externaldb-proof/env/es7/proof-init.bash
-	cp tools/quick-start/proof-es7.yaml externaldb-proof/env/es7.4/docker-compose.yaml
-	cp tools/quick-start/proof-init-V7.bash externaldb-proof/env/es7.4/proof-init.bash
-	cp tools/mime.types externaldb-proof/etc/mime.types
-	cp tools/pull-convert/docker-compose.yaml externaldb-proof/
-	cp tools/pull-convert/Makefile externaldb-proof/
-	cp tools/pull-convert/README.md externaldb-proof/
-	cp tools/quick-start/alter-config.sh externaldb-proof/
-	cp tools/quick-start/es-init.sh externaldb-proof/
-	cp tools/quick-start/browser-init.bash externaldb-proof/
-	cp .env externaldb-proof/
-	cp build/rpc build/sync_convert externaldb-proof/ex-merge/bin
-	cp config/externaldb_merge.toml externaldb-proof/ex-merge/etc/externaldb.toml
-	cp tools/sync-convert/docker-compose.yaml externaldb-proof/ex-merge/docker-compose.yaml
-	cp tools/sync-convert/README.md externaldb-proof/ex-merge/README.md
-	tar zcvf externaldb-proof.tgz externaldb-proof
+	rm -rf externaldb-pull
+	mkdir -p externaldb-pull/bin externaldb-pull/etc externaldb-pull/env/es7 externaldb-pull/env/es7.4
+	cp build/rpc build/convert build/sync build/jrpc build/pull_convert build/convert_check externaldb-pull/bin/
+	cp config/externaldb.toml externaldb-pull/etc/
+	cp config/chain33.toml externaldb-pull/etc/
+	cp tools/pull-convert/proof-es7.yaml externaldb-pull/env/es7/docker-compose.yaml
+	cp tools/quick-start/proof-init-V7.bash externaldb-pull/env/es7/proof-init.bash
+	cp tools/quick-start/proof-es7.yaml externaldb-pull/env/es7.4/docker-compose.yaml
+	cp tools/quick-start/proof-init-V7.bash externaldb-pull/env/es7.4/proof-init.bash
+	cp tools/mime.types externaldb-pull/etc/mime.types
+	cp tools/pull-convert/docker-compose.yaml externaldb-pull/
+	cp tools/pull-convert/Makefile externaldb-pull/
+	cp tools/pull-convert/README.md externaldb-pull/
+	cp tools/quick-start/alter-config.sh externaldb-pull/
+	cp tools/quick-start/es-init.sh externaldb-pull/
+	cp tools/quick-start/browser-init.bash externaldb-pull/
+	cp .env externaldb-pull/
+	tar zcvf externaldb-pull.tgz externaldb-pull
 
 pkg-mergeStart:
 	rm externaldb-proof/* -rf

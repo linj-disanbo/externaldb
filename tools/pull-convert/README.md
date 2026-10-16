@@ -6,12 +6,11 @@
 ## 包内容
 
 ```
-externaldb-proof/
+externaldb-pull/
 ├── bin/            rpc、jrpc、pull_convert、convert_check（+ 老链路 sync/convert，回退用）
 ├── etc/            externaldb.toml、chain33.toml、mime.types
 ├── env/es7/        ES 7.17.x 的 compose + proof-init.bash（默认）
 ├── env/es7.4/      ES 7.4.2 的 compose + proof-init.bash（备用，见下）
-├── ex-merge/       sync_convert 合并模式（老链路，回退用）
 ├── docker-compose.yaml        默认只起 pull_convert / rpc / jrpc（老链路已注释）
 ├── Makefile                    内层一键脚本
 ├── .env                        物料表相关配置
