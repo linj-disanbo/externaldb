@@ -1,4 +1,4 @@
-# pkgV2：pull_convert 直连部署包
+# pkg-pullConvert：pull_convert 直连部署包
 
 用于 **convert 直连（pull + seq 驱动）** 的一键部署，取代老链路 `sync + convert`。
 设计与切换步骤见 `docs/requirements/convert-direct-from-node.md`（P4 Runbook、P5 对账）。

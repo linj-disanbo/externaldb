@@ -272,12 +272,12 @@ pkg-quickStart:
 	cp tools/sync-convert/README.md externaldb-proof/ex-merge/README.md
 	tar zcvf externaldb-proof.tgz externaldb-proof
 
-# pkgV2: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
+# pkg-pullConvert: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
 #   - 增加 pull_convert / convert_check
 #   - 去掉 ES6；env/es7 = ES 7.17（默认，新部署用），包内另存 env/es7.4（ES 7.4.2）备用，
 #     老环境要用 7.4 时，把 env/es7.4 的内容换到 env/es7 即可（不改脚本、不加版本配置）
 #   - 默认 compose 只起 pull_convert/rpc/jrpc（老 sync+convert 已注释，回退用）
-pkgV2:
+pkg-pullConvert:
 	rm externaldb-proof/* -rf
 	mkdir -p externaldb-proof/bin externaldb-proof/etc externaldb-proof/ex-merge/bin externaldb-proof/ex-merge/etc
 	mkdir -p externaldb-proof/env/es7 externaldb-proof/env/es7.4

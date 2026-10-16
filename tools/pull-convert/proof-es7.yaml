@@ -1,6 +1,6 @@
 version: '2'
 
-# ES 7.17 模板（pkgV2 默认，env/es7 用这个）。
+# ES 7.17 模板（pkg-pullConvert 默认，env/es7 用这个）。
 # 补丁版可按需替换：改成你镜像仓库里有的 7.17.x 即可（如 7.17.10 / 7.17.20）。
 # 注意：7.17 需要宿主机 vm.max_map_count >= 262144（sysctl -w vm.max_map_count=262144）。
 services:
