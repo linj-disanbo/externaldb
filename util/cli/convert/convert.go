@@ -256,6 +256,23 @@ func (a *App) RecoverStats(client escli.ESClient, lastSeq int64) error {
 	return nil
 }
 
+// RecoverStatsAt 按"已处理完的区块高度"恢复累计类统计（见 stat.HeightRecover）。
+// 直连（pull）路径用它：marker 里有游标块的高度，用它对齐 prev 才不会在崩溃重放时重复累加。
+func (a *App) RecoverStatsAt(client escli.ESClient, height int64) error {
+	for _, st := range a.stats {
+		if hr, ok := st.(stat.HeightRecover); ok {
+			if err := hr.RecoverAt(client, height); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := st.Recover(client, 0); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (a *App) ConvertBlock(blockSeq *block.Seq, detail *types.BlockDetail) ([]db.Record, error) {
 	var records []db.Record
 	var err error

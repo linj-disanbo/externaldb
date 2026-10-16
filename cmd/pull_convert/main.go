@@ -122,14 +122,24 @@ func main() {
 	}
 	defer func() { _ = src.Close() }()
 
-	// 3. 启动探测 + 游标（marker → 与节点比对）
-	cursor, err := resolveCursor(src, esClient, cfg, *fromSeq)
+	// 3. 启动探测 + 游标（marker → 与节点比对）；cursorHeight 是游标那块的高度，用于对齐累计类统计
+	cursor, cursorHeight, err := resolveCursor(src, esClient, cfg, *fromSeq)
 	if err != nil {
 		fatal("启动失败", "err", err)
 	}
-	log.Info("progress ready", "cursor", cursor)
-	if err := app.RecoverStats(esClient, cursor); err != nil {
-		fatal("RecoverStats failed", "err", err)
+	log.Info("progress ready", "cursor", cursor, "cursorHeight", cursorHeight)
+	// 累计统计（block_stat 的 prev）必须与恢复点对齐：按游标块高度恢复，
+	// 否则"数据已写、marker 未写"的崩溃重放会把同一块重复累加（见 stat.HeightRecover）
+	if cursorHeight >= 0 {
+		if err := app.RecoverStatsAt(esClient, cursorHeight); err != nil {
+			fatal("RecoverStats(At height) failed", "height", cursorHeight, "err", err)
+		}
+		log.Info("RecoverStats done", "atHeight", cursorHeight)
+	} else {
+		log.Warn("游标高度未知（无 marker/旧进度），只能按全局最新恢复统计；若统计值异常请从有 marker 的点重启")
+		if err := app.RecoverStats(esClient, cursor); err != nil {
+			fatal("RecoverStats failed", "err", err)
+		}
 	}
 
 	// 4. 主循环
@@ -159,22 +169,22 @@ func main() {
 //   - 探测节点 seq 能力：GetLastBlockSequence 必须可用（节点需开启 isRecordBlockSequence 且从 0 高度起完整）；
 //     再用最后一个 seq 自检 GetBlockSequences/GetBlockByHashes 能取到块。
 //   - 起点优先级见 convert.ResolveCursor：-from → 已有 marker（与节点比对）→ 旧 last_seq 自举 → startSeq-1。
-func resolveCursor(src convert.SeqSource, esClient escli.ESClient, cfg *proto.ConfigNew, fromSeq int64) (int64, error) {
+func resolveCursor(src convert.SeqSource, esClient escli.ESClient, cfg *proto.ConfigNew, fromSeq int64) (int64, int64, error) {
 	last, err := src.LastSeq()
 	if err != nil {
-		return 0, errors.Wrap(err, "探测节点 seq 失败（确认 blockchain.isRecordBlockSequence=true 且从 0 高度起完整）")
+		return 0, 0, errors.Wrap(err, "探测节点 seq 失败（确认 blockchain.isRecordBlockSequence=true 且从 0 高度起完整）")
 	}
 	if last < 0 {
-		return 0, errors.New("探测节点 seq 失败：节点 seq 日志为空")
+		return 0, 0, errors.New("探测节点 seq 失败：节点 seq 日志为空")
 	}
 	if _, err := src.Batch(last, last); err != nil {
-		return 0, errors.Wrapf(err, "探测节点 seq 失败：读取 seq(%d) 出错", last)
+		return 0, 0, errors.Wrapf(err, "探测节点 seq 失败：读取 seq(%d) 出错", last)
 	}
 	log.Info("node seq probe ok", "lastSeq", last)
 
 	seq, marker, err := seqmark.Max(esClient)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	// 兼容切换：读旧 convert 的进度（doc id = [convert].appName），没有则 -1
 	oldSeq, err := util.LastSyncSeq(esClient, cfg.Convert.AppName)

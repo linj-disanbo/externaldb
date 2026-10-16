@@ -23,31 +23,34 @@ type CursorSources struct {
 //
 // 优先级：显式 fromSeq → 已有 marker（与节点比对一致） → 旧 last_seq 自举 → startSeq-1。
 // marker 一致性与自举都要读节点同 seq 的记录，不一致一律显式失败（不猜）。
-func ResolveCursor(src SeqSource, s CursorSources, fromSeq int64, warn func(msg string, ctx ...interface{})) (int64, error) {
+func ResolveCursor(src SeqSource, s CursorSources, fromSeq int64, warn func(msg string, ctx ...interface{})) (int64, int64, error) {
 	if warn == nil {
 		warn = func(string, ...interface{}) {}
 	}
 
 	if fromSeq >= 0 {
 		warn("忽略 marker/旧进度，使用 -from 指定的起点", "from", fromSeq)
-		return fromSeq, nil
+		if bs, err := src.Batch(fromSeq, fromSeq); err == nil && len(bs) == 1 {
+			return fromSeq, bs[0].Height, nil
+		}
+		return fromSeq, -1, nil // 高度未知 → 统计只能按全局最新恢复
 	}
 
 	if s.MarkerSeq >= 0 && s.Marker != nil {
 		bs, err := src.Batch(s.MarkerSeq, s.MarkerSeq)
 		if err != nil {
-			return 0, errors.Wrapf(err, "校验游标失败：读取 seq(%d) 出错", s.MarkerSeq)
+			return 0, 0, errors.Wrapf(err, "校验游标失败：读取 seq(%d) 出错", s.MarkerSeq)
 		}
 		if len(bs) != 1 {
-			return 0, errors.Errorf("校验游标失败：marker 的 seq(%d) 在节点 seq 日志中不存在", s.MarkerSeq)
+			return 0, 0, errors.Errorf("校验游标失败：marker 的 seq(%d) 在节点 seq 日志中不存在", s.MarkerSeq)
 		}
 		if bs[0].Hash != s.Marker.Hash || bs[0].Type != s.Marker.Type {
-			return 0, errors.Errorf(
+			return 0, 0, errors.Errorf(
 				"游标与节点不一致：seq=%d marker(hash=%s,type=%d) node(hash=%s,type=%d)。"+
 					"可能换了节点或节点 seq 日志被重建，请人工确认后再处理",
 				s.MarkerSeq, s.Marker.Hash, s.Marker.Type, bs[0].Hash, bs[0].Type)
 		}
-		return s.MarkerSeq, nil
+		return s.MarkerSeq, bs[0].Height, nil
 	}
 
 	// 兼容切换：没有 marker 但旧 convert 有进度 → 按旧进度自举一条 marker，
@@ -55,22 +58,22 @@ func ResolveCursor(src SeqSource, s CursorSources, fromSeq int64, warn func(msg 
 	if s.OldSeq >= 0 {
 		bs, err := src.Batch(s.OldSeq, s.OldSeq)
 		if err != nil {
-			return 0, errors.Wrapf(err, "自举失败：读取旧进度 seq(%d) 出错", s.OldSeq)
+			return 0, 0, errors.Wrapf(err, "自举失败：读取旧进度 seq(%d) 出错", s.OldSeq)
 		}
 		if len(bs) != 1 {
-			return 0, errors.Errorf("自举失败：旧进度 seq(%d) 在节点 seq 日志中不存在，请人工确认（或用 -from 指定起点）", s.OldSeq)
+			return 0, 0, errors.Errorf("自举失败：旧进度 seq(%d) 在节点 seq 日志中不存在，请人工确认（或用 -from 指定起点）", s.OldSeq)
 		}
 		m := &seqmark.Marker{Seq: s.OldSeq, Height: bs[0].Height, Hash: bs[0].Hash, Type: bs[0].Type}
 		if s.SaveMarker != nil {
 			if err := s.SaveMarker(m); err != nil {
-				return 0, errors.Wrapf(err, "自举失败：写 marker seq(%d)", s.OldSeq)
+				return 0, 0, errors.Wrapf(err, "自举失败：写 marker seq(%d)", s.OldSeq)
 			}
 		}
 		warn("未找到 seq_marker，已按旧 db05_last_seq 自举", "seq", s.OldSeq, "height", bs[0].Height)
-		return s.OldSeq, nil
+		return s.OldSeq, bs[0].Height, nil
 	}
 
 	cursor := s.StartSeq - 1
 	warn("无 seq_marker、无旧进度，按配置 startSeq 起跑", "startSeq", s.StartSeq, "cursor", cursor)
-	return cursor, nil
+	return cursor, -1, nil // 高度未知
 }
