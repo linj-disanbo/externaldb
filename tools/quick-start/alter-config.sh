@@ -4,35 +4,66 @@ CONF=./etc/externaldb.toml
 
 . .env
 
-set_key_value() {
-    local key value row current
-    key=$1
-    value=$2
-    row=$3
-    if [ -n "$value" ] && [ "$value" != \"\" ]; then
-        current=$(sed -n -e "${row}s/^\($key = \)\([^ ']*\)\(.*\)$/\2/p" $CONF) # value带单引号
-        echo "current: $key = $current"
-        if [ -n "$current" ]; then
-            echo "setting $CONF : $key = $value $row"
-            sed -i "${row}s|${key} = ${current}|${key} = ${value}|" ${CONF}
-        fi
-    fi
+# get_key_value key [section]
+# 取 key 的当前值：给了 section 就只在 [section] 段内找（段内第一个匹配），否则全文找第一个。
+get_key_value() {
+    local key=$1 section=${2#\[}
+    section=${section%\]}
+    awk -v sec="$section" -v key="$key" '
+        BEGIN { insec = (sec == "") ? 1 : 0 }
+        $0 ~ ("^\\[" sec "\\][ \t\r]*$") { insec = 1; next }
+        sec != "" && insec && $0 ~ /^\[/ { insec = 0 }
+        insec && $0 ~ ("^" key "[ \t\r]*=") {
+            sub("^" key "[ \t\r]*=[ \t\r]*", "")
+            print
+            exit
+        }
+    ' "$CONF"
 }
 
-combine_es_host() {
-    local key value row current
-    key=$1
-    value=$2
-    row=$3
-    if [ -n "$value" ] && [ "$value" != \"\" ]; then
-        current=$(sed -n -e "${row}s/^\($key = \)\([^ ']*\)\(.*\)$/\2/p" $CONF) # value带单引号
-        echo "current: $key = $current"
-        if [ -n "$current" ]; then
-            local es_host="\"http://localhost:$value/\""
-            echo "setting $CONF : $key = $es_host $row"
-            sed -i "${row}s|${key} = ${current}|${key} = ${es_host}|" ${CONF}
-        fi
+# replace_key_value key value [section]
+# 按 section 定位替换（不再用行号）：只改该段内第一个 key，避免误改其它段同名 key。
+# 完整重写文件（cat 覆盖）以保留原文件权限/inode；值里带 | & / 等都安全。
+replace_key_value() {
+    local key=$1 value=$2 section=${3#\[}
+    section=${section%\]}
+    awk -v sec="$section" -v key="$key" -v val="$value" '
+        BEGIN { insec = (sec == "") ? 1 : 0 }
+        $0 ~ ("^\\[" sec "\\][ \t\r]*$") { insec = 1; print; next }
+        sec != "" && insec && $0 ~ /^\[/ { insec = 0 }
+        insec && !done && $0 ~ ("^" key "[ \t\r]*=") {
+            print key " = " val
+            done = 1
+            insec = 0
+            next
+        }
+        { print }
+    ' "$CONF" > "$CONF.tmp" && cat "$CONF.tmp" > "$CONF" && rm -f "$CONF.tmp"
+}
+
+# set_key_value key value [section]
+set_key_value() {
+    local key=$1 value=$2 section=$3 current
+    if [ -z "$value" ] || [ "$value" = \"\" ]; then
+        return 0
     fi
+    current=$(get_key_value "$key" "$section")
+    if [ -z "$current" ]; then
+        # 改成按段定位后，未命中要说出来（以前行号失配是静默跳过）
+        echo "!! NOT FOUND: $key${section:+ in [$section]} => 跳过"
+        return 0
+    fi
+    echo "setting $CONF : $key = $value${section:+ (section [$section])}  [was: $current]"
+    replace_key_value "$key" "$value" "$section"
+}
+
+# combine_es_host key port [section]：host 统一写成 "http://localhost:<port>/"
+combine_es_host() {
+    local key=$1 port=$2 section=$3
+    if [ -z "$port" ] || [ "$port" = \"\" ]; then
+        return 0
+    fi
+    set_key_value "$key" "\"http://localhost:$port/\"" "$section"
 }
 
 deal_browser_config() {
@@ -53,31 +84,32 @@ deal_browser_config() {
     fi
 }
 
-# 如果在配置文件中key值不是唯一的，则要加上行号进行定位。===>第一个参数为key值，第二个参数为value值，第三个参数为行号
+# set_key_value key value [section]：key 在多个段里重复时用第三个参数指定段名（如 chain/syncEs/convertEs/sync/rpc）；
+# 按 section 定位，配置增删行都不会失效。
 # chain相关
 set_key_value "title" \"${CHAIN_TITLE}\"
-set_key_value "host" \"${CHAIN_HOST}\" 10
+set_key_value "host" \"${CHAIN_HOST}\" chain
 set_key_value "grpcHost" \"${CHAIN_GRPC_HOST}\"
 set_key_value "symbol" \"${CHAIN_SYMBOL}\"
 # es相关
 set_key_value "esVersion" ${ES_VERSION}
 
-combine_es_host "host" ${ES_PORT} 26
-set_key_value "prefix" \"${SYNC_PREFIX}\" 27
-set_key_value "pwd" \"${ES_PASSWORD}\" 31
+combine_es_host "host" ${ES_PORT} syncEs
+set_key_value "prefix" \"${SYNC_PREFIX}\" syncEs
+set_key_value "pwd" \"${ES_PASSWORD}\" syncEs
 
-combine_es_host "host" ${ES_PORT} 35
-set_key_value "prefix" \"${CONVERT_PREFIX}\" 36
-set_key_value "pwd" \"${ES_PASSWORD}\" 38
+combine_es_host "host" ${ES_PORT} convertEs
+set_key_value "prefix" \"${CONVERT_PREFIX}\" convertEs
+set_key_value "pwd" \"${ES_PASSWORD}\" convertEs
 # sync相关
 set_key_value "pushBind" \"${PUSH_BIND}\"
 set_key_value "pushHost" \"${PUSH_HOST}\"
 set_key_value "pushName" \"${PUSH_NAME}\"
 set_key_value "pushFormat" \"${PUSH_FORMAT}\"
-set_key_value "startSeq" ${START_SEQ} 58
+set_key_value "startSeq" ${START_SEQ} sync
 set_key_value "startHeight" ${START_HEIGHT}
 # rpc相关
-set_key_value "host" \"${RPC_HOST}\" 67
+set_key_value "host" \"${RPC_HOST}\" rpc
 set_key_value "jrpcHost" \"${JRPC_HOST}\"
 set_key_value "swaggerHost" \"${SWAGGER_HOST}\"
 # convert相关
