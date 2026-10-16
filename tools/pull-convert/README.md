@@ -35,3 +35,7 @@ externaldb-pull/
 - ES 7.17.29（默认）需要宿主机 `vm.max_map_count >= 262144`。
 - **要换成 ES 7.4.2**：把 `env/es7.4/` 里的两个文件覆盖到 `env/es7/`（或把目录对调），其它不用动——`ES_VERSION` 保持 7，脚本不区分 7 与 7.4。
 - 回滚/reorg 由节点 seq 日志里的 del 事件驱动，不需要额外配置；块体被 prune 的旧块靠 `pullDetailCache`（默认 1000）兜底。
+- **改了 `.env` 里的 `ES_NAME` 之后**：ES 的 `container_name` 就是 `${ES_NAME}`，改名属于"配置变更"，`docker-compose up -d` 会**重建**该 service——
+  `make initES` 会打印两行（旧名 `Recreated` + 新名 `Started`），这是同一个 ES 的重建过程，不是起了两个。若旧容器残留占用 9200，用
+  `docker ps -a | grep -i elastic` 查出来后 `docker rm -f <旧名>`；数据在 `${ES_DIR}` 卷里，不受改名影响。
+- `es-init.sh` 判重只看**运行中**且同名容器（`docker ps | grep -w ${ES_NAME}`），所以改名后总会打印一次 `es don't exist, to create es`，属正常。
