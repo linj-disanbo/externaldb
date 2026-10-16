@@ -292,6 +292,7 @@ pkg-pullConvert:
 	cp tools/pull-convert/docker-compose.yaml externaldb-pull/
 	cp tools/pull-convert/Makefile externaldb-pull/
 	cp tools/pull-convert/README.md externaldb-pull/
+	cp tools/pull-convert/reindex-shards.sh externaldb-pull/
 	cp tools/quick-start/alter-config.sh externaldb-pull/
 	cp tools/quick-start/es-init.sh externaldb-pull/
 	cp tools/quick-start/browser-init.bash externaldb-pull/
