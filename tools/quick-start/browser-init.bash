@@ -14,6 +14,17 @@ curl -XPUT http://localhost:"$ES_PORT"/"$CONVERT_PREFIX"*/_settings?preserve_exi
     "index.translog.sync_interval" : "3s"
 }'
 
+# 上面的通配会把 seq_marker（pull_convert 的进度游标）也设成 async —— 掉电时可能丢 marker，
+# 重启后游标偏小会重放已处理的 seq，导致 address.tx_count / block_stat 这类读改写计数重复。
+# 这里把游标索引单独覆盖回"每次请求 fsync"，并把 translog 阈值调小（小索引高频写，见任务 2）。
+curl -s -o /dev/null -XPUT "http://localhost:$ES_PORT/${CONVERT_PREFIX}seq_marker/_settings" -u elastic:"$ES_PASSWORD" -H 'Content-Type: application/json' -d '{
+    "index": {
+        "translog.durability":"request",
+        "translog.flush_threshold_size":"64mb",
+        "translog.sync_interval":"5s"
+   }
+}' || true
+
 curl -XPUT http://localhost:"$ES_PORT"/"$CONVERT_PREFIX"account,"$CONVERT_PREFIX"address/_settings -u elastic:"$ES_PASSWORD" -H 'Content-Type: application/json' -d '{
     "index": {
         "refresh_interval":"60s"
