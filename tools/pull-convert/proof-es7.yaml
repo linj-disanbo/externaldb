@@ -8,6 +8,9 @@ version: '2'
 #   docker pull docker.elastic.co/elasticsearch/elasticsearch:7.17.29
 #   docker tag  docker.elastic.co/elasticsearch/elasticsearch:7.17.29 <你的仓库>/elasticsearch:7.17.29
 # 注意：7.17 需要宿主机 vm.max_map_count >= 262144（sysctl -w vm.max_map_count=262144）。
+# 堆：默认 2g（原模板 512m 太小——ES 的 coordination 断路器上限随堆走，512m 时只有 ~51MB，
+# 大 seq（genesis）写出大请求会被 429 拒绝）。线上按机器内存调大，建议不超过宿主机内存的一半、
+# 最多 ~31g；内存小的测试机可调回 1g。
 services:
   externaldb-es7: # Elasticsearch Instance
     container_name: ${ES_NAME}
@@ -16,7 +19,7 @@ services:
       - ${ES_DIR}:/usr/share/elasticsearch/data
     environment:
       - bootstrap.memory_lock=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
       - discovery.type=single-node
       # 要启用密码，请将此项设为 true（7.x 默认不带安全模块）
       - "xpack.security.enabled=true"
