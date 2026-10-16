@@ -63,6 +63,7 @@ func check(client escli.ESClient, cfg *proto.ConfigNew, from, to int64, page, pr
 		allGaps []seqRange
 		allMiss []*seqmark.Marker
 		allDiff []*seqmark.Marker
+		biFound int
 		pageNum = 1
 	)
 	for {
@@ -89,6 +90,7 @@ func check(client escli.ESClient, cfg *proto.ConfigNew, from, to int64, page, pr
 			log.Error("查询 block_info 失败", "page", pageNum, "err", err)
 			return 2
 		}
+		biFound += len(bi)
 		d := diffBlockInfo(ms, bi)
 		allMiss = append(allMiss, d.Missing...)
 		allDiff = append(allDiff, d.Mismatch...)
@@ -122,6 +124,12 @@ func check(client escli.ESClient, cfg *proto.ConfigNew, from, to int64, page, pr
 	}
 	if scanned == 0 {
 		log.Warn("没有扫描到任何 marker（索引未建或游标窗口之外）", "from", from, "to", to)
+	}
+	// saveBlockInfo=false 时不写 block_info：此时不能把每个 marker 都当成"缺失"
+	if scanned > 0 && biFound == 0 {
+		log.Warn("block_info 为空（[convert] saveBlockInfo=false？），本次跳过 block_info 对账",
+			"markers", scanned)
+		allMiss = nil
 	}
 	if len(allGaps) > 0 || len(allMiss) > 0 || len(allDiff) > 0 {
 		return 1
