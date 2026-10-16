@@ -93,6 +93,9 @@ set_key_value "grpcHost" \"${CHAIN_GRPC_HOST}\"
 set_key_value "symbol" \"${CHAIN_SYMBOL}\"
 # es相关
 set_key_value "esVersion" ${ES_VERSION}
+# 新建索引的分片/副本（[esIndex]）；不配就沿用配置文件里的值
+set_key_value "numberOfShards" ${ES_SHARDS} esIndex
+set_key_value "numberOfReplicas" ${ES_REPLICAS} esIndex
 
 combine_es_host "host" ${ES_PORT} syncEs
 set_key_value "prefix" \"${SYNC_PREFIX}\" syncEs

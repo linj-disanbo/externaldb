@@ -1,8 +1,8 @@
 version: '2'
 
 # pull_convert（直连 pull + seq）部署模板：
-#   pull_convert 取代 sync + convert 作为唯一写方（同一批索引不能两个写方并行）。
-#   旧链路（sync + convert）保留在文件末尾并已注释，用于回退。
+#   pull_convert 是唯一写方（同一批索引不能有两个写方）。
+#   jrpc 供浏览器/查询使用；rpc（gin REST）与老链路 sync/convert 不在本包里。
 services:
   pull_convert:
     container_name: ${PROJECT_NAME}-pull-convert
@@ -14,17 +14,7 @@ services:
     # -c 必须给完整 chain33 配置：v1.72 起 fork 严格校验，缺失即 panic
     command: /root/bin/pull_convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
 
-  rpc: # 存证项目使用
-    container_name: ${PROJECT_NAME}-rpc
-    image: docker.io/ubuntu:16.04
-    volumes:
-      - ./bin/:/root/bin/
-      - ./etc/:/root/etc/
-      - ./etc/mime.type:/etc/mime.types # 用于处理文件后缀
-    network_mode: "host"
-    command: /root/bin/rpc -f /root/etc/externaldb.toml &
-
-  jrpc: # 浏览器项目使用
+  jrpc: # 浏览器/查询使用
     container_name: ${PROJECT_NAME}-jrpc
     image: docker.io/ubuntu:16.04
     volumes:
@@ -32,24 +22,3 @@ services:
       - ./etc/:/root/etc/
     network_mode: "host"
     command: /root/bin/jrpc -f /root/etc/externaldb.toml &
-
-  # ---- 回退用（默认不启动）：老链路 sync + convert ----
-  # sync:
-  #   container_name: ${PROJECT_NAME}-sync
-  #   image: docker.io/ubuntu:16.04
-  #   volumes:
-  #     - ./bin/:/root/bin/
-  #     - ./etc/:/root/etc/
-  #   network_mode: "host"
-  #   command: /root/bin/sync -f /root/etc/externaldb.toml &
-  #
-  # convert:
-  #   container_name: ${PROJECT_NAME}-convert
-  #   image: docker.io/ubuntu:16.04
-  #   depends_on:
-  #     - sync
-  #   volumes:
-  #     - ./bin/:/root/bin/
-  #     - ./etc/:/root/etc/
-  #   network_mode: "host"
-  #   command: /root/bin/convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &

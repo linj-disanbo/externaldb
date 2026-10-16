@@ -32,7 +32,7 @@ user = "elastic"
 pwd = "elastic"
 
 [esIndex]
-numberOfShards = 5
+numberOfShards = 1
 numberOfReplicas = 0
 
 # 同步程序的配置
