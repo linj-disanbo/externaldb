@@ -37,8 +37,17 @@ func CombineMap(mapping, typ string, version int32) (string, error) {
 	if version != 0 && version != 7 {
 		log.Warn("CombineMap: only es7 supported, ignore esVersion", "version", version)
 	}
+	// 保留 InitMapSet 设进 mappings["settings"] 的分片/副本数（原来这里把 settings 一起删了，
+	// 导致 [esIndex] numberOfShards/numberOfReplicas 从来没生效，索引都是 ES 默认 1 分片 1 副本）。
+	settings := mappings["settings"]
 	for k := range mappings {
 		delete(mappings, k)
+	}
+	if s, ok := para["settings"]; ok {
+		settings = s // 单个 mapping 自带 settings 时以它为准
+	}
+	if settings != nil {
+		mappings["settings"] = settings
 	}
 	mappings["mappings"] = para["mappings"]
 

@@ -1,63 +1,38 @@
 package util
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/33cn/externaldb/proto"
 )
 
-//修改Mapping去掉了Type
-const SeqMapping = `{
-    "mappings":{
-        "properties":{
-            "sync_seq":{
-                "type":"long"
-            }
-        }
-    }
-}`
+// [esIndex] 的 numberOfShards/numberOfReplicas 必须真的写进创建索引的 body
+func TestCombineMapKeepsIndexSettings(t *testing.T) {
+	InitMapSet(7, &proto.ESIndex{NumberOfShards: 3, NumberOfReplicas: 0})
 
-const txMapping = `{
-    "mappings":{
-        "properties":{
-            "multi_signature_address":{
-                "type":"keyword"
-            },
-            "tx_hash":{
-                "type":"keyword"
-            },
-            "tx_id":{
-                "type":"long"
-            },
-            "type":{
-                "type":"keyword"
-            }
-        }
-    }
-}`
+	out, err := CombineMap(`{"mappings":{"properties":{"a":{"type":"long"}}}}`, "", 7)
+	assert.NoError(t, err)
 
-func TestCombineMap1(t *testing.T) {
-	assert := assert.New(t)
-	settingMap(3, 1)
-	res, err := CombineMap(SeqMapping, "", 7)
-	t.Log(res)
-	assert.Nil(err)
-}
+	var got map[string]interface{}
+	assert.NoError(t, json.Unmarshal([]byte(out), &got))
 
-func TestCombineMap2(t *testing.T) {
-	assert := assert.New(t)
-	settingMap(3, 1)
-	res, err := CombineMap(txMapping, "", 7)
-	t.Log(res)
-	assert.Nil(err)
-}
+	settings, ok := got["settings"].(map[string]interface{})
+	if assert.True(t, ok, "settings 应保留，实际: %v", got["settings"]) {
+		assert.Equal(t, float64(3), settings["number_of_shards"])
+		assert.Equal(t, float64(0), settings["number_of_replicas"])
+	}
+	assert.NotNil(t, got["mappings"], "mappings 不能丢")
 
-func TestCombineMap3(t *testing.T) {
-	assert := assert.New(t)
-	settingMap(3, 1)
-	res1, err := CombineMap(txMapping, "account1", 6)
-	res2, err := CombineMap(txMapping, "account2", 6)
-	t.Log(res1)
-	t.Log(res2)
-	assert.Nil(err)
+	// 单个 mapping 自带 settings 时优先用它
+	out, err = CombineMap(`{"settings":{"number_of_shards":1},"mappings":{}}`, "", 7)
+	assert.NoError(t, err)
+	got = map[string]interface{}{}
+	assert.NoError(t, json.Unmarshal([]byte(out), &got))
+	settings, _ = got["settings"].(map[string]interface{})
+	if assert.NotNil(t, settings) {
+		assert.Equal(t, float64(1), settings["number_of_shards"])
+	}
 }
