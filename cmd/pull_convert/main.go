@@ -87,14 +87,19 @@ func main() {
 	}
 	log.Info("work dir", "dir", workDir)
 
-	// 1. ES 连接 + 各类索引初始化（converter 的 InitDB 走 convert.EsWrite）
-	convert.InitWriteDB(cfg.ConvertEs, cfg.EsVersion)
+	// 1. ES 连接
+	// 先自己连一次做自检：InitWriteDB 内部失败是 panic，认证失败只会打一坨堆栈。
 	esClient, err := escli.NewESLongConnect(cfg.ConvertEs.Host, cfg.ConvertEs.Prefix, cfg.EsVersion,
 		cfg.ConvertEs.User, cfg.ConvertEs.Pwd)
 	if err != nil {
-		log.Error("ES connect failed", "host", cfg.ConvertEs.Host, "prefix", cfg.ConvertEs.Prefix, "err", err)
+		log.Error("ES 连接失败：检查 etc/externaldb.toml 的 [convertEs] host/user/pwd 是否与 ES 实际账号一致"+
+			"（开了 xpack.security 时是 elastic / .env 里的 ES_PASSWORD；注意 ES 数据目录若是旧的，"+
+			"改 .env 里的 ES_PASSWORD 不会跟着改密码）",
+			"host", cfg.ConvertEs.Host, "user", cfg.ConvertEs.User, "err", err)
 		os.Exit(1)
 	}
+	// 索引初始化（converter 的 InitDB 走 convert.EsWrite）；ES 已确认可连，不会再 panic
+	convert.InitWriteDB(cfg.ConvertEs, cfg.EsVersion)
 	db.SetAddrID(cfg.Convert.AddressDriver)
 	convert.InitContract(cfg)
 	convert.InitConfig(cfg)
