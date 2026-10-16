@@ -44,6 +44,7 @@ import (
 	// 注册所有 converter（同 cmd/convert/main.go）
 	_ "github.com/33cn/externaldb/db/account"
 	_ "github.com/33cn/externaldb/db/coins"
+	_ "github.com/33cn/externaldb/db/coinsx"
 	_ "github.com/33cn/externaldb/db/evm"
 	_ "github.com/33cn/externaldb/db/evm/erc1155"
 	_ "github.com/33cn/externaldb/db/evm/erc721"
@@ -52,6 +53,7 @@ import (
 	_ "github.com/33cn/externaldb/db/filepart"
 	_ "github.com/33cn/externaldb/db/filesummary"
 	_ "github.com/33cn/externaldb/db/multisig"
+	_ "github.com/33cn/externaldb/db/pos33"
 	_ "github.com/33cn/externaldb/db/proof"
 	_ "github.com/33cn/externaldb/db/proof_config"
 	_ "github.com/33cn/externaldb/db/ticket"
