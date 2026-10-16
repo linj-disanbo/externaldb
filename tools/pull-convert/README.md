@@ -9,7 +9,7 @@
 externaldb-pull/
 ├── bin/            rpc、jrpc、pull_convert、convert_check（+ 老链路 sync/convert，回退用）
 ├── etc/            externaldb.toml、chain33.toml、mime.types
-├── env/es7/        ES 7.17.x 的 compose + proof-init.bash（默认）
+├── env/es7/        ES 7.17.29 的 compose + proof-init.bash（默认）
 ├── env/es7.4/      ES 7.4.2 的 compose + proof-init.bash（备用，见下）
 ├── docker-compose.yaml        默认只起 pull_convert / rpc / jrpc（老链路已注释）
 ├── Makefile                    内层一键脚本
@@ -32,6 +32,6 @@ externaldb-pull/
 - **同一批索引只能有一个写方**：`pull_convert` 与老 `convert` 不能同时跑（两套游标）。
 - `pull_convert` 启动会自动自举游标；首次启动看日志里是 `已按旧 db05_last_seq 自举` 还是 `按配置 startSeq 起跑`——
   后者意味着会**从 startSeq 重跑**，切换前务必确认 `etc/externaldb.toml` 里 `[convert].startSeq` 与现状一致。
-- ES 7.17（默认）需要宿主机 `vm.max_map_count >= 262144`。
+- ES 7.17.29（默认）需要宿主机 `vm.max_map_count >= 262144`。
 - **要换成 ES 7.4.2**：把 `env/es7.4/` 里的两个文件覆盖到 `env/es7/`（或把目录对调），其它不用动——`ES_VERSION` 保持 7，脚本不区分 7 与 7.4。
 - 回滚/reorg 由节点 seq 日志里的 del 事件驱动，不需要额外配置；块体被 prune 的旧块靠 `pullDetailCache`（默认 1000）兜底。

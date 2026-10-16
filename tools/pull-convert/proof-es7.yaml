@@ -1,12 +1,12 @@
 version: '2'
 
 # ES 7.17 模板（pkg-pullConvert 默认，env/es7 用这个）。
-# 补丁版可按需替换：改成你镜像仓库里有的 7.17.x 即可（如 7.17.10 / 7.17.20）。
+# 当前固定 7.17.29；如需其它补丁版改下面 image 一行即可。
 # 注意：7.17 需要宿主机 vm.max_map_count >= 262144（sysctl -w vm.max_map_count=262144）。
 services:
   externaldb-es7: # Elasticsearch Instance
     container_name: ${ES_NAME}
-    image: elasticsearch:7.17.10
+    image: elasticsearch:7.17.29
     volumes: # Persist ES data in seperate "esdata" volume
       - ${ES_DIR}:/usr/share/elasticsearch/data
     environment:
