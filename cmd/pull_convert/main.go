@@ -14,6 +14,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -79,13 +80,18 @@ func main() {
 	}
 	util.InitChain33(title, symbol, *chainPath)
 	util.SetupLog(cfg.Convert.GetAppName(), "debug")
+	// SetupLog 之后 log15 只写文件（logs/<appName>.log 与 .error.log），控制台不再有日志；
+	// 这里显式提示一次目录与 appName，并让后续启动期致命错误同时打 stderr（见 fatal）。
+	if abs, aerr := filepath.Abs("logs"); aerr == nil {
+		fmt.Fprintf(os.Stderr, "pull_convert: 日志目录 %s（appName=%s，之后日志只写文件）\n",
+			abs, cfg.Convert.GetAppName())
+	}
 	util.InitMapSet(cfg.EsVersion, cfg.EsIndex)
 	db.SetVersion(cfg.EsVersion)
 
 	workDir := pwd()
 	if err := os.Chdir(workDir); err != nil {
-		log.Error("chdir failed", "dir", workDir, "err", err)
-		os.Exit(1)
+		fatal("chdir failed", "dir", workDir, "err", err)
 	}
 	log.Info("work dir", "dir", workDir)
 
@@ -94,11 +100,10 @@ func main() {
 	esClient, err := escli.NewESLongConnect(cfg.ConvertEs.Host, cfg.ConvertEs.Prefix, cfg.EsVersion,
 		cfg.ConvertEs.User, cfg.ConvertEs.Pwd)
 	if err != nil {
-		log.Error("ES 连接失败：检查 etc/externaldb.toml 的 [convertEs] host/user/pwd 是否与 ES 实际账号一致"+
+		fatal("ES 连接失败：检查 etc/externaldb.toml 的 [convertEs] host/user/pwd 是否与 ES 实际账号一致"+
 			"（开了 xpack.security 时是 elastic / .env 里的 ES_PASSWORD；注意 ES 数据目录若是旧的，"+
 			"改 .env 里的 ES_PASSWORD 不会跟着改密码）",
 			"host", cfg.ConvertEs.Host, "user", cfg.ConvertEs.User, "err", err)
-		os.Exit(1)
 	}
 	// 索引初始化（converter 的 InitDB 走 convert.EsWrite）；ES 已确认可连，不会再 panic
 	convert.InitWriteDB(cfg.ConvertEs, cfg.EsVersion)
@@ -107,28 +112,24 @@ func main() {
 	convert.InitConfig(cfg)
 	app := convert.NewApp(cfg)
 	if err := seqmark.InitDB(esClient); err != nil {
-		log.Error("seqmark.InitDB failed", "err", err)
-		os.Exit(1)
+		fatal("seqmark.InitDB failed", "err", err)
 	}
 
 	// 2. 节点 seq 来源
 	src, err := convert.NewGRPCSource(cfg.Chain.GrpcHost)
 	if err != nil {
-		log.Error("connect chain33 failed", "grpcHost", cfg.Chain.GrpcHost, "err", err)
-		os.Exit(1)
+		fatal("connect chain33 failed", "grpcHost", cfg.Chain.GrpcHost, "err", err)
 	}
 	defer func() { _ = src.Close() }()
 
 	// 3. 启动探测 + 游标（marker → 与节点比对）
 	cursor, err := resolveCursor(src, esClient, cfg, *fromSeq)
 	if err != nil {
-		log.Error("启动失败", "err", err)
-		os.Exit(1)
+		fatal("启动失败", "err", err)
 	}
 	log.Info("progress ready", "cursor", cursor)
 	if err := app.RecoverStats(esClient, cursor); err != nil {
-		log.Error("RecoverStats failed", "err", err)
-		os.Exit(1)
+		fatal("RecoverStats failed", "err", err)
 	}
 
 	// 4. 主循环
@@ -148,8 +149,7 @@ func main() {
 	defer stop()
 	if err := convert.RunPull(ctx, src, convert.NewESWriter(esClient), mod,
 		convert.NewDetailCache(int(cfg.Convert.PullDetailCache)), opt); err != nil {
-		log.Error("pull_convert 异常退出", "err", err)
-		os.Exit(1)
+		fatal("pull_convert 异常退出", "err", err)
 	}
 	log.Info("pull_convert stopped")
 }
@@ -196,10 +196,18 @@ func resolveCursor(src convert.SeqSource, esClient escli.ESClient, cfg *proto.Co
 	})
 }
 
+// fatal 启动期致命错误：log 可能已重定向到文件，这里同时打 stderr，避免"静默退出"。
+func fatal(msg string, kv ...interface{}) {
+	log.Error(msg, kv...)
+	fmt.Fprintf(os.Stderr, "FATAL: %s %v\n", msg, kv)
+	os.Exit(1)
+}
+
 func initCfg(path string) *proto.ConfigNew {
 	var cfg proto.ConfigNew
 	if _, err := tml.DecodeFile(path, &cfg); err != nil {
 		log.Error("init config failed", "path", path, "err", err)
+		fmt.Fprintf(os.Stderr, "FATAL: init config failed path=%s err=%v\n", path, err)
 		os.Exit(1)
 	}
 	return &cfg

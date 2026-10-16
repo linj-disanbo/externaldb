@@ -29,6 +29,8 @@ externaldb-pull/
 
 ## 注意
 
+- **ES 堆建议 ≥2g**：ES 的 coordination 断路器上限随堆走，512m 堆时只有 ~51MB，大 seq（genesis）写出大请求会被 429 拒绝
+  （代码已按 ≤5MB 分片 + 429 退避重试兜底，但堆太小整体吞吐也差）。改 `env/es7/docker-compose.yaml` 的 `ES_JAVA_OPTS` 后 `make downES && make initES`。
 - **同一批索引只能有一个写方**：`pull_convert` 与老 `convert` 不能同时跑（两套游标）。
 - `pull_convert` 启动会自动自举游标；首次启动看日志里是 `已按旧 db05_last_seq 自举` 还是 `按配置 startSeq 起跑`——
   后者意味着会**从 startSeq 重跑**，切换前务必确认 `etc/externaldb.toml` 里 `[convert].startSeq` 与现状一致。
