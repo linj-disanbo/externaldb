@@ -114,6 +114,11 @@ func main() {
 	if err := seqmark.InitDB(esClient); err != nil {
 		fatal("seqmark.InitDB failed", "err", err)
 	}
+	// marker 写入用普通 bulk（不再逐 seq 等 refresh）；这里显式 refresh 一次再读游标，
+	// 保证"已 ACK 但还没被 ES 自动 refresh"的 marker 对 search 可见（否则重启会多重放几条）。
+	if err := seqmark.Refresh(esClient); err != nil {
+		log.Warn("seqmark 索引 refresh 失败，游标可能读到旧值（会重放少量 seq）", "err", err)
+	}
 
 	// 2. 节点 seq 来源
 	src, err := convert.NewGRPCSource(cfg.Chain.GrpcHost)

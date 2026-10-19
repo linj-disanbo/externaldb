@@ -64,7 +64,11 @@ func InitDB(cli db.DBCreator) error {
 	return util.InitIndex(cli, TableName, TableName, Mapping)
 }
 
-// Save 追加 marker；refresh=wait_for 保证返回时即可被 search 到（游标正确性依赖它）。
+// Save 追加 marker，用普通 bulk（**不** 逐次 refresh=wait_for）。
+//
+// 为什么不 wait_for：wait_for 每次要等一个 refresh 周期（实测 ~1s），逐 seq 写会把
+// 追块速度压到 ~1 块/秒。marker 只要保证"重启时能被 search 读到"——
+// 启动时调用一次 Refresh() 即可（translog durability=request 下，ACK 即已落盘，重启不丢）。
 func Save(cli escli.ESClient, ms []*Marker) error {
 	if len(ms) == 0 {
 		return nil
@@ -73,7 +77,13 @@ func Save(cli escli.ESClient, ms []*Marker) error {
 	for _, m := range ms {
 		rs = append(rs, NewMarkerRecord(m))
 	}
-	return cli.BulkUpdateRefresh(rs, escli.RefreshWaitFor)
+	return cli.BulkUpdate(rs)
+}
+
+// Refresh 显式 refresh marker 索引。启动时、读游标（Max）之前调用一次，
+// 保证刚写入但还未被 ES 自动 refresh 的 marker 对 search 可见。
+func Refresh(cli escli.ESClient) error {
+	return cli.RefreshIndex(TableName)
 }
 
 // Max 读取游标：返回最大 seq 及其 marker；没有任何 marker 时返回 (-1, nil, nil)。

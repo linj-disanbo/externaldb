@@ -50,8 +50,11 @@ type ESClient interface {
 	List(index, typ string, kv []*db.ListKV) ([]*json.RawMessage, error)
 	BulkUpdate(rs []db.Record) error
 	// BulkUpdateRefresh 同 BulkUpdate，但带 refresh 策略（RefreshWaitFor）。
-	// 游标类写入必须用它，否则刚写完就重启会读到未刷新的旧游标。
+	// 注意：refresh=wait_for 每次要等一个 refresh 周期（实测 ~1s），不要放进逐块热路径。
 	BulkUpdateRefresh(rs []db.Record, refresh string) error
+	// RefreshIndex 显式 refresh 一个索引（索引名不含前缀）。
+	// 游标类索引用它：写入用普通 bulk，重启/关键时刻显式 refresh 一次即可被 search 到。
+	RefreshIndex(index string) error
 
 	IndexExists(index string) (bool, error)
 	CreateIndex(index string, typ, mapping string) (bool, error)

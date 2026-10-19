@@ -362,6 +362,23 @@ func (cli *ESClientV7) DeleteByQuery(idx, _ string, query *querypara.Query) erro
 	return err
 }
 
+// RefreshIndex 显式 refresh 一个索引（POST <prefix><index>/_refresh）。
+// 用途：marker/游标这类"写完要能被 search 立刻读到"的场景，用一次显式 refresh 取代
+// 每次写入的 refresh=wait_for（后者要等一个 refresh 周期，实测 ~1s/次，会把逐块循环拖死）。
+func (cli *ESClientV7) RefreshIndex(index string) error {
+	if index == "" {
+		return errors.New("RefreshIndex: empty index")
+	}
+	_, err := cli.Client.PerformRequest(context.Background(), elasticV7.PerformRequestOptions{
+		Method: "POST",
+		Path:   "/" + cli.index(index) + "/_refresh", // PerformRequest 的 path 必须以 / 开头
+	})
+	if err != nil {
+		log.Error("RefreshIndex failed", "index", index, "err", err)
+	}
+	return err
+}
+
 // Status 获取ES状态信息
 func (cli *ESClientV7) Status() (res *status.Status) {
 	res = &status.Status{Status: "UP"}
