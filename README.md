@@ -53,7 +53,7 @@ trade 合约接口 https://chain.33.cn/document/105
 
 ## externaldb 整体设计
 
- ![design](./externaldb.png)
+ ![design](./docs/assets/externaldb.png)
 
 模块说明
  1. 同步模块：接受区块推送，保存区块到ES/MQ

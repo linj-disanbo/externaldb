@@ -2,7 +2,7 @@
 
 ## 整体结构介绍
 
-由5部分组成 ![结构图](./deploy-externaldb.png)
+由5部分组成 ![结构图](./assets/deploy-externaldb.png)
  1. 外部依赖：chain33 节点
  1. 内部依赖：elastic search
  1. 模块：sync， convert， jrpc
