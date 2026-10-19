@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/33cn/externaldb/erc20Scaner/config"
+	"github.com/33cn/externaldb/erc20scaner/config"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 

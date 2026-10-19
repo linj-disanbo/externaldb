@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	chain33types "github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/erc20Scaner/blockalign"
+	"github.com/33cn/externaldb/erc20scaner/blockalign"
 )
 
 // buildSlotEthExpectsFromBlockDetail 为每个 chain33 交易下标构造对齐期望。

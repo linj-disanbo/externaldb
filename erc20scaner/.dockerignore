@@ -22,7 +22,6 @@ erc20Scaner
 # 测试文件
 *_test.go
 testdata/
-cli_test.go
 
 # 文档
 docs/

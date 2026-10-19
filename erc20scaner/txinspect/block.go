@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/33cn/externaldb/erc20Scaner/blockalign"
-	"github.com/33cn/externaldb/erc20Scaner/txparser"
+	"github.com/33cn/externaldb/erc20scaner/blockalign"
+	"github.com/33cn/externaldb/erc20scaner/txparser"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
