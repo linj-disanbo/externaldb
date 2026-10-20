@@ -172,3 +172,7 @@ $RECYCLE.BIN/
 build/
 rpc/docs
 .idea/
+
+# go module 缓存（构建时放在仓库内，避免污染 ~/go）
+.gomodcache/
+
