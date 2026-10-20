@@ -7,7 +7,8 @@
 
 ```
 externaldb-pull/
-├── bin/            convert（=pull_convert）、scanner（=erc20scan）、jrpc、erc20api、convert_check
+├── bin/            convert（=pull_convert）、scanner（=erc20scan）、jrpc、erc20api（常驻程序）
+├── tools/          convert_check（离线对账；后续一次性/排障工具也放这里）
 ├── etc/            externaldb.toml、chain33.toml
 ├── env/es7/        ES 7.17.29 的 compose + proof-init.bash（默认）
 ├── env/es7.4/      ES 7.4.2 的 compose + proof-init.bash（备用，见下）
@@ -24,7 +25,7 @@ externaldb-pull/
    `PROJECT_NAME`、ES 密码/数据目录、链地址与 `CONVERT_PREFIX`/`SYNC_PREFIX` 等。
 2. 按物料表改 `etc/externaldb.toml`（节点 gRPC/推送、ES 地址、`[convert].appName`、直连参数 `pullBatch`/`pullPollMs`/`pullDetailCache`/`pullMarkerKeep`）。
 3. 一键启动：`make quickStart`；或分开 `make initES` → `make initConfig` → `make run`。
-4. 对账：`make check`（= `convert_check`），或 `make es-marker` 看游标。
+4. 对账：`make check`（= `tools/convert_check`，在宿主机跑），或 `make es-marker` 看游标。
 5. 回退：停掉 `convert`，另行用老链路（`sync` → `convert`，不在本包内）从 `seq05_seq` 续跑；
    同一批索引只能有一个写方，切换前务必停干净。
 

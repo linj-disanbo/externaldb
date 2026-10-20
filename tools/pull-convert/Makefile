@@ -54,7 +54,7 @@ run:
 
 # 对账/巡检（marker 链连续性、marker 与 block_info 一致性、旧 last_seq 是否停更）
 check:
-	@./bin/convert_check -f ./etc/externaldb.toml || true
+	@./tools/convert_check -f ./etc/externaldb.toml || true
 
 log-convert:
 	@tail -200f ./bin/logs/convert.log
