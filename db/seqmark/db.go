@@ -1,6 +1,6 @@
 // Package seqmark 存 append-only 的 seq marker：convert 直连（pull + seq 驱动）的进度游标。
 //
-// 设计要点（见 docs/requirements/convert-direct-from-node.md D4）：
+// 设计要点：
 //   - 每个 seq 一条，doc id = seq（十进制），只写不删（可滚动删除旧窗口）；
 //   - 游标 = max(seq)；marker 存在即代表该 seq 的数据已写入 → 重启不需要"重做最后一块"；
 //   - del seq 也写 marker → 回滚后游标不回退；

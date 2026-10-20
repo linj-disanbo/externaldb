@@ -1,6 +1,6 @@
 // Package main convert_check — 直连（pull + seq）对账/巡检工具。
 //
-// 检查内容（见 docs/requirements/convert-direct-from-node.md D4/P5）：
+// 检查内容：
 //  1. seq_marker 链是否连续（缺号 = 数据空洞）；
 //  2. 每个 marker 的 (height,hash) 与 block_info 是否一致（缺失/不一致都报）；
 //  3. 打印旧 db05_last_seq（切换后应停止增长，人工比对即可）。

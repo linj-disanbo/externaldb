@@ -53,7 +53,8 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
 - **pull_convert**（`cmd/pull_convert`, `util/cli/convert/{seq_source,pull_loop,seq_writer,seq_cursor}.go`）：直连节点，
   按 seq 拉块（`GetBlockSequences` + `GetBlockByHashes`）→ `ModuleConvert.DealBlockDetail` 展开 → 写 ES；
   进度是 append-only 的 `seq_marker` 索引（游标 = max(seq)，普通 bulk 写 + 启动时 refresh 一次）。
-  设计见 `docs/requirements/convert-direct-from-node.md`，运维清单 `docs/runbook-pull-convert.md`。
+  切换/运维要点：停旧写方 → 起 convert（自动自举游标）→ `convert_check` 对账 → 观察 `seq_marker` 是否单调；
+  ES 侧看 `seq_marker` 的 docs.count 与 translog，写放大时先调 `translog.flush_threshold_size`。
 - **sync / convert**（`cmd/sync`, `cmd/sync_convert`, `cmd/convert`, `store/syncseq/`, `util/cli/convert`）：老链路，
   推送式 sync 把整块 seq 存 ES，convert 读 ES 再展开。**保留但不再作为新部署路径**（同一批索引只能有一个写方）。
 - **jrpc**（`jrpc/`）：JSON-RPC 2.0 查询端点。每链一个 `rpc.Server`，注册 Account/Trade/Block/EVM 等服务；

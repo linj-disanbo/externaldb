@@ -356,5 +356,5 @@ curl -X POST 'http://elastic:***@127.0.0.1:9200/db05_last_seq/_refresh' \
   -H 'Content-Type: application/json'
 ```
 
-长期堆积按 `docs/handoff.md` 的结论处理：调小 `translog.flush_threshold_size` /
-`flush_threshold_period`，或降低进度写入频率。
+长期堆积的解决办法：调小 `translog.flush_threshold_size` / `flush_threshold_period`，
+或降低进度写入频率；加堆/重启前先对进度索引 `_flush`。

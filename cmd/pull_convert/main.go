@@ -7,8 +7,7 @@
 //	                   按 seq 主动拉取                    seq_marker（游标 = max(seq)）
 //
 // 与旧链路（sync → seq05_seq → convert）的区别：不再把整块 seq 存 ES，
-// 拉到数据后直接解析；进度是 append-only 的 seq marker，恢复时取 max(seq)。
-// 设计见 docs/requirements/convert-direct-from-node.md。
+// 拉到数据后直接解析；进度是 append-only 的 seq marker（见 db/seqmark），恢复时取 max(seq)。
 package main
 
 import (

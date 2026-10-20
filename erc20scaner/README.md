@@ -35,4 +35,4 @@ go build ./cmd/tools/erc20-{txinfo,blockparse,scannerfix}   # 离线工具，见
 ## 已知待办
 
 - 扫块进度目前按 **height** 记（有 `alignScanStart` 用 seq-height 差值兜底），del seq 直接跳过；
-  要对齐 convert 的 seq 语义，需要给进度加 seq 并支持回滚。详见 `docs/dev/` 与仓库 `docs/tasks.md`。
+  要对齐 convert 的 seq 语义，需要给进度加 seq 并支持回滚。
