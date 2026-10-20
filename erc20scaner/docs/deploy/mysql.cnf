@@ -1,0 +1,40 @@
+# 自建 MySQL 实例的参考参数（非部署物料，不影响任何程序的启动逻辑）
+# 来源：原 erc20Scaner 独立子工程自带 MySQL 容器时的服务端配置（2025-12）；
+# 现在的部署不再起 MySQL 容器，[mysql].dsn 直接指向已有实例，按需参考以下参数。
+[mysqld]
+# 字符集配置
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
+init_connect='SET NAMES utf8mb4'
+
+# 性能优化配置
+max_connections=500
+max_allowed_packet=64M
+innodb_buffer_pool_size=1G
+innodb_log_file_size=256M
+innodb_flush_log_at_trx_commit=2
+innodb_flush_method=O_DIRECT
+
+# 查询缓存（MySQL 8.0已移除，保留用于兼容性说明）
+# query_cache_type=1
+# query_cache_size=64M
+
+# 慢查询日志
+slow_query_log=1
+slow_query_log_file=/var/lib/mysql/slow-query.log
+long_query_time=2
+
+# 二进制日志
+log_bin=/var/lib/mysql/mysql-bin
+expire_logs_days=7
+max_binlog_size=100M
+
+# 时区
+default-time-zone='+08:00'
+
+[client]
+default-character-set=utf8mb4
+
+[mysql]
+default-character-set=utf8mb4
+

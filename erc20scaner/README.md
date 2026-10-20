@@ -30,6 +30,7 @@ go build ./cmd/tools/erc20-{txinfo,blockparse,scannerfix}   # 离线工具，见
 | `docs/dev/` | 设计/实现文档（交易记录、余额刷新、配置、升级、验证计划等） |
 | `docs/rpc/` | `/evmapi/*` 接口文档与联调用例 |
 | `docs/tools/` | 离线工具说明 |
+| `docs/deploy/` | 部署参考（`mysql.cnf`：自建 MySQL 实例的参考参数，非部署物料，不影响程序逻辑） |
 
 ## 已知待办
 
