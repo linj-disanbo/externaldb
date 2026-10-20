@@ -34,7 +34,7 @@ type RPCFlags struct {
 // DefineCommonFlags 定义通用命令行参数
 func DefineCommonFlags() *CommonFlags {
 	return &CommonFlags{
-		ConfigFile:  flag.String("c", "config.yaml", "config file path"),
+		ConfigFile:  flag.String("c", "externaldb.toml", "config file path (.toml = externaldb.toml, 其他按 yaml 解析)"),
 		NodeURL:     flag.String("u", "", "node url (overrides config)"),
 		DBEnabled:   flag.Bool("db", false, "enable database (overrides config)"),
 		DBDSN:       flag.String("dsn", "", "database DSN (overrides config)"),

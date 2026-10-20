@@ -35,6 +35,39 @@ pwd = "elastic"
 numberOfShards = 1
 numberOfReplicas = 0
 
+# ERC20 相关程序的 MySQL（jrpc 的 getTransferLogs、erc20scan 落库共用）
+[mysql]
+enabled = false
+dsn = "root:password@tcp(127.0.0.1:3306)/token_scanner?charset=utf8mb4&parseTime=True&loc=Local"
+
+# ERC20 扫块(erc20scan)与查询(erc20api)共用配置
+[erc20scan]
+# eth JSON-RPC 地址；[chain].grpcHost 非空时按 chain33 模式(按 seq 取块)扫块，
+# 此地址用于链上 balanceOf 查询（balanceRefresher / 内联更新）
+ethUrl = "https://mainnet.bityuan.com/eth"
+# 扫块起点，0 = 从已存进度开始（无进度则链上起点）
+startBlock = 0
+# 扫块终点，0 = 跟随链尖
+endBlock = 0
+# true = 扫块时不调链上 balanceOf，只写占位行，由 balanceRefresher 刷新
+skipInlineBalanceUpdate = false
+# erc20api 监听端口（绑定 0.0.0.0）
+apiPort = "8080"
+
+[erc20scan.balanceRefresher]
+enabled = false
+interval = "1h"
+batchSize = 50
+concurrency = 5
+minAge = ""
+
+[erc20scan.log]
+level = "info"
+file = "./logs/app.log"
+maxSize = 100
+maxBackups = 5
+maxAge = 30
+
 # 同步程序的配置
 [sync]
 name = "sync"

@@ -751,6 +751,266 @@ func (x *MySQL) GetEnabled() bool {
 	return false
 }
 
+// ERC20 数据（erc20scan 扫块 + erc20api 查询）的配置
+type ERC20Scan struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// eth JSON-RPC 地址（node 模式扫块、链上 balanceOf 校准都要用）
+	EthUrl string `protobuf:"bytes,1,opt,name=ethUrl,proto3" json:"ethUrl,omitempty"`
+	// 扫块起点；0 表示从已存进度/链上起点继续
+	StartBlock int64 `protobuf:"varint,2,opt,name=startBlock,proto3" json:"startBlock,omitempty"`
+	// 扫块终点；-1 表示跟随链尖
+	EndBlock int64 `protobuf:"varint,3,opt,name=endBlock,proto3" json:"endBlock,omitempty"`
+	// 为 true 时不调用链上 balanceOf，仅写占位行，由 balanceRefresher 刷新
+	SkipInlineBalanceUpdate bool `protobuf:"varint,4,opt,name=skipInlineBalanceUpdate,proto3" json:"skipInlineBalanceUpdate,omitempty"`
+	// erc20api 监听端口（仅端口，绑定 0.0.0.0）
+	ApiPort          string            `protobuf:"bytes,5,opt,name=apiPort,proto3" json:"apiPort,omitempty"`
+	BalanceRefresher *BalanceRefresher `protobuf:"bytes,6,opt,name=balanceRefresher,proto3" json:"balanceRefresher,omitempty"`
+	Log              *Log              `protobuf:"bytes,7,opt,name=log,proto3" json:"log,omitempty"`
+}
+
+func (x *ERC20Scan) Reset() {
+	*x = ERC20Scan{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_exdbconfig_proto_msgTypes[8]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ERC20Scan) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ERC20Scan) ProtoMessage() {}
+
+func (x *ERC20Scan) ProtoReflect() protoreflect.Message {
+	mi := &file_exdbconfig_proto_msgTypes[8]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ERC20Scan.ProtoReflect.Descriptor instead.
+func (*ERC20Scan) Descriptor() ([]byte, []int) {
+	return file_exdbconfig_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ERC20Scan) GetEthUrl() string {
+	if x != nil {
+		return x.EthUrl
+	}
+	return ""
+}
+
+func (x *ERC20Scan) GetStartBlock() int64 {
+	if x != nil {
+		return x.StartBlock
+	}
+	return 0
+}
+
+func (x *ERC20Scan) GetEndBlock() int64 {
+	if x != nil {
+		return x.EndBlock
+	}
+	return 0
+}
+
+func (x *ERC20Scan) GetSkipInlineBalanceUpdate() bool {
+	if x != nil {
+		return x.SkipInlineBalanceUpdate
+	}
+	return false
+}
+
+func (x *ERC20Scan) GetApiPort() string {
+	if x != nil {
+		return x.ApiPort
+	}
+	return ""
+}
+
+func (x *ERC20Scan) GetBalanceRefresher() *BalanceRefresher {
+	if x != nil {
+		return x.BalanceRefresher
+	}
+	return nil
+}
+
+func (x *ERC20Scan) GetLog() *Log {
+	if x != nil {
+		return x.Log
+	}
+	return nil
+}
+
+// ERC20 地址余额后台刷新（链上 balanceOf）
+type BalanceRefresher struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Enabled     bool   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Interval    string `protobuf:"bytes,2,opt,name=interval,proto3" json:"interval,omitempty"`        // 如 1h、30m；空则默认 1h
+	BatchSize   int32  `protobuf:"varint,3,opt,name=batchSize,proto3" json:"batchSize,omitempty"`     // 每轮最多行数，<=0 默认 50
+	Concurrency int32  `protobuf:"varint,4,opt,name=concurrency,proto3" json:"concurrency,omitempty"` // 并发 RPC 上限，<=0 默认 5
+	MinAge      string `protobuf:"bytes,5,opt,name=minAge,proto3" json:"minAge,omitempty"`            // 只刷新超过该时间未更新的行，如 30s；空表示不限制
+}
+
+func (x *BalanceRefresher) Reset() {
+	*x = BalanceRefresher{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_exdbconfig_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *BalanceRefresher) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BalanceRefresher) ProtoMessage() {}
+
+func (x *BalanceRefresher) ProtoReflect() protoreflect.Message {
+	mi := &file_exdbconfig_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BalanceRefresher.ProtoReflect.Descriptor instead.
+func (*BalanceRefresher) Descriptor() ([]byte, []int) {
+	return file_exdbconfig_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *BalanceRefresher) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *BalanceRefresher) GetInterval() string {
+	if x != nil {
+		return x.Interval
+	}
+	return ""
+}
+
+func (x *BalanceRefresher) GetBatchSize() int32 {
+	if x != nil {
+		return x.BatchSize
+	}
+	return 0
+}
+
+func (x *BalanceRefresher) GetConcurrency() int32 {
+	if x != nil {
+		return x.Concurrency
+	}
+	return 0
+}
+
+func (x *BalanceRefresher) GetMinAge() string {
+	if x != nil {
+		return x.MinAge
+	}
+	return ""
+}
+
+type Log struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Level      string `protobuf:"bytes,1,opt,name=level,proto3" json:"level,omitempty"`
+	File       string `protobuf:"bytes,2,opt,name=file,proto3" json:"file,omitempty"`
+	MaxSize    int32  `protobuf:"varint,3,opt,name=maxSize,proto3" json:"maxSize,omitempty"`
+	MaxBackups int32  `protobuf:"varint,4,opt,name=maxBackups,proto3" json:"maxBackups,omitempty"`
+	MaxAge     int32  `protobuf:"varint,5,opt,name=maxAge,proto3" json:"maxAge,omitempty"`
+}
+
+func (x *Log) Reset() {
+	*x = Log{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_exdbconfig_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Log) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Log) ProtoMessage() {}
+
+func (x *Log) ProtoReflect() protoreflect.Message {
+	mi := &file_exdbconfig_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Log.ProtoReflect.Descriptor instead.
+func (*Log) Descriptor() ([]byte, []int) {
+	return file_exdbconfig_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *Log) GetLevel() string {
+	if x != nil {
+		return x.Level
+	}
+	return ""
+}
+
+func (x *Log) GetFile() string {
+	if x != nil {
+		return x.File
+	}
+	return ""
+}
+
+func (x *Log) GetMaxSize() int32 {
+	if x != nil {
+		return x.MaxSize
+	}
+	return 0
+}
+
+func (x *Log) GetMaxBackups() int32 {
+	if x != nil {
+		return x.MaxBackups
+	}
+	return 0
+}
+
+func (x *Log) GetMaxAge() int32 {
+	if x != nil {
+		return x.MaxAge
+	}
+	return 0
+}
+
 type ConfigNew struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -771,13 +1031,14 @@ type ConfigNew struct {
 	Kafka          *Kafka      `protobuf:"bytes,9,opt,name=kafka,proto3" json:"kafka,omitempty"`
 	ManagerAddress []string    `protobuf:"bytes,11,rep,name=manager_address,json=managerAddress,proto3" json:"manager_address,omitempty"`
 	Contracts      []*Contract `protobuf:"bytes,12,rep,name=Contracts,proto3" json:"Contracts,omitempty"`
-	Mysql          *MySQL      `protobuf:"bytes,13,opt,name=mysql,proto3" json:"mysql,omitempty"` // MySQL数据库配置
+	Mysql          *MySQL      `protobuf:"bytes,13,opt,name=mysql,proto3" json:"mysql,omitempty"`         // MySQL数据库配置
+	Erc20Scan      *ERC20Scan  `protobuf:"bytes,14,opt,name=erc20scan,proto3" json:"erc20scan,omitempty"` // ERC20 扫块/查询配置
 }
 
 func (x *ConfigNew) Reset() {
 	*x = ConfigNew{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_exdbconfig_proto_msgTypes[8]
+		mi := &file_exdbconfig_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -790,7 +1051,7 @@ func (x *ConfigNew) String() string {
 func (*ConfigNew) ProtoMessage() {}
 
 func (x *ConfigNew) ProtoReflect() protoreflect.Message {
-	mi := &file_exdbconfig_proto_msgTypes[8]
+	mi := &file_exdbconfig_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -803,7 +1064,7 @@ func (x *ConfigNew) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigNew.ProtoReflect.Descriptor instead.
 func (*ConfigNew) Descriptor() ([]byte, []int) {
-	return file_exdbconfig_proto_rawDescGZIP(), []int{8}
+	return file_exdbconfig_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ConfigNew) GetChain() *Chain33 {
@@ -897,6 +1158,13 @@ func (x *ConfigNew) GetMysql() *MySQL {
 	return nil
 }
 
+func (x *ConfigNew) GetErc20Scan() *ERC20Scan {
+	if x != nil {
+		return x.Erc20Scan
+	}
+	return nil
+}
+
 type Contract struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -910,7 +1178,7 @@ type Contract struct {
 func (x *Contract) Reset() {
 	*x = Contract{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_exdbconfig_proto_msgTypes[9]
+		mi := &file_exdbconfig_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -923,7 +1191,7 @@ func (x *Contract) String() string {
 func (*Contract) ProtoMessage() {}
 
 func (x *Contract) ProtoReflect() protoreflect.Message {
-	mi := &file_exdbconfig_proto_msgTypes[9]
+	mi := &file_exdbconfig_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -936,7 +1204,7 @@ func (x *Contract) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Contract.ProtoReflect.Descriptor instead.
 func (*Contract) Descriptor() ([]byte, []int) {
-	return file_exdbconfig_proto_rawDescGZIP(), []int{9}
+	return file_exdbconfig_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *Contract) GetAbi() string {
@@ -1068,7 +1336,43 @@ var file_exdbconfig_proto_rawDesc = []byte{
 	0x33, 0x0a, 0x05, 0x4d, 0x79, 0x53, 0x51, 0x4c, 0x12, 0x10, 0x0a, 0x03, 0x64, 0x73, 0x6e, 0x18,
 	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x64, 0x73, 0x6e, 0x12, 0x18, 0x0a, 0x07, 0x65, 0x6e,
 	0x61, 0x62, 0x6c, 0x65, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x65, 0x6e, 0x61,
-	0x62, 0x6c, 0x65, 0x64, 0x22, 0xee, 0x03, 0x0a, 0x09, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x4e,
+	0x62, 0x6c, 0x65, 0x64, 0x22, 0x96, 0x02, 0x0a, 0x09, 0x45, 0x52, 0x43, 0x32, 0x30, 0x53, 0x63,
+	0x61, 0x6e, 0x12, 0x16, 0x0a, 0x06, 0x65, 0x74, 0x68, 0x55, 0x72, 0x6c, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x06, 0x65, 0x74, 0x68, 0x55, 0x72, 0x6c, 0x12, 0x1e, 0x0a, 0x0a, 0x73, 0x74,
+	0x61, 0x72, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a,
+	0x73, 0x74, 0x61, 0x72, 0x74, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x12, 0x1a, 0x0a, 0x08, 0x65, 0x6e,
+	0x64, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x08, 0x65, 0x6e,
+	0x64, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x12, 0x38, 0x0a, 0x17, 0x73, 0x6b, 0x69, 0x70, 0x49, 0x6e,
+	0x6c, 0x69, 0x6e, 0x65, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x55, 0x70, 0x64, 0x61, 0x74,
+	0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52, 0x17, 0x73, 0x6b, 0x69, 0x70, 0x49, 0x6e, 0x6c,
+	0x69, 0x6e, 0x65, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
+	0x12, 0x18, 0x0a, 0x07, 0x61, 0x70, 0x69, 0x50, 0x6f, 0x72, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x07, 0x61, 0x70, 0x69, 0x50, 0x6f, 0x72, 0x74, 0x12, 0x43, 0x0a, 0x10, 0x62, 0x61,
+	0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x66, 0x72, 0x65, 0x73, 0x68, 0x65, 0x72, 0x18, 0x06,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x42, 0x61, 0x6c,
+	0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x66, 0x72, 0x65, 0x73, 0x68, 0x65, 0x72, 0x52, 0x10, 0x62,
+	0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x66, 0x72, 0x65, 0x73, 0x68, 0x65, 0x72, 0x12,
+	0x1c, 0x0a, 0x03, 0x6c, 0x6f, 0x67, 0x18, 0x07, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0a, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4c, 0x6f, 0x67, 0x52, 0x03, 0x6c, 0x6f, 0x67, 0x22, 0xa0, 0x01,
+	0x0a, 0x10, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x66, 0x72, 0x65, 0x73, 0x68,
+	0x65, 0x72, 0x12, 0x18, 0x0a, 0x07, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x08, 0x52, 0x07, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x12, 0x1a, 0x0a, 0x08,
+	0x69, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08,
+	0x69, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x12, 0x1c, 0x0a, 0x09, 0x62, 0x61, 0x74, 0x63,
+	0x68, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x09, 0x62, 0x61, 0x74,
+	0x63, 0x68, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x20, 0x0a, 0x0b, 0x63, 0x6f, 0x6e, 0x63, 0x75, 0x72,
+	0x72, 0x65, 0x6e, 0x63, 0x79, 0x18, 0x04, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0b, 0x63, 0x6f, 0x6e,
+	0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x63, 0x79, 0x12, 0x16, 0x0a, 0x06, 0x6d, 0x69, 0x6e, 0x41,
+	0x67, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6d, 0x69, 0x6e, 0x41, 0x67, 0x65,
+	0x22, 0x81, 0x01, 0x0a, 0x03, 0x4c, 0x6f, 0x67, 0x12, 0x14, 0x0a, 0x05, 0x6c, 0x65, 0x76, 0x65,
+	0x6c, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6c, 0x65, 0x76, 0x65, 0x6c, 0x12, 0x12,
+	0x0a, 0x04, 0x66, 0x69, 0x6c, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x66, 0x69,
+	0x6c, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x61, 0x78, 0x53, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x05, 0x52, 0x07, 0x6d, 0x61, 0x78, 0x53, 0x69, 0x7a, 0x65, 0x12, 0x1e, 0x0a, 0x0a,
+	0x6d, 0x61, 0x78, 0x42, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x73, 0x18, 0x04, 0x20, 0x01, 0x28, 0x05,
+	0x52, 0x0a, 0x6d, 0x61, 0x78, 0x42, 0x61, 0x63, 0x6b, 0x75, 0x70, 0x73, 0x12, 0x16, 0x0a, 0x06,
+	0x6d, 0x61, 0x78, 0x41, 0x67, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x05, 0x52, 0x06, 0x6d, 0x61,
+	0x78, 0x41, 0x67, 0x65, 0x22, 0x9e, 0x04, 0x0a, 0x09, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x4e,
 	0x65, 0x77, 0x12, 0x24, 0x0a, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x0b, 0x32, 0x0e, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x43, 0x68, 0x61, 0x69, 0x6e, 0x33,
 	0x33, 0x52, 0x05, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x12, 0x16, 0x0a, 0x06, 0x64, 0x62, 0x74, 0x79,
@@ -1099,7 +1403,10 @@ var file_exdbconfig_proto_rawDesc = []byte{
 	0x6e, 0x74, 0x72, 0x61, 0x63, 0x74, 0x52, 0x09, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74,
 	0x73, 0x12, 0x22, 0x0a, 0x05, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x18, 0x0d, 0x20, 0x01, 0x28, 0x0b,
 	0x32, 0x0c, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x4d, 0x79, 0x53, 0x51, 0x4c, 0x52, 0x05,
-	0x6d, 0x79, 0x73, 0x71, 0x6c, 0x22, 0x42, 0x0a, 0x08, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63,
+	0x6d, 0x79, 0x73, 0x71, 0x6c, 0x12, 0x2e, 0x0a, 0x09, 0x65, 0x72, 0x63, 0x32, 0x30, 0x73, 0x63,
+	0x61, 0x6e, 0x18, 0x0e, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x2e, 0x45, 0x52, 0x43, 0x32, 0x30, 0x53, 0x63, 0x61, 0x6e, 0x52, 0x09, 0x65, 0x72, 0x63, 0x32,
+	0x30, 0x73, 0x63, 0x61, 0x6e, 0x22, 0x42, 0x0a, 0x08, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63,
 	0x74, 0x12, 0x10, 0x0a, 0x03, 0x41, 0x62, 0x69, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03,
 	0x41, 0x62, 0x69, 0x12, 0x10, 0x0a, 0x03, 0x42, 0x69, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
 	0x52, 0x03, 0x42, 0x69, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x03, 0x20,
@@ -1119,39 +1426,45 @@ func file_exdbconfig_proto_rawDescGZIP() []byte {
 	return file_exdbconfig_proto_rawDescData
 }
 
-var file_exdbconfig_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_exdbconfig_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_exdbconfig_proto_goTypes = []interface{}{
-	(*Chain33)(nil),    // 0: proto.Chain33
-	(*Kafka)(nil),      // 1: proto.Kafka
-	(*ESDB)(nil),       // 2: proto.ESDB
-	(*ESIndex)(nil),    // 3: proto.ESIndex
-	(*RPC)(nil),        // 4: proto.RPC
-	(*Sync)(nil),       // 5: proto.Sync
-	(*Convert)(nil),    // 6: proto.Convert
-	(*MySQL)(nil),      // 7: proto.MySQL
-	(*ConfigNew)(nil),  // 8: proto.ConfigNew
-	(*Contract)(nil),   // 9: proto.Contract
-	(*ExecConfig)(nil), // 10: proto.ExecConfig
-	(*StatConfig)(nil), // 11: proto.StatConfig
+	(*Chain33)(nil),          // 0: proto.Chain33
+	(*Kafka)(nil),            // 1: proto.Kafka
+	(*ESDB)(nil),             // 2: proto.ESDB
+	(*ESIndex)(nil),          // 3: proto.ESIndex
+	(*RPC)(nil),              // 4: proto.RPC
+	(*Sync)(nil),             // 5: proto.Sync
+	(*Convert)(nil),          // 6: proto.Convert
+	(*MySQL)(nil),            // 7: proto.MySQL
+	(*ERC20Scan)(nil),        // 8: proto.ERC20Scan
+	(*BalanceRefresher)(nil), // 9: proto.BalanceRefresher
+	(*Log)(nil),              // 10: proto.Log
+	(*ConfigNew)(nil),        // 11: proto.ConfigNew
+	(*Contract)(nil),         // 12: proto.Contract
+	(*ExecConfig)(nil),       // 13: proto.ExecConfig
+	(*StatConfig)(nil),       // 14: proto.StatConfig
 }
 var file_exdbconfig_proto_depIdxs = []int32{
-	10, // 0: proto.Convert.data:type_name -> proto.ExecConfig
-	11, // 1: proto.Convert.stat:type_name -> proto.StatConfig
-	0,  // 2: proto.ConfigNew.chain:type_name -> proto.Chain33
-	2,  // 3: proto.ConfigNew.sync_es:type_name -> proto.ESDB
-	2,  // 4: proto.ConfigNew.convert_es:type_name -> proto.ESDB
-	5,  // 5: proto.ConfigNew.sync:type_name -> proto.Sync
-	3,  // 6: proto.ConfigNew.es_index:type_name -> proto.ESIndex
-	4,  // 7: proto.ConfigNew.rpc:type_name -> proto.RPC
-	6,  // 8: proto.ConfigNew.convert:type_name -> proto.Convert
-	1,  // 9: proto.ConfigNew.kafka:type_name -> proto.Kafka
-	9,  // 10: proto.ConfigNew.Contracts:type_name -> proto.Contract
-	7,  // 11: proto.ConfigNew.mysql:type_name -> proto.MySQL
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	13, // 0: proto.Convert.data:type_name -> proto.ExecConfig
+	14, // 1: proto.Convert.stat:type_name -> proto.StatConfig
+	9,  // 2: proto.ERC20Scan.balanceRefresher:type_name -> proto.BalanceRefresher
+	10, // 3: proto.ERC20Scan.log:type_name -> proto.Log
+	0,  // 4: proto.ConfigNew.chain:type_name -> proto.Chain33
+	2,  // 5: proto.ConfigNew.sync_es:type_name -> proto.ESDB
+	2,  // 6: proto.ConfigNew.convert_es:type_name -> proto.ESDB
+	5,  // 7: proto.ConfigNew.sync:type_name -> proto.Sync
+	3,  // 8: proto.ConfigNew.es_index:type_name -> proto.ESIndex
+	4,  // 9: proto.ConfigNew.rpc:type_name -> proto.RPC
+	6,  // 10: proto.ConfigNew.convert:type_name -> proto.Convert
+	1,  // 11: proto.ConfigNew.kafka:type_name -> proto.Kafka
+	12, // 12: proto.ConfigNew.Contracts:type_name -> proto.Contract
+	7,  // 13: proto.ConfigNew.mysql:type_name -> proto.MySQL
+	8,  // 14: proto.ConfigNew.erc20scan:type_name -> proto.ERC20Scan
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_exdbconfig_proto_init() }
@@ -1258,7 +1571,7 @@ func file_exdbconfig_proto_init() {
 			}
 		}
 		file_exdbconfig_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ConfigNew); i {
+			switch v := v.(*ERC20Scan); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1270,6 +1583,42 @@ func file_exdbconfig_proto_init() {
 			}
 		}
 		file_exdbconfig_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*BalanceRefresher); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_exdbconfig_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Log); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_exdbconfig_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ConfigNew); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_exdbconfig_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Contract); i {
 			case 0:
 				return &v.state
@@ -1288,7 +1637,7 @@ func file_exdbconfig_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_exdbconfig_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

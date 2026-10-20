@@ -56,7 +56,7 @@ func main() {
 		cfg = config.GetDefaultConfig()
 	} else {
 		var loadErr error
-		cfg, loadErr = config.LoadConfig(*configFile)
+		cfg, loadErr = config.LoadConfigFile(*configFile)
 		if loadErr != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to load config file: %v, using defaults\n", loadErr)
 			cfg = config.GetDefaultConfig()

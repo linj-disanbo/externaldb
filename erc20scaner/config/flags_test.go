@@ -107,8 +107,8 @@ func TestFlags_DefaultValues(t *testing.T) {
 	commonFlags := DefineCommonFlags()
 
 	// 验证默认值
-	if *commonFlags.ConfigFile != "config.yaml" {
-		t.Errorf("Expected ConfigFile default to be 'config.yaml', got '%s'", *commonFlags.ConfigFile)
+	if *commonFlags.ConfigFile != "externaldb.toml" {
+		t.Errorf("Expected ConfigFile default to be 'externaldb.toml', got '%s'", *commonFlags.ConfigFile)
 	}
 	if *commonFlags.NodeURL != "" {
 		t.Errorf("Expected NodeURL default to be empty, got '%s'", *commonFlags.NodeURL)

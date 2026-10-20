@@ -93,6 +93,39 @@ message MySQL {
   bool enabled = 2;  // 是否启用MySQL
 }
 
+// ERC20 数据（erc20scan 扫块 + erc20api 查询）的配置
+message ERC20Scan {
+  // eth JSON-RPC 地址（node 模式扫块、链上 balanceOf 校准都要用）
+  string ethUrl = 1;
+  // 扫块起点；0 表示从已存进度/链上起点继续
+  int64 startBlock = 2;
+  // 扫块终点；-1 表示跟随链尖
+  int64 endBlock = 3;
+  // 为 true 时不调用链上 balanceOf，仅写占位行，由 balanceRefresher 刷新
+  bool skipInlineBalanceUpdate = 4;
+  // erc20api 监听端口（仅端口，绑定 0.0.0.0）
+  string apiPort = 5;
+  BalanceRefresher balanceRefresher = 6;
+  Log log = 7;
+}
+
+// ERC20 地址余额后台刷新（链上 balanceOf）
+message BalanceRefresher {
+  bool enabled = 1;
+  string interval = 2;    // 如 1h、30m；空则默认 1h
+  int32 batchSize = 3;    // 每轮最多行数，<=0 默认 50
+  int32 concurrency = 4;  // 并发 RPC 上限，<=0 默认 5
+  string minAge = 5;      // 只刷新超过该时间未更新的行，如 30s；空表示不限制
+}
+
+message Log {
+  string level = 1;
+  string file = 2;
+  int32 maxSize = 3;
+  int32 maxBackups = 4;
+  int32 maxAge = 5;
+}
+
 message ConfigNew {
 
   // 处理的是哪条链 bityuan 或 user.p.xxxx.
@@ -112,6 +145,7 @@ message ConfigNew {
   repeated string manager_address = 11;
   repeated Contract Contracts = 12;
   MySQL mysql = 13;  // MySQL数据库配置
+  ERC20Scan erc20scan = 14;  // ERC20 扫块/查询配置
 }
 
 message Contract {

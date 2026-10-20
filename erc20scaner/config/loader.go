@@ -106,12 +106,12 @@ func MergeConfigWithFlagsFromStruct(cfg *Config, flags *CommonFlags, flagInfo *F
 func LoadAndMergeForScanner(flags *ScannerFlags) (*Config, error) {
 	flagInfo := DetectFlagSet()
 	
-	configFile := "config.yaml"
+	configFile := "externaldb.toml"
 	if flags.ConfigFile != nil && *flags.ConfigFile != "" {
 		configFile = *flags.ConfigFile
 	}
-	
-	cfg, err := LoadConfig(configFile)
+
+	cfg, err := LoadConfigFile(configFile)
 	if err != nil {
 		log.Printf("Warning: Failed to load config file: %v, using defaults", err)
 		cfg = GetDefaultConfig()
@@ -135,12 +135,12 @@ func LoadAndMergeForScanner(flags *ScannerFlags) (*Config, error) {
 func LoadAndMergeForRPC(flags *RPCFlags) (*Config, error) {
 	flagInfo := DetectFlagSet()
 	
-	configFile := "config.yaml"
+	configFile := "externaldb.toml"
 	if flags.ConfigFile != nil && *flags.ConfigFile != "" {
 		configFile = *flags.ConfigFile
 	}
-	
-	cfg, err := LoadConfig(configFile)
+
+	cfg, err := LoadConfigFile(configFile)
 	if err != nil {
 		log.Printf("Warning: Failed to load config file: %v, using defaults", err)
 		cfg = GetDefaultConfig()
