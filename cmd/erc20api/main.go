@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/33cn/externaldb/erc20scaner/config"
 	"github.com/33cn/externaldb/erc20scaner/database"
@@ -61,7 +62,10 @@ func main() {
 	db, err = database.NewDB(dsn)
 	if err != nil {
 		slogger.Error("Failed to connect to database", "err", err, "dsn", logger.MaskDSN(dsn))
-		return
+		// 日志此时只写文件（logs/rpc_app.log），容器里只看得到"静默退出"；stderr 补一行 + 非 0 退出
+		fmt.Fprintf(os.Stderr, "erc20api: 连接 MySQL 失败: %v（dsn=%s，检查 etc/externaldb.toml 的 [mysql]）\n",
+			err, logger.MaskDSN(dsn))
+		os.Exit(1)
 	}
 	defer db.Close()
 

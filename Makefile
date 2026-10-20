@@ -211,7 +211,6 @@ update_plugin: ## make update_plugin version=tag/branch/commit-hash
 docker: build ## build docker image for externaldb with sync convert jrpc
 	cp tools/*Dockerfile build
 	cp tools/ci-*.sh build
-	cp tools/sync-convert/sync-convert.Dockerfile build
 	if [ "${version}" = "" ]; then \
 		cd build && \
 		docker build . -f sync.Dockerfile   -t chain33/externaldb/sync:lastest; \
@@ -219,7 +218,6 @@ docker: build ## build docker image for externaldb with sync convert jrpc
 		docker build . -f jrpc.Dockerfile -t chain33/externaldb/jrpc:lastest; \
 		docker build . -f rpc.Dockerfile -t chain33/externaldb/rpc:lastest; \
 		docker build . -f dummy-node.Dockerfile -t chain33/externaldb/dummy-node:lastest; \
-		docker build . -f sync-convert.Dockerfile -t chain33/externaldb/sync-convert:lastest; \
 		cd ..; \
 	else \
 		cd build && \
@@ -228,27 +226,22 @@ docker: build ## build docker image for externaldb with sync convert jrpc
 		docker build . -f jrpc.Dockerfile -t chain33/externaldb/jrpc:${version}; \
 		docker build . -f dummy-node.Dockerfile -t chain33/externaldb/dummy-node:${version}; \
 		docker build . -f rpc.Dockerfile -t chain33/externaldb/rpc:${version}; \
-		docker build . -f sync-convert.Dockerfile -t chain33/externaldb/sync-convert:${version}; \
 		cd ..; \
 	fi; 
 
 pkgProof:
 	rm -rf build/externaldb-proof
-	mkdir -p build/externaldb-proof/ex/bin build/externaldb-proof/ex/etc build/externaldb-proof/es build/externaldb-proof/ex-merge/bin build/externaldb-proof/ex-merge/etc
+	mkdir -p build/externaldb-proof/ex/bin build/externaldb-proof/ex/etc build/externaldb-proof/es
 	cp build/rpc build/convert build/sync tools/proof-init-*.bash build/externaldb-proof/ex/bin
 	cp config/externaldb.toml build/externaldb-proof/ex/etc/
 	cp config/chain33.toml build/externaldb-proof/ex/etc/
 	cp tools/proof-es.yaml build/externaldb-proof/es/docker-compose.yaml
 	cp tools/externaldb.docker-compose.yaml build/externaldb-proof/ex/docker-compose.yaml
-	cp build/rpc build/sync_convert build/externaldb-proof/ex-merge/bin
-	cp config/externaldb_merge.toml build/externaldb-proof/ex-merge/etc/externaldb.toml
-	cp tools/sync-convert/docker-compose.yaml build/externaldb-proof/ex-merge/docker-compose.yaml
-	cp tools/sync-convert/README.md build/externaldb-proof/ex-merge/README.md
 	tar zcvf build/externaldb-proof.tgz -C build externaldb-proof
 
 pkg-quickStart:
 	rm -rf build/externaldb-proof
-	mkdir -p build/externaldb-proof/bin build/externaldb-proof/etc build/externaldb-proof/ex-merge/bin build/externaldb-proof/ex-merge/etc
+	mkdir -p build/externaldb-proof/bin build/externaldb-proof/etc
 	mkdir -p build/externaldb-proof/env/es6 build/externaldb-proof/env/es7
 	cp build/rpc build/convert build/sync build/jrpc build/externaldb-proof/bin/
 	cp config/externaldb.toml build/externaldb-proof/etc/
@@ -266,10 +259,6 @@ pkg-quickStart:
 	cp tools/quick-start/es-init.sh build/externaldb-proof/
 	cp tools/quick-start/browser-init.bash build/externaldb-proof/
 	cp .env build/externaldb-proof/
-	cp build/rpc build/sync_convert build/externaldb-proof/ex-merge/bin
-	cp config/externaldb_merge.toml build/externaldb-proof/ex-merge/etc/externaldb.toml
-	cp tools/sync-convert/docker-compose.yaml build/externaldb-proof/ex-merge/docker-compose.yaml
-	cp tools/sync-convert/README.md build/externaldb-proof/ex-merge/README.md
 	tar zcvf build/externaldb-proof.tgz -C build externaldb-proof
 
 # pkg-pullConvert: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
