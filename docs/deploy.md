@@ -309,3 +309,52 @@ $ cat tx.list.1..json
  1. 在依赖的节点，重新同步后， 数据服务也需要清理数据，重新同步
  1. 推送的名字不要重名，重名的推送被认为是一个，会把原来的推送覆盖掉。新的推送会从一半开始，但接受端不是从零开始，会报错0，导致数据同步没有像预期的一样进行。
  
+
+## 应急操作（sync/convert 老链路）
+
+老链路（`sync` 推送 → `seq05_seq` → `convert`）的游标与进度都在 ES 里，手工改之前**先停写**。
+下面命令里的 ES 地址/账号按现场替换；密码统一写成 `***`（见部署物料，勿写进文档）。
+
+### 手工改 convert 的起点（跳块 / 修复历史）
+
+`convert` 的进度是 `seq05_last_seq` 索引里 id = `[convert].appName`（默认 `convert`）的文档，
+`sync_seq` 表示**下一个待展开的 seq**（不是已处理到的 seq）：
+
+```bash
+curl -X PUT 'http://elastic:***@127.0.0.1:9200/seq05_last_seq/_doc/convert' \
+  -H 'Content-Type: application/json' -d '{"sync_seq":36316153}'
+```
+
+要点：
+
+- 改之前停 `convert`，否则它下一轮会用内存里的值覆盖回去；
+- `sync_seq` 是"下一个要处理的 seq"，填错会重放或漏块；
+- 直连链路（`pull_convert`）不用这个游标（它用 `seq_marker`），只在切回老链路或对账时参考。
+
+### 看展开进度 `db05_last_seq` 的写入是否落盘
+
+`convert` 每块覆盖写 `db05_last_seq`，索引很小 → translog 容易堆积（曾堆到 350 万条、
+ES 重启回放 126 秒）。`stats` 里的 `translog.uncommitted_operations` 就是尚未 flush 的写入数：
+
+```bash
+curl -X GET 'http://elastic:***@127.0.0.1:9200/db05_last_seq/stats?pretty' \
+  -H 'Content-Type: application/json'
+
+#   "translog" : {
+#     "operations" : 1082605,
+#     "size_in_bytes" : 84443465,
+#     "uncommitted_operations" : 1082605,
+#     "uncommitted_size_in_bytes" : 84443465,
+#     "earliest_last_modified_age" : 0
+#   },
+```
+
+`_refresh` 让进度文档立即可读（`_refresh` 只影响搜索可见性；要清空 translog 用 `_flush`）：
+
+```bash
+curl -X POST 'http://elastic:***@127.0.0.1:9200/db05_last_seq/_refresh' \
+  -H 'Content-Type: application/json'
+```
+
+长期堆积按 `docs/handoff.md` 的结论处理：调小 `translog.flush_threshold_size` /
+`flush_threshold_period`，或降低进度写入频率。
