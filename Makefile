@@ -64,28 +64,28 @@ fmt: fmt_go fmt_proto fmt_shell ## fmt .go .proto .sh
 
 .PHONY: fmt_go fmt_proto fmt_shell
 fmt_go: ## fmt go
-	find . -name '*.go' -not -path "./vendor/*" | xargs gofmt -s -w
-	find . -name '*.go' -not -path "./vendor/*" | xargs goimports -l -w
+	find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.go' -print | xargs gofmt -s -w
+	find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.go' -print | xargs goimports -l -w
 
 fmt_proto: ## go fmt protobuf file
-	@find . -name '*.proto' -not -path "./vendor/*" | xargs clang-format -i
+	@find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.proto' -print | xargs clang-format -i
 
 fmt_shell: ## check shell file
-	find . -name '*.sh' -not -path "./vendor/*" | xargs shfmt -w -s -i 4 -ci -bn
+	find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.sh' -print | xargs shfmt -w -s -i 4 -ci -bn
 
 shcheck: ## check shell
 	shellcheck tools/*sh
 
 .PHONY: checkgofmt
 checkgofmt: ## get all go files and run go fmt on them
-	@files=$$(find . -name '*.go' -not -path "./vendor/*" | xargs gofmt -l -s); if [ -n "$$files" ]; then \
+	@files=$$(find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.go' -print | xargs gofmt -l -s); if [ -n "$$files" ]; then \
 		  echo "Error: 'make fmt' needs to be run on:"; \
-		  find . -name '*.go' -not -path "./vendor/*" | xargs gofmt -l -s ;\
+		  find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.go' -print | xargs gofmt -l -s ;\
 		  exit 1; \
 		  fi;
-	@files=$$(find . -name '*.go' -not -path "./vendor/*" | xargs goimports -l -w); if [ -n "$$files" ]; then \
+	@files=$$(find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.go' -print | xargs goimports -l -w); if [ -n "$$files" ]; then \
 		  echo "Error: 'make fmt' needs to be run on:"; \
-		  find . -name '*.go' -not -path "./vendor/*" | xargs goimports -l -w ;\
+		  find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.go' -print | xargs goimports -l -w ;\
 		  exit 1; \
 		  fi;
 
@@ -147,11 +147,11 @@ build_ci: dep build ## Build the binary file for CI
 
 linter: vet ineffassign gosec ## Use gometalinter check code, ignore some unserious warning
 	@./tools/golinter.sh "filter"
-	@find . -name '*.sh' -not -path "./vendor/*" | xargs shellcheck -x
+	@find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.sh' -print | xargs shellcheck -x
 
 linter_test: ## Use gometalinter check code, for local test
 	@./tools/golinter.sh "test" "${p}"
-	@find . -name '*.sh' -not -path "./vendor/*" | xargs shellcheck -x
+	@find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.sh' -print | xargs shellcheck -x
 
 gosec:
 	@golangci-lint  run --no-config --issues-exit-code=1  --deadline=2m --disable-all --enable=gosec ${PKG_LIST_GOSEC}
