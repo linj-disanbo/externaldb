@@ -12,7 +12,7 @@ import (
 
 //   简单的支持解析evm交易
 //  1. ABI 注册不在 jrpc 里做：写入 contractabi 索引的能力已移到仓库外的离线工具
-//     （tools-ex/saveabi，不随开源仓库发布）。jrpc 只读：按合约地址取 ABI。
+//     （local/tools/saveabi，不随开源仓库发布）。jrpc 只读：按合约地址取 ABI。
 //  2. 查询交易时, 如果是evm合约的交易会获得额外信息
 //  2.1 流程
 ///   获得交易时 ->
@@ -27,7 +27,7 @@ type Evm struct {
 }
 
 // Abi 存 ES contractabi 索引里的 ABI 文档；abi 字段是「ABI 的 JSON 文本」的 hex 编码
-// （写入方：仓库外的离线工具 tools-ex/saveabi）。
+// （写入方：仓库外的离线工具 local/tools/saveabi）。
 type Abi struct {
 	Address string `json:"address"`
 	Abi     string `json:"abi"`

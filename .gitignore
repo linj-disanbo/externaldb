@@ -176,3 +176,5 @@ rpc/docs
 # go module 缓存（构建时放在仓库内，避免污染 ~/go）
 .gomodcache/
 
+# 本地私有内容（不公开的过程文档 / 非通用工具），整目录不进 git
+/local/

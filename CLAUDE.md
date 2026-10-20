@@ -58,13 +58,13 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
   推送式 sync 把整块 seq 存 ES，convert 读 ES 再展开。**保留但不再作为新部署路径**（同一批索引只能有一个写方）。
 - **jrpc**（`jrpc/`）：JSON-RPC 2.0 查询端点。每链一个 `rpc.Server`，注册 Account/Trade/Block/EVM 等服务；
   EVM 交易解析按合约地址从 ES `contractabi` 索引取 ABI（`jrpc/evmabi.go`，**只读**）；
-  ABI 注册已从 jrpc 移除，改由仓库外私有工具（`tools-ex/saveabi`，不随开源仓库发布）离线写入。
+  ABI 注册已从 jrpc 移除，改由仓库外私有工具（`local/tools/saveabi`，不随开源仓库发布）离线写入。
 - **rpc**（`rpc/`）：Gin REST，proof 相关；与 jrpc 独立，含白名单与 Sentinel 限流中间件。
 - **erc20 扫块/查询**：已并入主 module（不再是独立工程）。程序 `cmd/erc20scan`（扫 ERC20 转账写 MySQL）、
   `cmd/erc20api`（`/evmapi/*` 读 MySQL，原 `erc20Scaner/rpc`）；库在 `erc20scaner/`（`scanner/engine`、`txparser`、
   `database`、`config`、`erc20abi`、`blockalign`、`logger`、`txinspect`），文档在 `erc20scaner/docs/`；
   离线工具 `cmd/tools/erc20-{blockparse,scannerfix,txinfo}`。
-- **离线/运维工具**：`cmd/convert_check`（对账，部署包里放 `tools/`）；`tools-ex/` 为**不随仓库发布**的私有工具集。
+- **离线/运维工具**：`cmd/convert_check`（对账，部署包里放 `tools/`）；`local/`（git 忽略）放不公开的过程文档与非通用工具：`local/tools/`、`local/docs/`。
 
 ## Key Abstractions
 
