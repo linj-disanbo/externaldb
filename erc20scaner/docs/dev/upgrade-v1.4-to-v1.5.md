@@ -1,5 +1,10 @@
 # evm-v1.4 → v1.5 升级说明
 
+> **2026-10 布局变更**：程序已并入主 module —— `cmd/erc20scan`（scanner）、`cmd/erc20api`（原 rpc 服务）、
+> `cmd/tools/erc20-*`（离线工具），配置统一读 `externaldb.toml` 的 `[mysql]` / `[erc20scan]`（yaml 仅兼容）。
+> 下文出现的 `erc20Scaner/`、`./scanner`、`./rpc`、`-c config.yaml` 属旧布局，按新路径理解。
+
+
 ## 变更概要
 
 v1.5 新增 **ERC20 授权额度跟踪** 功能：扫描器解析 Approval 事件，支持按地址查询所有授权记录。

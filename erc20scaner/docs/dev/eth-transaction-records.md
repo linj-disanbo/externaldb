@@ -1,5 +1,10 @@
 # ETH 交易通用记录与查询
 
+> **2026-10 布局变更**：程序已并入主 module —— `cmd/erc20scan`（scanner）、`cmd/erc20api`（原 rpc 服务）、
+> `cmd/tools/erc20-*`（离线工具），配置统一读 `externaldb.toml` 的 `[mysql]` / `[erc20scan]`（yaml 仅兼容）。
+> 下文出现的 `erc20Scaner/`、`./scanner`、`./rpc`、`-c config.yaml` 属旧布局，按新路径理解。
+
+
 ## 1. 背景与动机
 
 当前 scanner 的 `transactions` 表只记录三类交易：
