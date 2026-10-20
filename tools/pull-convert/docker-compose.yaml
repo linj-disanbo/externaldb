@@ -1,24 +1,50 @@
 version: '2'
 
-# pull_convert（直连 pull + seq）部署模板：
-#   pull_convert 是唯一写方（同一批索引不能有两个写方）。
-#   jrpc 供浏览器/查询使用；rpc（gin REST）与老链路 sync/convert 不在本包里。
+# 直连（pull + seq）部署模板，4 个程序：
+#   convert  —— 唯一写方：按 seq 从 chain33 拉块并展开写入 ES（同一批索引不能有两个写方）
+#   jrpc     —— 浏览器/查询：读 ES
+#   scanner  —— ERC20 扫块：按 seq 拉块解析转账写入 MySQL
+#   erc20api —— ERC20 查询：读 MySQL（/evmapi/*）
+# scanner / erc20api 依赖 [mysql]（MYSQL_ENABLED=true 时才启动，见 Makefile）。
+# rpc（gin REST）与老链路 sync/convert 不在本包里。
 services:
-  pull_convert:
-    container_name: ${PROJECT_NAME}-pull-convert
+  convert:
+    container_name: ${PROJECT_NAME}-convert
     image: docker.io/ubuntu:16.04
+    working_dir: /root/bin
     volumes:
       - ./bin/:/root/bin/
       - ./etc/:/root/etc/
     network_mode: "host"
     # -c 必须给完整 chain33 配置：v1.72 起 fork 严格校验，缺失即 panic
-    command: /root/bin/pull_convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
+    command: /root/bin/convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
 
   jrpc: # 浏览器/查询使用
     container_name: ${PROJECT_NAME}-jrpc
     image: docker.io/ubuntu:16.04
+    working_dir: /root/bin
     volumes:
       - ./bin/:/root/bin/
       - ./etc/:/root/etc/
     network_mode: "host"
     command: /root/bin/jrpc -f /root/etc/externaldb.toml &
+
+  scanner: # ERC20 扫块（写 MySQL，需要 [mysql] 启用）
+    container_name: ${PROJECT_NAME}-scanner
+    image: docker.io/ubuntu:16.04
+    working_dir: /root/bin
+    volumes:
+      - ./bin/:/root/bin/
+      - ./etc/:/root/etc/
+    network_mode: "host"
+    command: /root/bin/scanner -c /root/etc/externaldb.toml &
+
+  erc20api: # ERC20 查询（读 MySQL，/evmapi/*）
+    container_name: ${PROJECT_NAME}-erc20api
+    image: docker.io/ubuntu:16.04
+    working_dir: /root/bin
+    volumes:
+      - ./bin/:/root/bin/
+      - ./etc/:/root/etc/
+    network_mode: "host"
+    command: /root/bin/erc20api -c /root/etc/externaldb.toml &

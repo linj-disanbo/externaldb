@@ -1,9 +1,12 @@
-.PHONY: quickStart run logs logs-pull-convert logs-jrpc stop restart rm down clean initConfig initES restartES downES check
+.PHONY: quickStart run logs logs-convert logs-scanner logs-erc20api logs-jrpc stop restart rm down clean initConfig initES restartES downES check es-indices es-marker
 
 include .env
 
 # env/es7 默认是 ES 7.17；老环境要用 7.4，把包内 env/es7.4 的内容换到 env/es7 即可
 ENV_DIR ?= env/es${ES_VERSION}
+
+# scanner / erc20api 依赖 MySQL：MYSQL_ENABLED=true 才启动（见 .env）
+ERC20_SERVICES := $(if $(filter true,$(MYSQL_ENABLED)),scanner erc20api)
 
 # 按 EX_SERVICE_TYPE 跑对应的初始化：
 #   proof   -> 存证索引/初始数据（env/<dir>/proof-init.bash）
@@ -33,41 +36,51 @@ quickStart:
 	@bash alter-config.sh
 	@$(RUN_SERVICE_INIT)
 	@echo "============start run externaldb============"
-	@cd ./bin && chmod +x pull_convert jrpc
+	@cd ./bin && chmod +x convert jrpc $(ERC20_SERVICES)
 	@if [ "${EX_SERVICE_TYPE}" = "proof" ]; then \
-		docker-compose -p ${PROJECT_NAME} up -d pull_convert; \
+		docker-compose -p ${PROJECT_NAME} up -d convert; \
 	else \
-		docker-compose -p ${PROJECT_NAME} up -d pull_convert jrpc; \
+		docker-compose -p ${PROJECT_NAME} up -d convert jrpc $(ERC20_SERVICES); \
 	fi
 	@echo "==================complete=================="
 
 run:
-	@cd ./bin && chmod +x pull_convert jrpc
+	@cd ./bin && chmod +x convert jrpc $(ERC20_SERVICES)
 	@if [ "${EX_SERVICE_TYPE}" = "proof" ]; then \
-		docker-compose -p ${PROJECT_NAME} up -d pull_convert; \
+		docker-compose -p ${PROJECT_NAME} up -d convert; \
 	else \
-		docker-compose -p ${PROJECT_NAME} up -d pull_convert jrpc; \
+		docker-compose -p ${PROJECT_NAME} up -d convert jrpc $(ERC20_SERVICES); \
 	fi
 
 # 对账/巡检（marker 链连续性、marker 与 block_info 一致性、旧 last_seq 是否停更）
 check:
 	@./bin/convert_check -f ./etc/externaldb.toml || true
 
-log-pull-convert:
+log-convert:
 	@tail -200f ./bin/logs/convert.log
-log-pull-convert-err:
+log-convert-err:
 	@tail -200f ./bin/logs/convert.error.log
 log-jrpc:
 	@tail -200f ./bin/logs/jrpc.log
+log-scanner:
+	@tail -200f ./bin/logs/scanner_app.log
+log-erc20api:
+	@tail -200f ./bin/logs/rpc_app.log
 
 logs:
 	@docker-compose -p ${PROJECT_NAME} logs
 
-logs-pull-convert:
-	@docker-compose -p ${PROJECT_NAME} logs pull_convert
+logs-convert:
+	@docker-compose -p ${PROJECT_NAME} logs convert
 
 logs-jrpc:
 	@docker-compose -p ${PROJECT_NAME} logs jrpc
+
+logs-scanner:
+	@docker-compose -p ${PROJECT_NAME} logs scanner
+
+logs-erc20api:
+	@docker-compose -p ${PROJECT_NAME} logs erc20api
 
 stop:
 	@docker-compose -p ${PROJECT_NAME} stop

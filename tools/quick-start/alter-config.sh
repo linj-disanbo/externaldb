@@ -118,5 +118,11 @@ set_key_value "swaggerHost" \"${SWAGGER_HOST}\"
 # convert相关
 set_key_value "addressDriver" \"${ADDR_DRIVER}\"
 set_key_value "dealOtherChain" ${DEAL_OTHER_CHAIN}
+# mysql / erc20scan（scanner + erc20api）；MYSQL_ENABLED=false 时这两个服务不启动
+set_key_value "enabled" ${MYSQL_ENABLED} mysql
+set_key_value "dsn" \"${MYSQL_DSN}\" mysql
+set_key_value "ethUrl" \"${ERC20_ETH_URL}\" erc20scan
+set_key_value "startBlock" ${ERC20_START_BLOCK} erc20scan
+set_key_value "apiPort" \"${ERC20_API_PORT}\" erc20scan
 
 deal_browser_config

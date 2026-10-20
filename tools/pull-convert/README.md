@@ -1,4 +1,4 @@
-# pkg-pullConvert：pull_convert 直连部署包
+# pkg-pullConvert：直连（pull + seq）部署包
 
 用于 **convert 直连（pull + seq 驱动）** 的一键部署，取代老链路 `sync + convert`。
 设计与切换步骤见 `docs/requirements/convert-direct-from-node.md`（P4 Runbook、P5 对账）。
@@ -7,11 +7,11 @@
 
 ```
 externaldb-pull/
-├── bin/            rpc、jrpc、pull_convert、convert_check（+ 老链路 sync/convert，回退用）
-├── etc/            externaldb.toml、chain33.toml、mime.types
+├── bin/            convert（=pull_convert）、scanner（=erc20scan）、jrpc、erc20api、convert_check
+├── etc/            externaldb.toml、chain33.toml
 ├── env/es7/        ES 7.17.29 的 compose + proof-init.bash（默认）
 ├── env/es7.4/      ES 7.4.2 的 compose + proof-init.bash（备用，见下）
-├── docker-compose.yaml        默认只起 pull_convert / rpc / jrpc（老链路已注释）
+├── docker-compose.yaml        4 个服务：convert / jrpc / scanner / erc20api
 ├── Makefile                    内层一键脚本
 ├── .env                        物料表相关配置
 ├── alter-config.sh / es-init.sh / browser-init.bash
@@ -25,13 +25,30 @@ externaldb-pull/
 2. 按物料表改 `etc/externaldb.toml`（节点 gRPC/推送、ES 地址、`[convert].appName`、直连参数 `pullBatch`/`pullPollMs`/`pullDetailCache`/`pullMarkerKeep`）。
 3. 一键启动：`make quickStart`；或分开 `make initES` → `make initConfig` → `make run`。
 4. 对账：`make check`（= `convert_check`），或 `make es-marker` 看游标。
-5. 回退：停掉 `pull_convert`，把 `docker-compose.yaml` 里 `sync`/`convert` 两段取消注释、注释掉 `pull_convert`，再 `make run`。
+5. 回退：停掉 `convert`，另行用老链路（`sync` → `convert`，不在本包内）从 `seq05_seq` 续跑；
+   同一批索引只能有一个写方，切换前务必停干净。
+
+## 4 个程序
+
+| 程序 | 作用 | 依赖 |
+| --- | --- | --- |
+| `convert` | 按 seq 从 chain33 拉块、展开写 ES（唯一写方） | chain33 gRPC、ES |
+| `jrpc` | 浏览器/查询：读 ES | ES（MySQL 可选，`getTransferLogs`） |
+| `scanner` | ERC20 扫块：解析转账写 MySQL | chain33 gRPC、MySQL、eth JSON-RPC（balanceOf） |
+| `erc20api` | ERC20 查询：`/evmapi/*` 读 MySQL | MySQL |
+
+- `scanner`/`erc20api` 受 `.env` 的 `MYSQL_ENABLED` 控制：`true` 时 `make quickStart` / `make run` 才会启动这两个服务，
+  同时 `alter-config.sh` 把 `[mysql].enabled` 写进配置；默认 `false`（只跑 convert + jrpc）。
+- `MYSQL_DSN`、`ERC20_ETH_URL`、`ERC20_START_BLOCK`、`ERC20_API_PORT` 分别在 `.env` 里配置，
+  由 `alter-config.sh` 写入 `[mysql]` / `[erc20scan]`。
+- 日志：`convert`/`jrpc` 在 `bin/logs/convert.log`、`jrpc.log`；`scanner`/`erc20api` 在 `bin/logs/scanner_app.log`、`rpc_app.log`
+  （`make log-convert`、`make log-scanner`、`make log-erc20api`）。
 
 ## 注意
 
 - **ES 堆建议 ≥2g**：ES 的 coordination 断路器上限随堆走，512m 堆时只有 ~51MB，大 seq（genesis）写出大请求会被 429 拒绝
   （代码已按 ≤5MB 分片 + 429 退避重试兜底，但堆太小整体吞吐也差）。改 `env/es7/docker-compose.yaml` 的 `ES_JAVA_OPTS` 后 `make downES && make initES`。
-- **同一批索引只能有一个写方**：`pull_convert` 与老 `convert` 不能同时跑（两套游标）。
+- **同一批索引只能有一个写方**：`convert` 与老 `convert` 不能同时跑（两套游标）。
 - `pull_convert` 启动会自动自举游标；首次启动看日志里是 `已按旧 db05_last_seq 自举` 还是 `按配置 startSeq 起跑`——
   后者意味着会**从 startSeq 重跑**，切换前务必确认 `etc/externaldb.toml` 里 `[convert].startSeq` 与现状一致。
 - ES 7.17.29（默认）需要宿主机 `vm.max_map_count >= 262144`。
