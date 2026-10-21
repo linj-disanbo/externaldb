@@ -15,7 +15,7 @@
 | `transactions` | 与合约交互的**交易级**记录（调用目标合约、函数、input 等） |
 | `events` | 链上**日志事件**（以 ERC20 `Transfer` 为主：from/to/value 等） |
 | `token_balances` | **地址 × 合约** 维度下的代币余额快照及最后关联交易信息 |
-| `scan_progress` | 扫描器断点：最后处理区块号等（仅扫描器写入） |
+| `scan_progress` | 扫描器断点（旧）：最后处理区块号等，仅排查用（权威进度见 `scan_seq_marker`） |
 
 **视图**（便于展示，RPC 可直接查表或视图）：
 
@@ -38,7 +38,7 @@
 | 同上 | `events` | 每个 `Transfer` 日志一条（`event_name='Transfer'`） |
 | 同上 | `token_balances` | 内联 `balanceOf` 写余额；或 `skip_inline_balance_update` 时仅 touch 占位行 |
 | 后台任务 | `token_balances` | `balance_refresher` 仅更新 `balance` + `last_updated_at`（见 [`balance_refresher.md`](balance_refresher.md)） |
-| 进度 | `scan_progress` | 每处理完一块更新（存**链上高度**，不是 ES 的 `sync_seq`） |
+| 进度 | `scan_seq_marker`（新）/ `scan_progress`（旧，保留排查） | 每个 seq 一行（游标=`max(seq)`，del 也写）；旧表仍存最后高度 |
 
 **ES 模式（`StartWithEsClient`）**：ES 文档 id 为 **sync_seq**，与链 **block height** 一般相差常数 `d = sync_seq - height`（回滚后 seq 仍会增加而高度回退）。启动时用探测结果把下一 ES 键对齐为 `(last_height+1)+d`，循环内用 **SyncSeq+1** 作为下一游标；若当前文档高度与期望不一致且 `|d|≥100` 则按 `want_height+d` 重新对齐后再拉取，`|d|<100` 时可直接处理当前块以快速追上。实现见 `scanner/process.go`（`alignESScanStart`、`esSeqHeightSmallDrift`）。
 
