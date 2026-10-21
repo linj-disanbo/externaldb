@@ -8,18 +8,18 @@
 
 ```
 docs/requirements/
-├── README.md              <- 本文件
-├── erc20-scanner/         <- ERC20 扫描器需求
-│   └── token-balance.md
-├── sync/                  <- 同步模块需求
-├── convert/               <- 转换模块需求
-└── rpc/                   <- RPC 查询服务需求
+├── README.md                      <- 本文件
+└── erc20-scanner/                 <- ERC20 扫描/查询需求
+    ├── token-approval-query.md    <- 代币授权额度查询
+    └── token-holder-ranking.md    <- 代币持币排行
 ```
+
+新增模块时按需建同名子目录（`docs/requirements/<模块>/`）。
 
 ## 命名规则
 
 - 目录名与模块名一致，使用 `kebab-case`
-- 一个需求一个 `.md` 文件，命名简洁描述功能（如 `token-balance.md`）
+- 一个需求一个 `.md` 文件，命名简洁描述功能（如 `token-holder-ranking.md`）
 - 同一模块多个需求文件放在同一目录下
 
 ## 文档模板
