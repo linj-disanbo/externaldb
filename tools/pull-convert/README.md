@@ -4,6 +4,9 @@
 数据流：chain33 按 seq 拉块（`GetBlockSequences` + `GetBlockByHashes`）→ 展开写 ES，进度是 append-only 的 `seq_marker`（游标 = max(seq)）。
 切换步骤：停老链路写方（`sync`/`convert`）→ 起 `convert` → 等追平后 `make check`（`convert_check`）对账 → 确认旧 `db05_last_seq` 不再增长。
 
+修复历史区间（补空洞/回放）：`./bin/convert -mode fix -from <起始seq> -to <结束seq> -f etc/externaldb.toml -c etc/chain33.toml`
+（闭区间；不写 `seq_marker`、不做 `block_stat` 累计，跑完用 `convert_check -from/-to` 对账）。
+
 ## 包内容
 
 ```

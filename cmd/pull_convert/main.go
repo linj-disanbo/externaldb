@@ -61,12 +61,28 @@ var (
 	log        = l.New("module", "pull_convert")
 	configPath = flag.String("f", "externaldb.toml", "config file")
 	chainPath  = flag.String("c", "", "chain33 node config file（v1.72 起 fork 严格校验，必须给完整配置）")
-	fromSeq    = flag.Int64("from", -1, "强制从该 seq 之后开始（>=0 时忽略 marker，用于修复/回放）")
+	fromSeq    = flag.Int64("from", -1, "run: 强制从该 seq 之后开始（>=0 时忽略 marker）；fix: 修复区间的起始 seq（含）")
+	toSeq      = flag.Int64("to", -1, "fix 模式的结束 seq（含）；run 模式忽略")
+	mode       = flag.String("mode", "run", "运行模式：run=跟随链尖；fix=只修复 -from..-to 区间后退出（不写 seq_marker、不做统计累计）")
 )
 
 func main() {
 	log.Info("pull_convert", "version", version.GetVersion())
 	flag.Parse()
+
+	fixMode := *mode == "fix"
+	if *mode != "run" && !fixMode {
+		fmt.Fprintf(os.Stderr, "FATAL: -mode 只支持 run/fix（收到 %q）\n", *mode)
+		os.Exit(1)
+	}
+	if fixMode {
+		if *fromSeq < 0 || *toSeq < *fromSeq {
+			fmt.Fprintf(os.Stderr, "FATAL: fix 模式要求 -from >= 0 且 -to >= -from（收到 from=%d to=%d）\n", *fromSeq, *toSeq)
+			os.Exit(1)
+		}
+	} else if *toSeq >= 0 {
+		fmt.Fprintln(os.Stderr, "WARN: -to 只在 -mode fix 下生效，run 模式忽略")
+	}
 
 	cfg := initCfg(*configPath)
 	title := cfg.Chain.Title
@@ -110,13 +126,15 @@ func main() {
 	convert.InitContract(cfg)
 	convert.InitConfig(cfg)
 	app := convert.NewApp(cfg)
-	if err := seqmark.InitDB(esClient); err != nil {
-		fatal("seqmark.InitDB failed", "err", err)
-	}
-	// marker 写入用普通 bulk（不再逐 seq 等 refresh）；这里显式 refresh 一次再读游标，
-	// 保证"已 ACK 但还没被 ES 自动 refresh"的 marker 对 search 可见（否则重启会多重放几条）。
-	if err := seqmark.Refresh(esClient); err != nil {
-		log.Warn("seqmark 索引 refresh 失败，游标可能读到旧值（会重放少量 seq）", "err", err)
+	if !fixMode {
+		if err := seqmark.InitDB(esClient); err != nil {
+			fatal("seqmark.InitDB failed", "err", err)
+		}
+		// marker 写入用普通 bulk（不再逐 seq 等 refresh）；这里显式 refresh 一次再读游标，
+		// 保证"已 ACK 但还没被 ES 自动 refresh"的 marker 对 search 可见（否则重启会多重放几条）。
+		if err := seqmark.Refresh(esClient); err != nil {
+			log.Warn("seqmark 索引 refresh 失败，游标可能读到旧值（会重放少量 seq）", "err", err)
+		}
 	}
 
 	// 2. 节点 seq 来源
@@ -126,23 +144,32 @@ func main() {
 	}
 	defer func() { _ = src.Close() }()
 
-	// 3. 启动探测 + 游标（marker → 与节点比对）；cursorHeight 是游标那块的高度，用于对齐累计类统计
-	cursor, cursorHeight, err := resolveCursor(src, esClient, cfg, *fromSeq)
-	if err != nil {
-		fatal("启动失败", "err", err)
-	}
-	log.Info("progress ready", "cursor", cursor, "cursorHeight", cursorHeight)
-	// 累计统计（block_stat 的 prev）必须与恢复点对齐：按游标块高度恢复，
-	// 否则"数据已写、marker 未写"的崩溃重放会把同一块重复累加（见 stat.HeightRecover）
-	if cursorHeight >= 0 {
-		if err := app.RecoverStatsAt(esClient, cursorHeight); err != nil {
-			fatal("RecoverStats(At height) failed", "height", cursorHeight, "err", err)
-		}
-		log.Info("RecoverStats done", "atHeight", cursorHeight)
+	// 3. 游标：fix 模式用 -from/-to 划区间，不读 marker、不动统计；run 模式按 marker/旧进度自举
+	var cursor int64
+	if fixMode {
+		cursor = *fromSeq - 1 // 主循环从 cursor+1 开始，即 [from, to] 闭区间
+		log.Info("fix 模式", "from", *fromSeq, "to", *toSeq,
+			"note", "不写 seq_marker、不做 block_stat 累计；完成后用 convert_check -from/-to 对账")
 	} else {
-		log.Warn("游标高度未知（无 marker/旧进度），只能按全局最新恢复统计；若统计值异常请从有 marker 的点重启")
-		if err := app.RecoverStats(esClient, cursor); err != nil {
-			fatal("RecoverStats failed", "err", err)
+		var cursorHeight int64
+		var err error
+		cursor, cursorHeight, err = resolveCursor(src, esClient, cfg, *fromSeq)
+		if err != nil {
+			fatal("启动失败", "err", err)
+		}
+		log.Info("progress ready", "cursor", cursor, "cursorHeight", cursorHeight)
+		// 累计统计（block_stat 的 prev）必须与恢复点对齐：按游标块高度恢复，
+		// 否则"数据已写、marker 未写"的崩溃重放会把同一块重复累加（见 stat.HeightRecover）
+		if cursorHeight >= 0 {
+			if err := app.RecoverStatsAt(esClient, cursorHeight); err != nil {
+				fatal("RecoverStats(At height) failed", "height", cursorHeight, "err", err)
+			}
+			log.Info("RecoverStats done", "atHeight", cursorHeight)
+		} else {
+			log.Warn("游标高度未知（无 marker/旧进度），只能按全局最新恢复统计；若统计值异常请从有 marker 的点重启")
+			if err := app.RecoverStats(esClient, cursor); err != nil {
+				fatal("RecoverStats failed", "err", err)
+			}
 		}
 	}
 
@@ -158,6 +185,11 @@ func main() {
 		Batch:        int(cfg.Convert.PullBatch),
 		PollInterval: time.Duration(cfg.Convert.PullPollMs) * time.Millisecond,
 		MarkerKeep:   cfg.Convert.PullMarkerKeep,
+	}
+	if fixMode {
+		opt.FixMode = true
+		opt.EndSeq = *toSeq
+		opt.SkipMarker = true
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

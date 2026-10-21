@@ -34,6 +34,12 @@ type PullOptions struct {
 	PollInterval time.Duration // 追平链尖后的轮询间隔，<=0 用 DefaultPollInterval
 	MarkerKeep   int64         // marker 保留窗口（条数），0 表示不滚动删除
 	PruneEvery   int64         // 每推进多少个 seq 触发一次滚动删除，<=0 用 DefaultPruneEvery
+
+	// FixMode=true 表示"修复模式"：只处理到 EndSeq（含）就正常退出，不跟链尖。
+	// 修复模式同时应设 SkipMarker=true（不写 seq_marker，游标仍由正常 run 维护）。
+	FixMode    bool
+	EndSeq     int64
+	SkipMarker bool
 }
 
 // RunPull 直连主循环：按 seq 拉取 → 解析 → 写记录 → 写 marker（游标）→ 前进。
@@ -62,7 +68,8 @@ func RunPull(ctx context.Context, src SeqSource, w SeqWriter, dealer BlockDealer
 	}
 
 	log.Info("pull_convert start", "cursor", cursor, "batch", batch, "poll", poll,
-		"markerKeep", opt.MarkerKeep, "cacheSize", cache.Len())
+		"markerKeep", opt.MarkerKeep, "cacheSize", cache.Len(),
+		"fixMode", opt.FixMode, "endSeq", opt.EndSeq, "skipMarker", opt.SkipMarker)
 
 	// 启动时滚动删除一次旧 marker
 	if opt.MarkerKeep > 0 && cursor > opt.MarkerKeep {
@@ -86,6 +93,17 @@ func RunPull(ctx context.Context, src SeqSource, w SeqWriter, dealer BlockDealer
 			}
 			continue
 		}
+		if opt.FixMode {
+			if cursor >= opt.EndSeq {
+				log.Info("pull_convert fix done", "cursor", cursor, "endSeq", opt.EndSeq)
+				return nil
+			}
+			// 修复区间必须已在节点 seq 日志里（否则是配置错误，不重试）
+			if last < opt.EndSeq {
+				return errors.Errorf("pull_convert fix: 节点 seq 只到 %d，小于 -to %d", last, opt.EndSeq)
+			}
+		}
+
 		if cursor >= last {
 			// 追平：等待新区块/新 seq（含回滚产生的 del seq）
 			if sleepCtx(ctx, poll) != nil {
@@ -97,6 +115,9 @@ func RunPull(ctx context.Context, src SeqSource, w SeqWriter, dealer BlockDealer
 		end := cursor + int64(batch)
 		if end > last {
 			end = last
+		}
+		if opt.FixMode && end > opt.EndSeq {
+			end = opt.EndSeq
 		}
 		bs, err := src.Batch(cursor+1, end)
 		if err != nil {
@@ -118,7 +139,7 @@ func RunPull(ctx context.Context, src SeqSource, w SeqWriter, dealer BlockDealer
 		}
 
 		for _, b := range bs {
-			if err := processSeq(w, src, dealer, cache, b); err != nil {
+			if err := processSeq(w, src, dealer, cache, b, !opt.SkipMarker); err != nil {
 				return err
 			}
 			cursor = b.Seq
@@ -137,8 +158,8 @@ func RunPull(ctx context.Context, src SeqSource, w SeqWriter, dealer BlockDealer
 }
 
 // processSeq 处理一个 seq：补 detail（回滚兜底）→ 解析 → 写记录 → 写 marker。
-// 任一步失败都不推进游标。
-func processSeq(w SeqWriter, src SeqSource, dealer BlockDealer, cache *DetailCache, b SeqBlock) error {
+// 任一步失败都不推进游标。writeMarker=false 用于修复模式（不碰游标）。
+func processSeq(w SeqWriter, src SeqSource, dealer BlockDealer, cache *DetailCache, b SeqBlock, writeMarker bool) error {
 	if b.Detail == nil {
 		// del seq 的块体可能已被节点 prune：先查本地缓存，再按 hash 向节点兜底
 		if cache != nil {
@@ -170,8 +191,10 @@ func processSeq(w SeqWriter, src SeqSource, dealer BlockDealer, cache *DetailCac
 	if err := w.WriteRecords(records); err != nil {
 		return errors.Wrapf(err, "pull_convert: write seq %d (height %d)", b.Seq, b.Height)
 	}
-	if err := w.WriteMarker(&seqmark.Marker{Seq: b.Seq, Height: b.Height, Hash: b.Hash, Type: b.Type}); err != nil {
-		return errors.Wrapf(err, "pull_convert: marker seq %d (height %d)", b.Seq, b.Height)
+	if writeMarker {
+		if err := w.WriteMarker(&seqmark.Marker{Seq: b.Seq, Height: b.Height, Hash: b.Hash, Type: b.Type}); err != nil {
+			return errors.Wrapf(err, "pull_convert: marker seq %d (height %d)", b.Seq, b.Height)
+		}
 	}
 	if cache != nil {
 		cache.Put(b.Hash, b.Detail)

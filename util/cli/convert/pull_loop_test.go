@@ -366,3 +366,42 @@ func TestRunPullDelDetailMissing(t *testing.T) {
 	}
 	assert.Empty(t, w.markers, "拿不到旧块 detail 不得推进游标")
 }
+
+// fix 模式：处理到 -to（含）就退出，且不写 marker
+func TestRunPullFixModeStopsAtEndSeq(t *testing.T) {
+	src := &fakeSource{last: 20, blocks: blocksFor(10, 20)}
+	w := &fakeWriter{}
+	d := &fakeDealer{}
+	err := startPull(t, src, w, d,
+		PullOptions{Cursor: 9, Batch: 4, PollInterval: 5 * time.Millisecond, FixMode: true, EndSeq: 14, SkipMarker: true},
+		2*time.Second)
+	assert.NoError(t, err, "修完区间应正常退出，而不是等 ctx 超时")
+	assert.Equal(t, 5, d.called, "应处理 10..14 共 5 个 seq")
+	assert.Empty(t, w.markers, "fix 模式不得写 seq_marker")
+	assert.Len(t, w.records, 5)
+}
+
+// fix 模式：-to 超出节点 seq 日志 → 直接报错，不空转
+func TestRunPullFixModeBeyondNodeTip(t *testing.T) {
+	src := &fakeSource{last: 12, blocks: blocksFor(10, 12)}
+	w := &fakeWriter{}
+	err := startPull(t, src, w, &fakeDealer{},
+		PullOptions{Cursor: 9, Batch: 10, PollInterval: 5 * time.Millisecond, FixMode: true, EndSeq: 20, SkipMarker: true},
+		500*time.Millisecond)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "小于 -to")
+	}
+	assert.Empty(t, w.markers)
+}
+
+// fix 模式：cursor 已在 -to 之后 → 立即成功退出
+func TestRunPullFixModeAlreadyDone(t *testing.T) {
+	src := &fakeSource{last: 20}
+	w := &fakeWriter{}
+	d := &fakeDealer{}
+	err := startPull(t, src, w, d,
+		PullOptions{Cursor: 15, Batch: 10, PollInterval: 5 * time.Millisecond, FixMode: true, EndSeq: 14, SkipMarker: true},
+		500*time.Millisecond)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, d.called)
+}
