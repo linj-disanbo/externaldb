@@ -126,6 +126,27 @@ message Log {
   int32 maxAge = 5;
 }
 
+// 主币（bty 等）account 余额定时校正：从链上按地址查真实 balance/frozen 写回 ES
+message AccountRefresh {
+  bool enabled = 1;
+  // top 档：按 total 排序的前 N 个地址
+  int64 topN = 2;
+  // 各档间隔（时长字符串，如 1h/24h/168h）；<=0 表示该档不跑
+  string topInterval = 3;
+  string activeInterval = 4;
+  string fullInterval = 5;
+  // 活跃窗口：transaction 索引里近该时长内出现过（from/to）的地址算活跃
+  string activeWindow = 6;
+  // 每批地址数（一次 GetBalance 的 addresses 数量）
+  int64 batchSize = 7;
+  // 每轮从 ES 取的文档数（top 档还受 topN 限制）
+  int64 pageSize = 8;
+  // 资产符号，空则用 [chain].symbol
+  string symbol = 9;
+  // ticket 执行器地址；空则用 db.ExecAddress([chain].title+"ticket") 推算
+  string ticketExec = 10;
+}
+
 message ConfigNew {
 
   // 处理的是哪条链 bityuan 或 user.p.xxxx.
@@ -146,6 +167,7 @@ message ConfigNew {
   repeated Contract Contracts = 12;
   MySQL mysql = 13;  // MySQL数据库配置
   ERC20Scan erc20scan = 14;  // ERC20 扫块/查询配置
+  AccountRefresh accountRefresh = 15;  // 主币余额定时校正
 }
 
 message Contract {

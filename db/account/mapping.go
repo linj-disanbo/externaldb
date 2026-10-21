@@ -39,6 +39,12 @@ const AccountMapping = `{
             },
             "addr_type":{
                 "type":"keyword"
+            },
+            "balance_refresh_at":{
+                "type":"long"
+            },
+            "balance_refresh_height":{
+                "type":"long"
             }
         }
     }

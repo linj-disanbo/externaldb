@@ -11,7 +11,7 @@
 
 ```
 externaldb-pull/
-├── bin/            convert（=pull_convert）、scanner（=erc20scan）、jrpc、erc20api（常驻程序）
+├── bin/            convert（=pull_convert）、scanner（=erc20scan）、jrpc、erc20api、account_refresh（常驻程序）
 ├── tools/          convert_check（离线对账；后续一次性/排障工具也放这里）
 ├── etc/            externaldb.toml、chain33.toml
 ├── env/es7/        ES 7.17.29 的 compose + proof-init.bash（默认）
@@ -33,7 +33,7 @@ externaldb-pull/
 5. 回退：停掉 `convert`，另行用老链路（`sync` → `convert`，不在本包内）从 `seq05_seq` 续跑；
    同一批索引只能有一个写方，切换前务必停干净。
 
-## 4 个程序
+## 5 个程序
 
 | 程序 | 作用 | 依赖 |
 | --- | --- | --- |
@@ -41,11 +41,15 @@ externaldb-pull/
 | `jrpc` | 浏览器/查询：读 ES | ES（MySQL 可选，`getTransferLogs`） |
 | `scanner` | ERC20 扫块：解析转账写 MySQL | chain33 gRPC、MySQL、eth JSON-RPC（balanceOf） |
 | `erc20api` | ERC20 查询：`/evmapi/*` 读 MySQL | MySQL |
+| `account_refresh` | 主币（BTY）余额定时校正：三档（top 1h / 活跃 24h / 全量 168h）按地址查链上 `balance/frozen` 写回 ES `account` | chain33 gRPC、ES |
 
 - `scanner`/`erc20api` 受 `.env` 的 `MYSQL_ENABLED` 控制：`true` 时 `make quickStart` / `make run` 才会启动这两个服务，
   同时 `alter-config.sh` 把 `[mysql].enabled` 写进配置；默认 `false`（只跑 convert + jrpc）。
 - `MYSQL_DSN`、`ERC20_ETH_URL`、`ERC20_START_BLOCK`、`ERC20_API_PORT` 分别在 `.env` 里配置，
   由 `alter-config.sh` 写入 `[mysql]` / `[erc20scan]`。
+- `account_refresh` 受 `.env` 的 `ACCOUNT_REFRESH_ENABLED` 控制（默认 true），间隔在 `.env`
+  （`ACCOUNT_REFRESH_TOP_INTERVAL`/`ACCOUNT_REFRESH_ACTIVE_INTERVAL`/`ACCOUNT_REFRESH_FULL_INTERVAL`）
+  由 `alter-config.sh` 写入 `[accountRefresh]`；程序内部循环，不需要 cron。
 - 日志：`convert`/`jrpc` 在 `bin/logs/convert.log`、`jrpc.log`；`scanner`/`erc20api` 在 `bin/logs/scanner_app.log`、`rpc_app.log`
   （`make log-convert`、`make log-scanner`、`make log-erc20api`）。
 

@@ -109,6 +109,7 @@ build: code_gen ## Build all binaries (static, CGO_ENABLED=0)
 	@$(STATIC_BUILD) -o  build/convert_check $(SRC_CLI)/convert_check
 	@$(STATIC_BUILD) -o  build/erc20scan $(SRC_CLI)/erc20scan
 	@$(STATIC_BUILD) -o  build/erc20api $(SRC_CLI)/erc20api
+	@$(STATIC_BUILD) -o  build/account_refresh $(SRC_CLI)/account_refresh
 	@cp config/externaldb.toml build/externaldb.toml
 
 .PHONY: build_convert
@@ -264,8 +265,8 @@ pkg-quickStart:
 	tar zcvf build/externaldb-proof.tgz -C build externaldb-proof
 
 # pkg-pullConvert: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
-#   - bin/：4 个常驻程序 convert（pull+seq 展开）/ scanner（ERC20 扫块）/ jrpc（ES 查询）/
-#     erc20api（ERC20 查询，走 MySQL）
+#   - bin/：5 个常驻程序 convert（pull+seq 展开）/ scanner（ERC20 扫块）/ jrpc（ES 查询）/
+#     erc20api（ERC20 查询，走 MySQL）/ account_refresh（BTY 余额定时校正）
 #   - tools/：离线/一次性工具（convert_check 对账，后续同类工具都放这里）
 #   - 不含老链路 sync/convert/rpc
 #   - 去掉 ES6；env/es7 = ES 7.17（默认，新部署用），包内另存 env/es7.4（ES 7.4.2）备用，
@@ -279,6 +280,7 @@ pkg-pullConvert:
 	cp build/erc20scan build/externaldb-pull/bin/scanner
 	cp build/jrpc build/externaldb-pull/bin/jrpc
 	cp build/erc20api build/externaldb-pull/bin/erc20api
+	cp build/account_refresh build/externaldb-pull/bin/account_refresh
 	cp build/convert_check build/externaldb-pull/tools/
 	cp config/externaldb.toml build/externaldb-pull/etc/
 	cp config/chain33.toml build/externaldb-pull/etc/

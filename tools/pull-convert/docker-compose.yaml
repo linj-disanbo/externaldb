@@ -5,6 +5,7 @@ version: '2'
 #   jrpc     —— 浏览器/查询：读 ES
 #   scanner  —— ERC20 扫块：按 seq 拉块解析转账写入 MySQL
 #   erc20api —— ERC20 查询：读 MySQL（/evmapi/*）
+#   accountrefresh —— 主币余额定时校正：按地址查链上 balance/frozen 写回 ES account 文档
 # scanner / erc20api 依赖 [mysql]（MYSQL_ENABLED=true 时才启动，见 Makefile）。
 # rpc（gin REST）与老链路 sync/convert 不在本包里。
 services:
@@ -48,3 +49,13 @@ services:
       - ./etc/:/root/etc/
     network_mode: "host"
     command: /root/bin/erc20api -c /root/etc/externaldb.toml &
+
+  accountrefresh: # 主币（BTY）余额定时校正（写 ES account 文档；[accountRefresh].enabled=false 时空转退出）
+    container_name: ${PROJECT_NAME}-accountrefresh
+    image: docker.io/ubuntu:16.04
+    working_dir: /root/bin
+    volumes:
+      - ./bin/:/root/bin/
+      - ./etc/:/root/etc/
+    network_mode: "host"
+    command: /root/bin/account_refresh -f /root/etc/externaldb.toml &

@@ -124,5 +124,11 @@ set_key_value "dsn" \"${MYSQL_DSN}\" mysql
 set_key_value "ethUrl" \"${ERC20_ETH_URL}\" erc20scan
 set_key_value "startBlock" ${ERC20_START_BLOCK} erc20scan
 set_key_value "apiPort" \"${ERC20_API_PORT}\" erc20scan
+# accountRefresh（主币余额定时校正）
+set_key_value "enabled" ${ACCOUNT_REFRESH_ENABLED} accountRefresh
+set_key_value "topN" ${ACCOUNT_REFRESH_TOP_N} accountRefresh
+set_key_value "topInterval" \"${ACCOUNT_REFRESH_TOP_INTERVAL}\" accountRefresh
+set_key_value "activeInterval" \"${ACCOUNT_REFRESH_ACTIVE_INTERVAL}\" accountRefresh
+set_key_value "fullInterval" \"${ACCOUNT_REFRESH_FULL_INTERVAL}\" accountRefresh
 
 deal_browser_config

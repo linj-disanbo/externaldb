@@ -38,7 +38,7 @@ make pkg-pullConvert
 
 The `Makefile` expects a `.env` file at the project root (included via `include .env`).
 
-`make build` 产出：`build/{sync,convert,jrpc,rpc,sync_convert,pull_convert,convert_check,erc20scan,erc20api}`。
+`make build` 产出：`build/{sync,convert,jrpc,rpc,sync_convert,pull_convert,convert_check,erc20scan,erc20api,account_refresh}`。
 部分包测试依赖真实 ES/外网（如 `rpc/service/proof`、`jrpc` 的部分用例），本机跑会失败，用 `-run` 过滤。
 
 ## Architecture
@@ -65,6 +65,9 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
   `cmd/erc20api`（`/evmapi/*` 读 MySQL，原 `erc20Scaner/rpc`）；库在 `erc20scaner/`（`scanner/engine`、`txparser`、
   `database`、`config`、`erc20abi`、`blockalign`、`logger`、`txinspect`），文档在 `erc20scaner/docs/`；
   离线工具 `cmd/tools/erc20-{blockparse,scannerfix,txinfo}`。
+- **account_refresh**（`cmd/account_refresh`, `util/accountrefresh/`）：常驻循环，把主币（BTY）真实余额
+  按三档（top N 1h / 活跃 24h / 全量 168h）从链上 `Chain33.GetBalance` 校正回 ES `account` 文档
+  （只部分更新 balance/frozen/total 与 `balance_refresh_at`；配置段 `[accountRefresh]`）。
 - **离线/运维工具**：`cmd/convert_check`（对账，部署包里放 `tools/`）；`local/`（git 忽略）放不公开的过程文档与非通用工具：`local/tools/`、`local/docs/`。
 
 ## Key Abstractions

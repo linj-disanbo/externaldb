@@ -7,6 +7,8 @@ ENV_DIR ?= env/es${ES_VERSION}
 
 # scanner / erc20api 依赖 MySQL：MYSQL_ENABLED=true 才启动（见 .env）
 ERC20_SERVICES := $(if $(filter true,$(MYSQL_ENABLED)),scanner erc20api)
+# 主币余额定时校正：ACCOUNT_REFRESH_ENABLED=true 才启动
+REFRESH_SERVICES := $(if $(filter true,$(ACCOUNT_REFRESH_ENABLED)),accountrefresh)
 
 # 按 EX_SERVICE_TYPE 跑对应的初始化：
 #   proof   -> 存证索引/初始数据（env/<dir>/proof-init.bash）
@@ -36,20 +38,20 @@ quickStart:
 	@bash alter-config.sh
 	@$(RUN_SERVICE_INIT)
 	@echo "============start run externaldb============"
-	@cd ./bin && chmod +x convert jrpc $(ERC20_SERVICES)
+	@cd ./bin && chmod +x convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES)
 	@if [ "${EX_SERVICE_TYPE}" = "proof" ]; then \
 		docker-compose -p ${PROJECT_NAME} up -d convert; \
 	else \
-		docker-compose -p ${PROJECT_NAME} up -d convert jrpc $(ERC20_SERVICES); \
+		docker-compose -p ${PROJECT_NAME} up -d convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES); \
 	fi
 	@echo "==================complete=================="
 
 run:
-	@cd ./bin && chmod +x convert jrpc $(ERC20_SERVICES)
+	@cd ./bin && chmod +x convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES)
 	@if [ "${EX_SERVICE_TYPE}" = "proof" ]; then \
 		docker-compose -p ${PROJECT_NAME} up -d convert; \
 	else \
-		docker-compose -p ${PROJECT_NAME} up -d convert jrpc $(ERC20_SERVICES); \
+		docker-compose -p ${PROJECT_NAME} up -d convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES); \
 	fi
 
 # 对账/巡检（marker 链连续性、marker 与 block_info 一致性、旧 last_seq 是否停更）
@@ -66,6 +68,8 @@ log-scanner:
 	@tail -200f ./bin/logs/scanner_app.log
 log-erc20api:
 	@tail -200f ./bin/logs/rpc_app.log
+log-account-refresh:
+	@tail -200f ./bin/logs/account_refresh.log
 
 logs:
 	@docker-compose -p ${PROJECT_NAME} logs
@@ -81,6 +85,9 @@ logs-scanner:
 
 logs-erc20api:
 	@docker-compose -p ${PROJECT_NAME} logs erc20api
+
+logs-account-refresh:
+	@docker-compose -p ${PROJECT_NAME} logs accountrefresh
 
 stop:
 	@docker-compose -p ${PROJECT_NAME} stop

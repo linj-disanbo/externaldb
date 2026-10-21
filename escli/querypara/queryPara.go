@@ -32,6 +32,8 @@ type QRange struct {
 type QSort struct {
 	Key       string `json:"key"`       // 字段名
 	Ascending bool   `json:"ascending"` // 是否递增
+	// Missing 缺失该字段的文档排在哪："_first" / "_last"（空=ES 默认，升序时缺失排最后）
+	Missing string `json:"missing,omitempty"`
 }
 
 // QPage page

@@ -201,6 +201,10 @@ func Query(search *elasticV7.SearchService, query *querypara.Query) (*elasticV7.
 	}
 	if query.Sort != nil && len(query.Sort) > 0 {
 		for _, s := range query.Sort {
+			if s.Missing != "" {
+				search = search.SortBy(elasticV7.NewFieldSort(s.Key).Order(s.Ascending).Missing(s.Missing))
+				continue
+			}
 			search = search.Sort(s.Key, s.Ascending)
 		}
 	}
