@@ -19,6 +19,7 @@ import (
 	"time"
 
 	chain33types "github.com/33cn/chain33/types"
+	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/erc20scaner/blockalign"
 	"github.com/33cn/externaldb/erc20scaner/config"
@@ -27,7 +28,6 @@ import (
 	"github.com/33cn/externaldb/erc20scaner/txparser"
 	"google.golang.org/grpc"
 )
-
 
 // normalizeAddress 规范化地址，统一转换为小写
 // 以太坊地址是大小写不敏感的，统一转换为小写便于比较和查询
@@ -113,6 +113,27 @@ func (p *Process) Init() {
 	}
 }
 
+// resumeFromSeqMarker 用 append-only 的 scan_seq_marker 恢复游标（游标 = max(seq)）。
+// 返回 false 表示还没有 marker（首次运行或从老版本升级），调用方再走 alignScanStart 兜底。
+func (p *Process) resumeFromSeqMarker() bool {
+	if p.NoProgress || !p.EnableDB || p.db == nil {
+		return false
+	}
+	m, err := p.db.MaxSeqMarker()
+	if err != nil {
+		log.Warn("[Init] Failed to read scan_seq_marker, fallback to scan_progress height", "err", err)
+		return false
+	}
+	if m == nil {
+		log.Info("[Init] No seq marker found, fallback to scan_progress height")
+		return false
+	}
+	p.StartPoint = m.Seq + 1
+	log.Info("[Init] Resuming scan from seq marker",
+		"lastSeq", m.Seq, "lastHeight", m.Height, "lastType", m.Type, "nextSeq", p.StartPoint)
+	return true
+}
+
 // alignScanStart 启动时对齐 seq 和 height。
 // scan_progress 存的是 height，但 GetBlockBySeq 按 seq 查询。
 // 从 scan_progress 读到 lastH 后，查节点获取 lastH+1 对应的 seq，
@@ -165,7 +186,10 @@ func (p *Process) alignScanStart() {
 func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcConn *grpc.ClientConn) {
 	p.grpcClient = grpcClient
 	p.grpcConn = grpcConn
-	p.alignScanStart()
+	if !p.resumeFromSeqMarker() {
+		// 没有 marker（首次/老数据）：沿用 height 进度 + alignScanStart 把 height 换成 seq
+		p.alignScanStart()
+	}
 
 	for {
 		// 检查是否到达结束点
@@ -186,9 +210,24 @@ func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcCo
 			continue
 		}
 
-		if blockSeq == nil {
-			// DEL 类型区块无 Detail，跳过该 seq
-			p.StartPoint++
+		// del seq（回滚）：不解析块体，只记录进度；被回滚块的旧行由后续 add seq 的
+		// 按块替换清掉（同一高度重新写入时先删后插）。
+		if blockSeq.Type != db.SeqTypeAdd {
+			log.Info("[Reorg] del seq, advance cursor only",
+				"seq", blockSeq.SyncSeq, "hash", blockSeq.Hash, "type", blockSeq.Type)
+			if !p.NoProgress && p.EnableDB && p.db != nil {
+				if err = p.db.SaveSeqMarker(&database.SeqMarker{
+					Seq:    uint64(blockSeq.SyncSeq),
+					Height: 0,
+					Hash:   blockSeq.Hash,
+					Type:   blockSeq.Type,
+				}); err != nil {
+					log.Error("Failed to save del seq marker, will retry", "err", err, "seq", blockSeq.SyncSeq)
+					time.Sleep(time.Second)
+					continue
+				}
+			}
+			p.StartPoint = uint64(int64(blockSeq.SyncSeq) + 1)
 			continue
 		}
 
@@ -199,14 +238,24 @@ func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcCo
 			continue
 		}
 
-		// 解码获取高度用于进度记录
+		// 进度：append-only seq marker（权威游标）；同时保留旧的 height 进度便于排查。
+		// marker 写失败时不推进游标——重放该 seq（写库路径是幂等的）。
 		var detail chain33types.BlockDetail
 		if decErr := chain33types.Decode(blockSeq.BlockDetail, &detail); decErr == nil {
 			have := uint64(detail.Block.Height)
 			if !p.NoProgress && p.EnableDB && p.db != nil {
+				if err = p.db.SaveSeqMarker(&database.SeqMarker{
+					Seq:    uint64(blockSeq.SyncSeq),
+					Height: have,
+					Hash:   blockSeq.Hash,
+					Type:   blockSeq.Type,
+				}); err != nil {
+					log.Error("Failed to save seq marker, will retry this seq", "err", err, "seq", blockSeq.SyncSeq)
+					time.Sleep(time.Second)
+					continue
+				}
 				blockTime := time.Unix(int64(detail.Block.BlockTime), 0)
-				err = p.db.UpdateScanProgress(have, blockSeq.Hash, blockTime, 0)
-				if err != nil {
+				if err = p.db.UpdateScanProgress(have, blockSeq.Hash, blockTime, 0); err != nil {
 					log.Error("Failed to update scan progress", "err", err, "height", have)
 				}
 			}
@@ -300,9 +349,13 @@ func (p *Process) getBlockFromChain33(seqNum int64) (*block.Seq, error) {
 		return nil, fmt.Errorf("GetBlockBySeq returned nil for seq=%d", seqNum)
 	}
 	if reply.GetDetail() == nil {
-		// DEL 类型区块可能没有 Detail，返回 nil 让上层跳过
-		log.Info("GetBlockBySeq returned nil Detail, skipping", "seq", seqNum, "type", reply.GetSeq().GetType())
-		return nil, nil
+		// del seq（回滚）通常没有 Detail：仍返回 seq/hash/type，让上层写 marker 并推进游标；
+		// 该高度的旧数据由"按块幂等替换"在随后的 add seq 上清掉（见 parseBlockFromChain33）。
+		return &block.Seq{
+			SyncSeq: int(reply.GetNum()),
+			Hash:    fmt.Sprintf("0x%x", reply.GetSeq().GetHash()),
+			Type:    int(reply.GetSeq().GetType()),
+		}, nil
 	}
 
 	seq := &block.Seq{
@@ -321,7 +374,7 @@ func isEvmExecer(execer string) bool {
 }
 
 // parseBlockFromChain33 解析从 chain33 gRPC 获取的区块（替代原 parseBlockFromChain33）。
-func (p *Process) parseBlockFromChain33(blockSeq *block.Seq) error {
+func (p *Process) parseBlockFromChain33(blockSeq *block.Seq) (retErr error) {
 	if blockSeq == nil {
 		return fmt.Errorf("blockSeq is nil")
 	}
@@ -404,6 +457,36 @@ func (p *Process) parseBlockFromChain33(blockSeq *block.Seq) error {
 			"seq-txCount", len(detail.Block.Txs),
 			"ethBlockTxCount", block.Transactions().Len(),
 		)
+	}
+
+	// 幂等替换：处理前先删掉该高度已写入的 events/transactions（重放、reorg 后重扫都走这里）。
+	// 放在事务里：删除与后续插入同生共死，避免查询侧看到"块数据空窗"或半截数据。
+	if p.EnableDB && p.db != nil {
+		fresh, txErr := p.db.BeginBlock()
+		if txErr != nil {
+			// 起不了事务就不删（宁可留旧数据，也不要在无事务保护下删了写不回去）
+			log.Error("Failed to begin block transaction, skip block replacement",
+				"err", txErr, "height", detail.Block.Height)
+		} else {
+			deletedEvents, deletedTxs, delErr := p.db.DeleteBlockData(uint64(detail.Block.Height))
+			if delErr != nil {
+				p.db.RollbackBlock(fresh)
+				return fmt.Errorf("replace block height=%d: %w", detail.Block.Height, delErr)
+			}
+			if deletedEvents > 0 || deletedTxs > 0 {
+				log.Info("Replaced existing block rows (replay/reorg)",
+					"height", detail.Block.Height, "deletedEvents", deletedEvents, "deletedTxs", deletedTxs)
+			}
+			defer func() {
+				if retErr != nil {
+					p.db.RollbackBlock(fresh)
+					return
+				}
+				if cErr := p.db.CommitBlock(fresh); cErr != nil {
+					log.Error("Failed to commit block transaction", "err", cErr, "height", detail.Block.Height)
+				}
+			}()
+		}
 	}
 
 	log.Debug("Processing block transactions",

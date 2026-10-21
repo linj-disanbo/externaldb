@@ -127,9 +127,150 @@ type ScanProgress struct {
 	CreatedAt        time.Time `db:"created_at"`
 }
 
+// SeqMarker 扫块进度标记（append-only，一个 seq 一条，游标 = max(seq)）
+//
+// 与 ES 侧 db/seqmark 同一套语义：只写不删、del seq 也写（游标不回退），
+// 缺号即数据空洞，可用于对账；重复处理同一 seq 时按主键覆盖（幂等）。
+type SeqMarker struct {
+	Seq    uint64
+	Height uint64
+	Hash   string
+	Type   int
+}
+
+// InitScanSeqMarkerTable 初始化扫块进度表
+func (db *DB) InitScanSeqMarkerTable() error {
+	query := `CREATE TABLE IF NOT EXISTS scan_seq_marker (
+		seq BIGINT UNSIGNED NOT NULL COMMENT 'chain33 seq（主键，append-only）',
+		height BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '区块高度（del seq 可能为 0）',
+		hash VARCHAR(66) NOT NULL DEFAULT '' COMMENT '区块哈希',
+		type TINYINT NOT NULL DEFAULT 0 COMMENT '1=add 2=del（chain33 seq type）',
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+		PRIMARY KEY (seq),
+		KEY idx_height (height)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='扫块 seq 进度标记'`
+
+	_, err := db.exec(query)
+	return err
+}
+
+// SaveSeqMarker 写入一个 seq 的进度（幂等：同一 seq 重复处理时覆盖）
+func (db *DB) SaveSeqMarker(m *SeqMarker) error {
+	if m == nil {
+		return fmt.Errorf("nil seq marker")
+	}
+	if err := db.InitScanSeqMarkerTable(); err != nil {
+		return fmt.Errorf("init scan_seq_marker: %w", err)
+	}
+	query := `INSERT INTO scan_seq_marker (seq, height, hash, type) VALUES (?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE height = VALUES(height), hash = VALUES(hash), type = VALUES(type)`
+	_, err := db.exec(query, m.Seq, m.Height, m.Hash, m.Type)
+	return err
+}
+
+// MaxSeqMarker 取当前游标（最后一条 marker）；无记录返回 (nil, nil)
+func (db *DB) MaxSeqMarker() (*SeqMarker, error) {
+	if err := db.InitScanSeqMarkerTable(); err != nil {
+		return nil, fmt.Errorf("init scan_seq_marker: %w", err)
+	}
+	query := `SELECT seq, height, hash, type FROM scan_seq_marker ORDER BY seq DESC LIMIT 1`
+	m := &SeqMarker{}
+	err := db.queryRow(query).Scan(&m.Seq, &m.Height, &m.Hash, &m.Type)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// DeleteSeqMarkerBefore 滚动删除旧 marker（seq < before）；before<=0 不删
+func (db *DB) DeleteSeqMarkerBefore(before uint64) error {
+	if before == 0 {
+		return nil
+	}
+	if err := db.InitScanSeqMarkerTable(); err != nil {
+		return fmt.Errorf("init scan_seq_marker: %w", err)
+	}
+	_, err := db.exec(`DELETE FROM scan_seq_marker WHERE seq < ?`, before)
+	return err
+}
+
 // DB 数据库操作接口
 type DB struct {
 	conn *sql.DB
+	tx   *sql.Tx // 非 nil 时所有读写走该事务（按块处理用）
+}
+
+// exec/query/queryRow：有事务走事务，否则直连连接池
+func (db *DB) exec(query string, args ...interface{}) (sql.Result, error) {
+	if db.tx != nil {
+		return db.tx.Exec(query, args...)
+	}
+	return db.conn.Exec(query, args...)
+}
+
+func (db *DB) query(query string, args ...interface{}) (*sql.Rows, error) {
+	if db.tx != nil {
+		return db.tx.Query(query, args...)
+	}
+	return db.conn.Query(query, args...)
+}
+
+func (db *DB) queryRow(query string, args ...interface{}) *sql.Row {
+	if db.tx != nil {
+		return db.tx.QueryRow(query, args...)
+	}
+	return db.conn.QueryRow(query, args...)
+}
+
+// BeginBlock 开始"按块处理"的事务；已在事务中则直接复用（返回 false 表示复用）。
+func (db *DB) BeginBlock() (bool, error) {
+	if db.tx != nil {
+		return false, nil
+	}
+	t, err := db.conn.Begin()
+	if err != nil {
+		return false, err
+	}
+	db.tx = t
+	return true, nil
+}
+
+// CommitBlock 提交按块事务；fresh=false 表示事务是外层开的，不提交。
+func (db *DB) CommitBlock(fresh bool) error {
+	if !fresh || db.tx == nil {
+		return nil
+	}
+	err := db.tx.Commit()
+	db.tx = nil
+	return err
+}
+
+// RollbackBlock 回滚按块事务（fresh=false 时不动）。
+func (db *DB) RollbackBlock(fresh bool) {
+	if !fresh || db.tx == nil {
+		return
+	}
+	_ = db.tx.Rollback()
+	db.tx = nil
+}
+
+// DeleteBlockData 删除某个高度已写入的行（幂等替换：先删后插，用于重放/回滚）。
+// 删除顺序受外键约束：events.tx_hash → transactions.tx_hash（ON DELETE RESTRICT），必须先删 events。
+func (db *DB) DeleteBlockData(height uint64) (events int64, txs int64, err error) {
+	res, err := db.exec(`DELETE FROM events WHERE block_number = ?`, height)
+	if err != nil {
+		return 0, 0, fmt.Errorf("delete events height=%d: %w", height, err)
+	}
+	events, _ = res.RowsAffected()
+	res, err = db.exec(`DELETE FROM transactions WHERE block_number = ?`, height)
+	if err != nil {
+		return events, 0, fmt.Errorf("delete transactions height=%d: %w", height, err)
+	}
+	txs, _ = res.RowsAffected()
+	return events, txs, nil
 }
 
 // GetConn 获取数据库连接（用于复杂查询）
@@ -169,14 +310,14 @@ func (db *DB) InitScanProgressTable() error {
 		PRIMARY KEY (id)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='扫描进度表'`
 
-	_, err := db.conn.Exec(query)
+	_, err := db.exec(query)
 	if err != nil {
 		return err
 	}
 
 	// 确保有一条初始记录
 	insertQuery := `INSERT IGNORE INTO scan_progress (id, last_block_number, processed_tx_count) VALUES (1, 0, 0)`
-	_, err = db.conn.Exec(insertQuery)
+	_, err = db.exec(insertQuery)
 	return err
 }
 
@@ -190,7 +331,7 @@ func (db *DB) GetScanProgress() (*ScanProgress, error) {
 	query := `SELECT * FROM scan_progress ORDER BY id DESC LIMIT 1`
 
 	progress := &ScanProgress{}
-	err := db.conn.QueryRow(query).Scan(
+	err := db.queryRow(query).Scan(
 		&progress.ID,
 		&progress.LastBlockNumber,
 		&progress.LastBlockHash,
@@ -229,7 +370,7 @@ func (db *DB) UpdateScanProgress(blockNumber uint64, blockHash string, blockTime
 		processed_tx_count = VALUES(processed_tx_count),
 		updated_at = CURRENT_TIMESTAMP`
 
-	_, err := db.conn.Exec(query, blockNumber, blockHash, blockTime, processedTxCount)
+	_, err := db.exec(query, blockNumber, blockHash, blockTime, processedTxCount)
 	return err
 }
 
@@ -238,7 +379,7 @@ func (db *DB) GetFunctionSignature(selector string) (*FunctionSignature, error) 
 	query := `SELECT * FROM function_signatures WHERE selector = ?`
 
 	sig := &FunctionSignature{}
-	err := db.conn.QueryRow(query, selector).Scan(
+	err := db.queryRow(query, selector).Scan(
 		&sig.ID,
 		&sig.Selector,
 		&sig.FunctionName,
@@ -260,7 +401,7 @@ func (db *DB) GetFunctionSignature(selector string) (*FunctionSignature, error) 
 func (db *DB) GetFunctionSignaturesByStandard(standardType string) ([]FunctionSignature, error) {
 	query := `SELECT * FROM function_signatures WHERE standard_type = ? ORDER BY function_name`
 
-	rows, err := db.conn.Query(query, standardType)
+	rows, err := db.query(query, standardType)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +460,7 @@ func (db *DB) SaveContract(contract *Contract) error {
 		totalSupplyStr = nil
 	}
 
-	_, err := db.conn.Exec(query,
+	_, err := db.exec(query,
 		contract.ContractAddress,
 		contract.ContractName,
 		contract.ContractSymbol,
@@ -372,7 +513,7 @@ func (db *DB) SaveTransaction(tx *Transaction) error {
 		txFeeStr = nil
 	}
 
-	_, err := db.conn.Exec(query,
+	_, err := db.exec(query,
 		tx.TxHash,
 		tx.BlockNumber,
 		tx.BlockHash,
@@ -405,7 +546,7 @@ func (db *DB) UpdateTokenBalance(address, contractAddress string, balance *big.I
 		last_tx_block_number = VALUES(last_tx_block_number),
 		last_updated_at = CURRENT_TIMESTAMP`
 
-	_, err := db.conn.Exec(query,
+	_, err := db.exec(query,
 		address,
 		contractAddress,
 		balance.String(),
@@ -446,7 +587,7 @@ func (db *DB) ListTokenBalanceRowsForRefresh(limit int, minAge time.Duration) ([
 			LIMIT ?`
 		args = []interface{}{cutoff, limit}
 	}
-	rows, err := db.conn.Query(query, args...)
+	rows, err := db.query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +611,7 @@ func (db *DB) UpdateTokenBalanceFromChain(address, contractAddress string, balan
 	}
 	q := `UPDATE token_balances SET balance = ?, last_updated_at = CURRENT_TIMESTAMP
 		WHERE address = ? AND contract_address = ?`
-	_, err := db.conn.Exec(q, balance.String(), address, contractAddress)
+	_, err := db.exec(q, balance.String(), address, contractAddress)
 	return err
 }
 
@@ -483,7 +624,7 @@ func (db *DB) UpsertTokenBalanceMetadata(address, contractAddress, txHash string
 			last_tx_hash = VALUES(last_tx_hash),
 			last_tx_block_number = VALUES(last_tx_block_number),
 			last_updated_at = CURRENT_TIMESTAMP`
-	_, err := db.conn.Exec(q, address, contractAddress, txHash, blockNumber)
+	_, err := db.exec(q, address, contractAddress, txHash, blockNumber)
 	return err
 }
 
@@ -514,7 +655,7 @@ func (db *DB) SaveEvent(event *Event) error {
 		amountStr = nil
 	}
 
-	_, err := db.conn.Exec(query,
+	_, err := db.exec(query,
 		event.TxHash,
 		event.BlockNumber,
 		event.BlockTime,
@@ -543,7 +684,7 @@ func (db *DB) GetContractByAddress(address string) (*Contract, error) {
 
 	contract := &Contract{}
 	var totalSupplyStr sql.NullString
-	err := db.conn.QueryRow(query, address).Scan(
+	err := db.queryRow(query, address).Scan(
 		&contract.ID,
 		&contract.ContractAddress,
 		&contract.ContractName,
@@ -580,7 +721,7 @@ func (db *DB) GetContractByAddress(address string) (*Contract, error) {
 func (db *DB) GetTokenBalancesByAddress(address string) ([]TokenBalance, error) {
 	query := `SELECT * FROM token_balances WHERE address = ? ORDER BY balance DESC`
 
-	rows, err := db.conn.Query(query, address)
+	rows, err := db.query(query, address)
 	if err != nil {
 		return nil, err
 	}
@@ -641,7 +782,7 @@ func (db *DB) ListERC20BalancesByHolderAddress(holder string, minBalance string,
 
 	countQuery := `SELECT COUNT(*) ` + baseWhere
 	var total int
-	if err := db.conn.QueryRow(countQuery, args...).Scan(&total); err != nil {
+	if err := db.queryRow(countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
@@ -656,7 +797,7 @@ func (db *DB) ListERC20BalancesByHolderAddress(holder string, minBalance string,
 		ORDER BY tb.balance DESC LIMIT ? OFFSET ?`
 	listArgs := append(append([]interface{}(nil), args...), limit, offset)
 
-	rows, err := db.conn.Query(listQuery, listArgs...)
+	rows, err := db.query(listQuery, listArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -702,7 +843,7 @@ func (db *DB) GetEventsByContract(contractAddress string, limit int) ([]Event, e
 		ORDER BY block_number DESC, log_index DESC 
 		LIMIT ?`
 
-	rows, err := db.conn.Query(query, contractAddress, limit)
+	rows, err := db.query(query, contractAddress, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -814,7 +955,7 @@ func (db *DB) InitTokenAllowancesTable() error {
 		KEY idx_owner_amount (owner, amount)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ERC20授权额度表'`
 
-	_, err := db.conn.Exec(query)
+	_, err := db.exec(query)
 	return err
 }
 
@@ -833,7 +974,7 @@ func (db *DB) UpsertAllowance(owner, spender, contractAddress string, amount *bi
 		last_block_number = VALUES(last_block_number),
 		last_updated_at = CURRENT_TIMESTAMP`
 
-	_, err := db.conn.Exec(query,
+	_, err := db.exec(query,
 		owner,
 		spender,
 		contractAddress,
@@ -847,7 +988,7 @@ func (db *DB) UpsertAllowance(owner, spender, contractAddress string, amount *bi
 // DeleteAllowance 删除授权记录（amount=0 时调用）
 func (db *DB) DeleteAllowance(owner, spender, contractAddress string) error {
 	query := `DELETE FROM token_allowances WHERE owner = ? AND spender = ? AND contract_address = ?`
-	_, err := db.conn.Exec(query, owner, spender, contractAddress)
+	_, err := db.exec(query, owner, spender, contractAddress)
 	return err
 }
 
@@ -874,7 +1015,7 @@ func (db *DB) ListAllowancesByOwner(owner string, minAmount string, contractFilt
 	// 统计总数
 	countQuery := `SELECT COUNT(*) ` + baseWhere
 	var total int
-	if err := db.conn.QueryRow(countQuery, args...).Scan(&total); err != nil {
+	if err := db.queryRow(countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
@@ -890,7 +1031,7 @@ func (db *DB) ListAllowancesByOwner(owner string, minAmount string, contractFilt
 		ORDER BY ta.amount DESC LIMIT ? OFFSET ?`
 	listArgs := append(append([]interface{}(nil), args...), limit, offset)
 
-	rows, err := db.conn.Query(listQuery, listArgs...)
+	rows, err := db.query(listQuery, listArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -939,7 +1080,7 @@ func (db *DB) EnsureContract(contractAddress string) error {
 		(contract_address, contract_name, contract_symbol, contract_type,
 		 decimals, verification_status, verified_functions)
 		VALUES (?, "Unknown", "UNKNOWN", "UNKNOWN", 0, 0, "[]")`
-	_, err := db.conn.Exec(query, contractAddress)
+	_, err := db.exec(query, contractAddress)
 	return err
 }
 
@@ -988,7 +1129,7 @@ func (db *DB) ListTransactions(contract, from string, startBlock, endBlock uint6
 	copy(countArgs, args)
 	var total int
 	countQuery := "SELECT COUNT(*) FROM transactions " + where
-	if err := db.conn.QueryRow(countQuery, countArgs...).Scan(&total); err != nil {
+	if err := db.queryRow(countQuery, countArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
@@ -1006,7 +1147,7 @@ func (db *DB) ListTransactions(contract, from string, startBlock, endBlock uint6
 		FROM transactions ` + where + ` ORDER BY block_number DESC LIMIT ? OFFSET ?`
 	listArgs := append(args, pageSize, offset)
 
-	rows, err := db.conn.Query(listQuery, listArgs...)
+	rows, err := db.query(listQuery, listArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
