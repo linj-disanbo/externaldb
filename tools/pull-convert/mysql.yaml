@@ -1,0 +1,24 @@
+version: '2'
+
+# MySQL 8.0 模板（pkg-pullConvert 的 env/mysql 用这个）。
+# 用途：本地/测试环境省得单独准备 MySQL；生产可以不用，把 [mysql].dsn 指向已有实例即可。
+# 首次启动（数据目录为空）会自动执行 ./sql/ 下的 schema.sql（v8 的 docker-entrypoint-initdb.d）。
+# 注意：数据目录已有数据时不会重复执行；补表请手动 `make initMySQLSchema`。
+services:
+  externaldb-mysql:
+    container_name: ${MYSQL_NAME}
+    image: mysql:8.0
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - TZ=Asia/Shanghai
+    volumes:
+      - ${MYSQL_DIR}:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    ports:
+      - ${MYSQL_BIND}:${MYSQL_PORT}:3306

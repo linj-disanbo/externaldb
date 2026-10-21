@@ -1,4 +1,4 @@
-.PHONY: quickStart run logs logs-convert logs-scanner logs-erc20api logs-jrpc stop restart rm down clean initConfig initES restartES downES check es-indices es-marker
+.PHONY: quickStart run logs logs-convert logs-scanner logs-erc20api logs-jrpc logs-account-refresh stop restart rm down clean initConfig initES restartES downES initMySQL downMySQL restartMySQL initMySQLSchema mysql-cli check es-indices es-marker
 
 include .env
 
@@ -28,6 +28,10 @@ define RUN_SERVICE_INIT
 endef
 
 quickStart:
+	@if [ "${MYSQL_LOCAL_START}" = "true" ]; then \
+		echo "================start initMySQL=============="; \
+		bash mysql-init.sh; \
+	fi
 	@echo "================start initES================"
 	@bash es-init.sh
 	@echo "==============waiting es start=============="
@@ -126,6 +130,21 @@ initES:
 	@curl -s -X PUT "http://localhost:${ES_PORT_HTTP}/${CONVERT_PREFIX}*/_settings" \
 		-H 'Content-Type: application/json' -u elastic:${ES_PASSWORD} \
 		-d '{"index":{"number_of_replicas":0}}' >/dev/null || true
+
+initMySQL: ## 启动包内 MySQL（env/mysql），并按需应用 schema
+	@bash mysql-init.sh
+
+downMySQL:
+	@docker-compose -f ./env/mysql/docker-compose.yaml down
+
+restartMySQL:
+	@docker-compose -f ./env/mysql/docker-compose.yaml restart
+
+initMySQLSchema: ## 只重放 schema（已存在表时幂等）
+	@docker exec -i "${MYSQL_NAME}" mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" "${MYSQL_DATABASE}" < ./env/mysql/sql/schema.sql
+
+mysql-cli: ## 进包内 MySQL 命令行
+	@docker exec -it "${MYSQL_NAME}" mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" "${MYSQL_DATABASE}"
 
 restartES:
 	@docker-compose -f ./$(ENV_DIR)/docker-compose.yaml restart

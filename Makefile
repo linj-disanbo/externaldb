@@ -275,7 +275,7 @@ pkg-quickStart:
 #   - compose 起 convert + jrpc；[mysql] 启用时再起 scanner + erc20api
 pkg-pullConvert:
 	rm -rf build/externaldb-pull
-	mkdir -p build/externaldb-pull/bin build/externaldb-pull/tools build/externaldb-pull/etc build/externaldb-pull/env/es7 build/externaldb-pull/env/es7.4
+	mkdir -p build/externaldb-pull/bin build/externaldb-pull/tools build/externaldb-pull/etc build/externaldb-pull/env/es7 build/externaldb-pull/env/es7.4 build/externaldb-pull/env/mysql/sql
 	cp build/pull_convert build/externaldb-pull/bin/convert
 	cp build/erc20scan build/externaldb-pull/bin/scanner
 	cp build/jrpc build/externaldb-pull/bin/jrpc
@@ -288,6 +288,9 @@ pkg-pullConvert:
 	cp tools/quick-start/proof-init-V7.bash build/externaldb-pull/env/es7/proof-init.bash
 	cp tools/quick-start/proof-es7.yaml build/externaldb-pull/env/es7.4/docker-compose.yaml
 	cp tools/quick-start/proof-init-V7.bash build/externaldb-pull/env/es7.4/proof-init.bash
+	cp tools/pull-convert/mysql.yaml build/externaldb-pull/env/mysql/docker-compose.yaml
+	cp tools/pull-convert/mysql-init.sh build/externaldb-pull/
+	cp erc20scaner/database/schema.sql build/externaldb-pull/env/mysql/sql/schema.sql
 	cp tools/pull-convert/docker-compose.yaml build/externaldb-pull/
 	cp tools/pull-convert/Makefile build/externaldb-pull/
 	cp tools/pull-convert/README.md build/externaldb-pull/

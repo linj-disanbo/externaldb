@@ -14,6 +14,7 @@ externaldb-pull/
 ├── bin/            convert（=pull_convert）、scanner（=erc20scan）、jrpc、erc20api、account_refresh（常驻程序）
 ├── tools/          convert_check（离线对账；后续一次性/排障工具也放这里）
 ├── etc/            externaldb.toml、chain33.toml
+├── env/mysql/      包内 MySQL 8.0 的 compose（sql/schema.sql 首次启动自动建表）
 ├── env/es7/        ES 7.17.29 的 compose + proof-init.bash（默认）
 ├── env/es7.4/      ES 7.4.2 的 compose + proof-init.bash（备用，见下）
 ├── docker-compose.yaml        4 个服务：convert / jrpc / scanner / erc20api
@@ -47,6 +48,10 @@ externaldb-pull/
   同时 `alter-config.sh` 把 `[mysql].enabled` 写进配置；默认 `false`（只跑 convert + jrpc）。
 - `MYSQL_DSN`、`ERC20_ETH_URL`、`ERC20_START_BLOCK`、`ERC20_API_PORT` 分别在 `.env` 里配置，
   由 `alter-config.sh` 写入 `[mysql]` / `[erc20scan]`。
+- 包内 MySQL（可选）：`MYSQL_LOCAL_START=true` 时 `make quickStart` 会先起 `env/mysql` 的 MySQL
+  （数据目录 `MYSQL_DIR`、端口 `MYSQL_PORT`、root 密码 `MYSQL_ROOT_PASSWORD`，首次启动自动执行
+  `env/mysql/sql/schema.sql`）。生产可不用：把 `MYSQL_DSN` 指向已有实例并保持 `MYSQL_LOCAL_START=false`。
+  单独操作用 `make initMySQL` / `make mysql-cli` / `make initMySQLSchema` / `make downMySQL`。
 - `account_refresh` 受 `.env` 的 `ACCOUNT_REFRESH_ENABLED` 控制（默认 true），间隔在 `.env`
   （`ACCOUNT_REFRESH_TOP_INTERVAL`/`ACCOUNT_REFRESH_ACTIVE_INTERVAL`/`ACCOUNT_REFRESH_FULL_INTERVAL`）
   由 `alter-config.sh` 写入 `[accountRefresh]`；程序内部循环，不需要 cron。
