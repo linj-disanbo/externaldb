@@ -31,6 +31,16 @@ curl -XPUT http://localhost:"$ES_PORT"/"$CONVERT_PREFIX"account,"$CONVERT_PREFIX
    }
 }'
 
+# account_refresh（BTY 余额定时校正）会写这两个字段。
+# mapping 只在索引首次创建时由程序写入（util.InitIndex 仅在索引不存在时建），
+# 已有 account 索引不会自动补字段；这里显式 PUT（additive，可重复执行）。
+curl -s -o /dev/null -XPUT "http://localhost:$ES_PORT/${CONVERT_PREFIX}account/_mapping" -u elastic:"$ES_PASSWORD" -H 'Content-Type: application/json' -d '{
+    "properties": {
+        "balance_refresh_at": {"type": "long"},
+        "balance_refresh_height": {"type": "long"}
+    }
+}' || echo "!! account mapping 追加失败（索引可能还不存在，动态 mapping 也能写入）"
+
 curl -XPUT http://localhost:"$ES_PORT"/"$CONVERT_PREFIX"last_seq/_settings -u elastic:"$ES_PASSWORD" -H 'Content-Type: application/json' -d '{
     "index": {
         "refresh_interval":"1s"
