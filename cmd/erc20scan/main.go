@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 
 	chain33types "github.com/33cn/chain33/types"
 	"github.com/33cn/externaldb/erc20scaner/config"
@@ -55,6 +56,12 @@ func initAndStart(cfg *config.Config) {
 	p.DBDSN = cfg.Database.DSN
 	p.NodeURL = cfg.Node.URL
 	p.SkipInlineBalanceUpdate = cfg.Scanner.SkipInlineBalanceUpdate
+
+	// 启动自检 eth JSON-RPC：失败直接给可读错误退出，避免 engine 里的 panic 让进程"静默退出"
+	if err := engine.PreflightEthRPC(cfg.Node.URL); err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: eth JSON-RPC 不可用: %v\n", err)
+		os.Exit(1)
+	}
 
 	// 如果启用了 chain33 模式，优先使用 gRPC 按 seq 读取区块
 	if cfg.ES.Enabled {

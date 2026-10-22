@@ -35,18 +35,52 @@ type Client struct {
 	receiptsCache            []*types.Receipt
 }
 
+// NormalizeEthURL 允许配置里省略 scheme（如 127.0.0.1:8546），统一补 http://
+func NormalizeEthURL(nodeURL string) string {
+	if nodeURL == "" {
+		return nodeURL
+	}
+	if !strings.Contains(nodeURL, "://") {
+		return "http://" + nodeURL
+	}
+	return nodeURL
+}
+
+// PreflightEthRPC 启动前自检 eth JSON-RPC：URL 归一化 + 连通性 + eth_blockNumber。
+// 失败时返回可读错误，避免 ConnectEth 里的 panic 变成"进程静默退出"。
+func PreflightEthRPC(nodeURL string) error {
+	if nodeURL == "" {
+		return fmt.Errorf("eth json-rpc url 为空（配置 [erc20scan].ethUrl）")
+	}
+	url := NormalizeEthURL(nodeURL)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cli, err := rpc.DialContext(ctx, url)
+	if err != nil {
+		return fmt.Errorf("连接 eth json-rpc %s 失败: %w（URL 需带 http://，且该端口要提供 eth_* 接口，chain33 的 jrpc 端口不是 eth RPC）", url, err)
+	}
+	defer cli.Close()
+	var num string
+	if err := cli.CallContext(ctx, &num, "eth_blockNumber"); err != nil {
+		return fmt.Errorf("eth json-rpc %s 不可用（eth_blockNumber 调用失败）: %w", url, err)
+	}
+	return nil
+}
+
 // ConnectEth 连接节点
 func (c *Client) ConnectEth(nodeURL string) *ethclient.Client {
 	if c.cli == nil {
 		if nodeURL == "" {
 			panic("node URL is required")
 		}
+		nodeURL = NormalizeEthURL(nodeURL)
 		c.nodeURL = nodeURL
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 		rpcCli, err := rpc.DialContext(ctx, nodeURL)
 		if err != nil {
-			panic(err)
+			// 正常不该走到这里（cmd 启动前会 PreflightEthRPC 并给出可读错误）
+			panic(fmt.Errorf("connect eth json-rpc %s: %w", nodeURL, err))
 		}
 		c.rpcCli = rpcCli
 		c.cli = ethclient.NewClient(rpcCli)

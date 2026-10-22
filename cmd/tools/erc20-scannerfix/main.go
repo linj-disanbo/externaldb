@@ -63,6 +63,12 @@ func main() {
 		}
 	}
 
+	// 启动自检 eth JSON-RPC（同 scanner）
+	if err := engine.PreflightEthRPC(cfg.Node.URL); err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: eth JSON-RPC 不可用: %v\n", err)
+		os.Exit(1)
+	}
+
 	// 覆盖配置（命令行 > 配置文件）
 	if *nodeURL != "" {
 		cfg.Node.URL = *nodeURL
