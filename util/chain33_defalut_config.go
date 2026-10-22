@@ -414,7 +414,8 @@ var Chain33TitleFmt = `Title="%s"
 var Chain33CoinSymbol = `CoinSymbol="%s"
 `
 
-// Chain33V165 chain33 1.65的配置
+// Chain33V165 chain33 1.65 的配置（已不再被 InitChain33 使用：v1.72 起 fork 严格校验，
+// 必须用 util/chain33_v172.toml 的完整配置；这里保留仅为兼容可能的外部引用）
 // 支持不指定配置文件, 可以更方便的使用
 var Chain33V165 = `
 

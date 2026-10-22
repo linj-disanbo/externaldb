@@ -1,13 +1,12 @@
 package util
 
 import (
-	"bytes"
+	_ "embed"
 	"fmt"
 
 	_ "github.com/33cn/chain33/system" // chain system init
 	"github.com/33cn/chain33/types"
 	_ "github.com/33cn/plugin/plugin" // chain plugin init
-	tml "github.com/BurntSushi/toml"
 )
 
 // types/config L100 初始化， 需要手动调用， 不能自动
@@ -17,63 +16,28 @@ import (
 // 4. meger config 不可用， 只能用于合并 chain33配置和plugin的配置(合并的项不能重复)， 和这里覆盖不一样
 // 所以要在这里实现一个
 
+// chain33V172 内嵌的完整 chain33 配置（v1.72.3 + plugin v1.74.0 的全部 fork）。
+// 之前内嵌的是 v1.65 配置，v1.72 起 fork 严格校验会直接 panic（缺 system/exec fork）。
+//
+//go:embed chain33_v172.toml
+var chain33V172 string
+
 // InitChain33 初始化chain33
+//
+// 直接用完整配置（内嵌 v1.72 完整配置，或调用方给的配置文件），**不再**与旧的
+// Chain33DefaultConfig 合并：那份基础配置里有已下线的 fork（如 pos33 ForkReward15），
+// v1.72 的严格校验会报 "exec fork not exist in code"。
 func InitChain33(title, symbol, configFile string) {
-	config := Chain33DefaultConfig
-	configString := configV165(title, symbol, Chain33V165)
+	configString := configV172(title, symbol, chain33V172)
 	if configFile != "" {
 		configString = types.ReadFile(configFile)
 	}
-	config = mergeConfig(configString, config)
-	types.NewChain33Config(config)
+	types.NewChain33Config(configString)
 }
 
-func configV165(title, symbol, defaultConfig string) string {
+func configV172(title, symbol, defaultConfig string) string {
 	titleStr := fmt.Sprintf(Chain33TitleFmt, title)
 	symbolStr := fmt.Sprintf(Chain33CoinSymbol, symbol)
 	configString := titleStr + symbolStr + defaultConfig
 	return configString
-}
-
-// 覆盖链上的配置
-func overwriteConfig(conf map[string]interface{}, def map[string]interface{}) {
-	for key1, value1 := range conf {
-		//log.Debug("conf", "key", key1)
-		if conf1, ok := value1.(map[string]interface{}); ok {
-			if vdef, ok := def[key1]; ok {
-				def1, _ := vdef.(map[string]interface{})
-				//log.Debug("conf->", "key", key1)
-				overwriteConfig(conf1, def1)
-				//log.Debug("conf<-", "key", key1)
-				def[key1] = def1
-			} else {
-				def[key1] = conf1
-			}
-		} else {
-			//log.Debug("set2", "key", key1, "from", def[key1], "to", value1)
-			def[key1] = value1
-		}
-	}
-	//log.Error("config", "def", def)
-}
-
-// mergeConfig
-func mergeConfig(userConfig, defaultConfig string) string {
-	//1. defconfig
-	def := make(map[string]interface{})
-	_, err := tml.Decode(defaultConfig, &def)
-	if err != nil {
-		panic(err)
-	}
-	//2. userconfig
-	conf := make(map[string]interface{})
-	_, err = tml.Decode(userConfig, &conf)
-	if err != nil {
-		panic(err)
-	}
-
-	overwriteConfig(conf, def)
-	buf := new(bytes.Buffer)
-	tml.NewEncoder(buf).Encode(def)
-	return buf.String()
 }

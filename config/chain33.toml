@@ -583,3 +583,15 @@ Enable=0
 
 [fork.sub.rgbx]
 Enable=0
+
+# pos33（bityuan 主链自创世生效，值取 bityuan 内嵌配置）
+[fork.sub.pos33]
+Enable=0
+ForkReward15=0
+ForkFixReward=0
+UseEntrust=0
+
+# zksync：bityuan 未部署该执行器，fork 全部关闭（-1 = MaxHeight）
+[fork.sub.zksync]
+Enable=-1
+

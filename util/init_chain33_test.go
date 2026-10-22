@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_configV165(t *testing.T) {
+func Test_configV172(t *testing.T) {
 	title := "bityuan"
 	symbol := "bbbbty"
 	cfg := `log=aaa
@@ -16,6 +16,6 @@ CoinSymbol="bbbbty"
 log=aaa
 `
 
-	result := configV165(title, symbol, cfg)
+	result := configV172(title, symbol, cfg)
 	assert.Equal(t, expact, result)
 }
