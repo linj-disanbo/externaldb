@@ -29,6 +29,7 @@ services:
     volumes:
       - ./bin/:/root/bin/
       - ./etc/:/root/etc/
+      - ./etc/mime.types:/etc/mime.types # 文件下载接口按后缀设置 Content-Type
     network_mode: "host"
     command: /root/bin/rpc -f /root/etc/externaldb.toml &
 

@@ -236,12 +236,14 @@ docker: build ## build docker image for externaldb with sync convert jrpc
 #   - 一套物料：四个程序全装，场景由 .env 的 EX_SERVICE_TYPE 决定（proof/browser/common），
 #     不再按包区分；init 会把 proof-init 和 browser-init 都跑一遍（多跑没有副作用）
 #   - ES 只保留 7.x：env/es7 = 7.17（默认），env/es7.4 = 7.4.2（老环境把 es7.4 换到 es7 即可）
+#   - etc/mime.types 只有 rpc 文件下载接口用（按后缀设 Content-Type），跟着包一起发
 #   - pkgProof / pkg-quickStart 是兼容别名，产物同为 externaldb.tgz
 pkg:
 	rm -rf build/externaldb
 	mkdir -p build/externaldb/bin build/externaldb/etc build/externaldb/env/es7 build/externaldb/env/es7.4
 	cp build/sync build/convert build/rpc build/jrpc build/externaldb/bin/
 	cp config/externaldb.toml config/chain33.toml build/externaldb/etc/
+	cp tools/mime.types build/externaldb/etc/mime.types
 	cp tools/env/es7/docker-compose.yaml build/externaldb/env/es7/docker-compose.yaml
 	cp tools/env/es7.4/docker-compose.yaml build/externaldb/env/es7.4/docker-compose.yaml
 	cp tools/env/proof-init.bash build/externaldb/env/es7/proof-init.bash
