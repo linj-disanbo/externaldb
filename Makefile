@@ -264,7 +264,7 @@ pkg-quickStart:
 	cp .env build/externaldb-proof/
 	tar zcvf build/externaldb-proof.tgz -C build externaldb-proof
 
-# pkg-pullConvert: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
+# pkg-pull: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
 #   - bin/：5 个常驻程序 pull_convert（pull+seq 展开）/ scanner（ERC20 扫块）/ jrpc（ES 查询）/
 #     erc20api（ERC20 查询，走 MySQL）/ account_refresh（BTY 余额定时校正）
 #   - tools/：离线/一次性工具（convert_check 对账，后续同类工具都放这里）
@@ -273,7 +273,7 @@ pkg-quickStart:
 #     老环境要用 7.4 时，把 env/es7.4 的内容换到 env/es7 即可（不改脚本、不加版本配置）
 #   - 不带 ex-merge（sync_convert 合并模式）
 #   - compose 起 convert + jrpc；[mysql] 启用时再起 scanner + erc20api
-pkg-pullConvert:
+pkg-pull:
 	rm -rf build/externaldb-pull
 	mkdir -p build/externaldb-pull/bin build/externaldb-pull/tools build/externaldb-pull/etc build/externaldb-pull/env/es7 build/externaldb-pull/env/es7.4 build/externaldb-pull/env/mysql/sql
 	cp build/pull_convert build/externaldb-pull/bin/pull_convert

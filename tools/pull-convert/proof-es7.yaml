@@ -1,6 +1,6 @@
 version: '2'
 
-# ES 7.17 模板（pkg-pullConvert 默认，env/es7 用这个）。
+# ES 7.17 模板（pkg-pull 默认，env/es7 用这个）。
 # 当前固定 7.17.29；如需其它补丁版改下面 image 一行即可。
 # 镜像仓库用官方的 docker.elastic.co：Docker Hub 的 library/elasticsearch 没有 7.17.x 的 tag
 # （报 `docker.io/library/elasticsearch:7.17.29: not found` 就是这个问题）。

@@ -1,6 +1,6 @@
-# pkg-pullConvert：直连（pull + seq）部署包
+# pkg-pull：直连（pull + seq）部署包
 
-用于 **convert 直连（pull + seq 驱动）** 的一键部署，取代老链路 `sync + convert`。
+用于 **pull_convert 直连（pull + seq 驱动）** 的一键部署，取代老链路 `sync + convert`。
 数据流：chain33 按 seq 拉块（`GetBlockSequences` + `GetBlockByHashes`）→ 展开写 ES，进度是 append-only 的 `seq_marker`（游标 = max(seq)）。
 切换步骤：停老链路写方（`sync`/`convert`）→ 起 `pull_convert` → 等追平后 `make check`（`convert_check`）对账 → 确认旧 `db05_last_seq` 不再增长。
 

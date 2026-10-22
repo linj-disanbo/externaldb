@@ -32,8 +32,8 @@ make proto
 # Generate swagger docs for rpc
 make swag
 
-# 部署包（直连链路，4 程序 + 离线工具）→ build/externaldb-pull.tgz
-make pkg-pullConvert
+# 部署包（直连链路，5 程序 + 离线工具）→ build/externaldb-pull.tgz
+make pkg-pull
 ```
 
 The `Makefile` expects a `.env` file at the project root (included via `include .env`).
