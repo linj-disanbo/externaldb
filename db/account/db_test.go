@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_tojons(t *testing.T) {
+func Test_tojson(t *testing.T) {
 	acc := &Account{Detall: &Detall{Frozen: 1}, AssetSymbol: "b"}
 	v, _ := json.Marshal(acc)
 	//t.Error(string(v))
