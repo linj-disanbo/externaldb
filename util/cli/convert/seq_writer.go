@@ -43,7 +43,7 @@ var retryableWriteErrTokens = []string{
 type SeqWriter interface {
 	// WriteRecords 写一个 seq 的记录；内部按大小分片、只重试失败项，全部成功才返回 nil
 	WriteRecords(rs []db.Record) error
-	// WriteMarker 写 seq marker（refresh=wait_for），返回即可被 search 到
+	// WriteMarker 写 seq marker（普通 bulk，不逐 seq 等 refresh；启动时 refresh 一次再读游标）
 	WriteMarker(m *seqmark.Marker) error
 	// PruneMarkers 滚动删除 before 之前的旧 marker
 	PruneMarkers(before int64) error
@@ -123,7 +123,9 @@ func (w *ESWriter) writeChunk(chunk []db.Record,
 	return errors.Wrapf(lastErr, "still rejected after %d retries", w.transportRetries)
 }
 
-// WriteMarker 写游标：必须 refresh=wait_for，否则刚写完就重启会读到未刷新的旧游标
+// WriteMarker 写游标：普通 bulk（不逐 seq 等 refresh，实测 wait_for 会让追块降到 ~1 块/秒）。
+// 可见性由启动时的 seqmark.Refresh 保证：translog.durability=request 下 ACK 即落盘，
+// 崩溃后重启先 POST <prefix>seq_marker/_refresh 再读 max(seq)，不会漏。
 func (w *ESWriter) WriteMarker(m *seqmark.Marker) error {
 	if m == nil {
 		return nil
