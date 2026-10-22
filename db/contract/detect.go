@@ -89,6 +89,15 @@ func NewDetectClient(host, paraName string) *DetectClient {
 }
 
 func (c *DetectClient) detect(contract *Contract, standard string, standardAbi string) (bool, error) {
+	if contract == nil || contract.Creator == "" {
+		// creator 为空时无法构造探测交易的 From，且 GetDefaultValue 里
+		// pcom.StringToAddress("") 会返回 nil（.ToHash160() 直接 panic），这里直接跳过探测
+		if contract != nil {
+			log.Warn("detect: contract creator empty, skip standard detection",
+				"contract", contract.Address, "standard", standard)
+		}
+		return false, nil
+	}
 	contractABI, err := pabi.JSON(strings.NewReader(standardAbi))
 	if err != nil {
 		return false, err
@@ -251,6 +260,19 @@ func (c *DetectClient) CreateCallTx(contractAddr string, data []byte) string {
 	return hex.EncodeToString(txHex)
 }
 
+// defaultHash160 把地址转成 ABI 里的 address；defaultAddr 为空/非法时返回零地址
+// （pcom.StringToAddress 对空串返回 nil，直接 .ToHash160() 会 nil panic）。
+func defaultHash160(defaultAddr string) pcom.Hash160Address {
+	if defaultAddr == "" {
+		return pcom.Hash160Address{}
+	}
+	a := pcom.StringToAddress(defaultAddr)
+	if a == nil {
+		return pcom.Hash160Address{}
+	}
+	return a.ToHash160()
+}
+
 func GetDefaultValue(method pabi.Method, t *pabi.Type, defaultAddr string) interface{} {
 	switch t.T {
 	case pabi.IntTy, pabi.UintTy:
@@ -260,14 +282,14 @@ func GetDefaultValue(method pabi.Method, t *pabi.Type, defaultAddr string) inter
 		case pabi.IntTy, pabi.UintTy:
 			return []*big.Int{big.NewInt(1)}
 		case pabi.AddressTy:
-			return []pcom.Hash160Address{pcom.StringToAddress(defaultAddr).ToHash160()}
+			return []pcom.Hash160Address{defaultHash160(defaultAddr)}
 		default:
 			panic(t.String())
 		}
 	case pabi.StringTy:
 		return "string"
 	case pabi.AddressTy:
-		return pcom.StringToAddress(defaultAddr).ToHash160()
+		return defaultHash160(defaultAddr)
 	case pabi.BoolTy:
 		return true
 	case pabi.BytesTy:
