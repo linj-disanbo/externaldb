@@ -52,6 +52,8 @@ externaldb-pull/
   （数据目录 `MYSQL_DIR`、端口 `MYSQL_PORT`、root 密码 `MYSQL_ROOT_PASSWORD`，首次启动自动执行
   `env/mysql/sql/schema.sql`）。生产可不用：把 `MYSQL_DSN` 指向已有实例并保持 `MYSQL_LOCAL_START=false`。
   单独操作用 `make initMySQL` / `make mysql-cli` / `make initMySQLSchema` / `make downMySQL`。
+  `MYSQL_DSN` 留空时，若 `MYSQL_LOCAL_START=true` 会按 `MYSQL_BIND/PORT/DATABASE/ROOT_PASSWORD`
+  自动拼出 DSN（密码/库名只写一处）；填了 DSN 则以 DSN 为准（外部实例）。
   用包内 MySQL 时记得同时把 `MYSQL_ENABLED=true`（scanner/erc20api 才会启动并连它）。
 - `account_refresh` 受 `.env` 的 `ACCOUNT_REFRESH_ENABLED` 控制（默认 true），间隔在 `.env`
   （`ACCOUNT_REFRESH_TOP_INTERVAL`/`ACCOUNT_REFRESH_ACTIVE_INTERVAL`/`ACCOUNT_REFRESH_FULL_INTERVAL`）

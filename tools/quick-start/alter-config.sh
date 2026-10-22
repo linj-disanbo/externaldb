@@ -120,6 +120,14 @@ set_key_value "addressDriver" \"${ADDR_DRIVER}\"
 set_key_value "dealOtherChain" ${DEAL_OTHER_CHAIN}
 # mysql / erc20scan（scanner + erc20api）；MYSQL_ENABLED=false 时这两个服务不启动
 set_key_value "enabled" ${MYSQL_ENABLED} mysql
+# DSN 留空且用包内 MySQL 时，按本地实例参数拼（避免 .env 里密码/库名写两处）
+if [ -z "${MYSQL_DSN}" ] && [ "${MYSQL_LOCAL_START}" = "true" ]; then
+    MYSQL_DSN="root:${MYSQL_ROOT_PASSWORD}@tcp(${MYSQL_BIND}:${MYSQL_PORT})/${MYSQL_DATABASE}?charset=utf8mb4&parseTime=True&loc=Local"
+    echo "MYSQL_DSN 为空，按包内 MySQL 参数拼装: root:***@tcp(${MYSQL_BIND}:${MYSQL_PORT})/${MYSQL_DATABASE}"
+fi
+if [ "${MYSQL_ENABLED}" = "true" ] && [ -z "${MYSQL_DSN}" ] && [ "${MYSQL_LOCAL_START}" != "true" ]; then
+    echo "!! WARNING: MYSQL_ENABLED=true 但 MYSQL_DSN 为空、且未启用包内 MySQL（MYSQL_LOCAL_START），[mysql].dsn 将保持配置文件里的值"
+fi
 set_key_value "dsn" \"${MYSQL_DSN}\" mysql
 set_key_value "ethUrl" \"${ERC20_ETH_URL}\" erc20scan
 set_key_value "startBlock" ${ERC20_START_BLOCK} erc20scan
