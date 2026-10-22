@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	util.InitChain33("local", "bty", "../../testdata/chain33.toml")
+	util.InitChain33("local", "bty", "")
 }
 func Test_Create(t *testing.T) {
 	blockByte := "0a83081220a12e1cfc37fdb0c757c4d4b06110d1050c67178d352083cafdbc487e62d037661a2057895e6689c00964e6cf7072f9794a00de658a9ab72017bdf85958730a7410cb22207099accf58ab7f888db69237f870af0cc5730c4d0d4957992abbc8e544ad44ce28fb0330a8a7c3ea053a9a040a067469636b657412ed02501022e80208ffff8bf8011080cab5ee011a70313271796f6361794e46374c7636433971573461767873324537553431664b5366763a3078386434663130653666313762616533636538663764303239616263623461393839616563333333386238386662333537656165663035613265326465373930343a303030303030313731332242307831643734373935396236323030393862643261323834336635376139396462633832633131643562623331396164656434633731346465613762303830393263322039ec6e86ca0990574d1e3976a62846809345aa2c4986cbc15bbc600735c4f0423a8101ba5496ad659335ee8bc8748e938db24b087db8a8f98585768a1a11b9477dfa1e9c11d30c83f26aa6331c894989455ded1f510a0efd2ac6c0f2cfbc6c736e156f04e40b3434f755a6ca578cdd17de2fccc5dd505508790c500a4532587167f85f8b2455842261153fd2df4a6557f86433a3d8884e6baf69bfb0f28297f743182c021a6e080112210320bbac09528e19c55b0f89cb37ab265e7e856b1a8c388780322dbbfd194b52ba1a473045022100d037c922feee593b9fdf197ac10449111e16c81a368b22eb53f7b82b42e3ac020220073fb3bd670f6d4c864cd3be2272db913fd800a301109ed3286581553835a90f20a08d0630ea9cf1b4a3a0f8815e3a22313668747663424e53454137665a6841644c4a706844775152514a614870794854703ac9020a086d756c746973696712940138904e0a8e010a260a22314335784b327974756f4671786d56474d63797a3958464b4657634441385433724b10140a260a22314c4447726f6b725a6a6f314874536d536e77386566336f7935566d316e6374626a100a0a260a22313271796f6361794e46374c7636433971573461767873324537553431664b536676101e100f1a120a034254591205636f696e73188094ebdc031a6e080112210320bbac09528e19c55b0f89cb37ab265e7e856b1a8c388780322dbbfd194b52ba1a473045022100ce01c3f53cdb67a7794084833e6917d4cadf12b4a658220b98b13bddbc74fb3e02205d4d91806a78ef24a9d4874d3518f163be754289376e168a95127e061d7f267c20a08d06289ea8c3ea0530a8ea8af5bca1bcd5363a22313475424550364c53484b644676793937705459525056504171696a36627465656558ffff8bf8016220e718e881c5bd12f4d8d91a488f7fc1579a3db57933b8080a69e52896b8e87f0068fb0312e80508021a5e0802125a0a2b10e0fdd4e9941a2222313271796f6361794e46374c7636433971573461767873324537553431664b536676122b10c0f0cee9941a2222313271796f6361794e46374c7636433971573461767873324537553431664b5366761a9f010871129a010a70313271796f6361794e46374c7636433971573461767873324537553431664b5366763a3078386434663130653666313762616533636538663764303239616263623461393839616563333333386238386662333537656165663035613265326465373930343a30303030303031373133100218012222313271796f6361794e46374c7636433971573461767873324537553431664b5366761a620805125e0a2d10808088e3aba7ca342222313668747663424e53454137665a6841644c4a706844775152514a61487079485470122d1080cabdd1ada7ca342222313668747663424e53454137665a6841644c4a706844775152514a614870794854701a870108081282010a22313668747663424e53454137665a6841644c4a706844775152514a61487079485470122d1880a48fa7a8e68611222231344b454b6259744b4b516d34774d7468534b394a344c61346e41696964476f7a741a2d1880eec495aae68611222231344b454b6259744b4b516d34774d7468534b394a344c61346e41696964476f7a741a620805125e0a2d1080cabdd1ada7ca342222313668747663424e53454137665a6841644c4a706844775152514a61487079485470122d108090c4e0aea7ca342222313668747663424e53454137665a6841644c4a706844775152514a614870794854701a8f010808128a010a22313668747663424e53454137665a6841644c4a706844775152514a6148707948547012311080e0ba84bf031880fcb5bb762222314251585336547861595947356d41446157696a344178685a5a55547077393561351a311080e0ba84bf031880c2bcca772222314251585336547861595947356d41446157696a344178685a5a555470773935613512c70208021a5e0802125a0a2b10c0f0cee9941a2222313271796f6361794e46374c7636433971573461767873324537553431664b536676122b10a0e3c8e9941a2222313271796f6361794e46374c7636433971573461767873324537553431664b5366761ae20108904e12dc010a22313271796f6361794e46374c7636433971573461767873324537553431664b53667612223338514646676a53556f7a673663476a69733663784143554a766b70665444375a531a260a22314335784b327974756f4671786d56474d63797a3958464b4657634441385433724b10141a260a22314c4447726f6b725a6a6f314874536d536e77386566336f7935566d316e6374626a100a1a260a22313271796f6361794e46374c7636433971573461767873324537553431664b536676101e22180a034254591205636f696e73188094ebdc0328a8a7c3ea05300f"
@@ -21,12 +21,13 @@ func Test_Create(t *testing.T) {
 	assert.Nil(t, err)
 	convert := multisig.NewConvert("", "bty", []string{transaction.RTransactionX, account.RAccountX, multisig.RMultiSignatureX})
 	records, err := convert.ConvertTx(env, db.SeqTypeAdd)
+	assertAccountPairs(t, records)
 	assert.Nil(t, err)
-	assert.Equal(t, 7, len(records))
+	assert.Equal(t, 8, len(records))
 
 	// 预期产生 MS， MS owner， MS limit， Tx & Account fee
 	txExec, txAction := "multisig", "MultiSigAccCreate"
-	txKey := `transaction/transaction/0x95f8bb95d80e6a9b2f8955db6f0263db8d7e4566067225bac810ba7fd0f1afda`
+	txKey := `transaction/_doc/0x95f8bb95d80e6a9b2f8955db6f0263db8d7e4566067225bac810ba7fd0f1afda`
 	msStr := `{"create_address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","tx_count":0,"required_weight":15,"type":"account"}`
 	ownerStr1 := `{"multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","address":"1C5xK2ytuoFqxmVGMcyz9XFKFWcDA8T3rK","weight":20,"type":"owner"}`
 	ownerStr2 := `{"multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","address":"1LDGrokrZjo1HtSmSnw8ef3oy5Vm1nctbj","weight":10,"type":"owner"}`
@@ -84,16 +85,17 @@ func Test_TransferTo(t *testing.T) {
 
 	convert := multisig.NewConvert("", "bty", []string{transaction.RTransactionX, account.RAccountX, multisig.RMultiSignatureX})
 	records, err := convert.ConvertTx(env, db.SeqTypeAdd)
+	assertAccountPairs(t, records)
 	assert.Nil(t, err)
-	assert.Equal(t, 5, len(records))
+	assert.Equal(t, 9, len(records))
 
 	// 预期产生 Account From To(b->f)， Tx & Account fee
 	txExec, txAction := "multisig", "MultiSigExecTransfer"
-	txKey := `transaction/transaction/0xa9b4e52319d6f366e5f06bc6a2f4a75dca393519bd39b3befb668db4e0672756`
-	feeStr := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"","frozen":0,"balance":893942800000,"total":893942800000,"type":"personage","height_index":51000001,"asset_symbol":"bty","asset_exec":"coins"}`
-	from := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":0,"balance":1000000000,"total":1000000000,"type":"contractInternal","height_index":51000001,"asset_symbol":"bty","asset_exec":"coins"}`
-	to1 := `{"address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":0,"balance":4000000000,"total":4000000000,"type":"contractInternal","height_index":51000001,"asset_symbol":"bty","asset_exec":"coins"}`
-	to2 := `{"address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":4000000000,"balance":0,"total":4000000000,"type":"contractInternal","height_index":51000001,"asset_symbol":"bty","asset_exec":"coins"}`
+	txKey := `transaction/_doc/0xa9b4e52319d6f366e5f06bc6a2f4a75dca393519bd39b3befb668db4e0672756`
+	feeStr := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"","frozen":0,"balance":893942800000,"total":893942800000,"type":"personage","addr_type":"","height_index":51000001,"asset_symbol":"bty","asset_exec":"coins","height":0,"block_time":0}`
+	from := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":0,"balance":1000000000,"total":1000000000,"type":"contractInternal","addr_type":"","height_index":51000001,"asset_symbol":"bty","asset_exec":"coins","height":0,"block_time":0}`
+	to1 := `{"address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":0,"balance":4000000000,"total":4000000000,"type":"contractInternal","addr_type":"","height_index":51000001,"asset_symbol":"bty","asset_exec":"coins","height":0,"block_time":0}`
+	to2 := `{"address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":4000000000,"balance":0,"total":4000000000,"type":"contractInternal","addr_type":"","height_index":51000001,"asset_symbol":"bty","asset_exec":"coins","height":0,"block_time":0}`
 
 	for _, r := range records {
 		t.Log(string(r.Value()))
@@ -111,15 +113,15 @@ func Test_TransferTo(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, feeStr, string(acc.Value()))
 
-	acc, ok = records[2].(*account.Record)
+	acc, ok = records[3].(*account.Record)
 	assert.True(t, ok)
 	assert.Equal(t, from, string(acc.Value()))
 
-	acc, ok = records[3].(*account.Record)
+	acc, ok = records[5].(*account.Record)
 	assert.True(t, ok)
 	assert.Equal(t, to1, string(acc.Value()))
 
-	acc, ok = records[4].(*account.Record)
+	acc, ok = records[7].(*account.Record)
 	assert.True(t, ok)
 	assert.Equal(t, to2, string(acc.Value()))
 }
@@ -132,13 +134,14 @@ func Test_OwnerChange(t *testing.T) {
 
 	convert := multisig.NewConvert("", "bty", []string{transaction.RTransactionX, account.RAccountX, multisig.RMultiSignatureX})
 	records, err := convert.ConvertTx(env, db.SeqTypeAdd)
+	assertAccountPairs(t, records)
 	assert.Nil(t, err)
-	assert.Equal(t, 6, len(records))
+	assert.Equal(t, 7, len(records))
 
 	// 预期产生 Tx, owner，tx count,  Tx sig, tx list & Account fee
 	txExec, txAction := "multisig", "MultiSigOwnerOperate"
-	txKey := `transaction/transaction/0x914f4e8f825eec9d61034e8572bc8a22ec7cb58e0728cdc60f09e4748adda48d`
-	fee := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"","frozen":0,"balance":893942400000,"total":893942400000,"type":"personage","height_index":51200001,"asset_symbol":"bty","asset_exec":"coins"}`
+	txKey := `transaction/_doc/0x914f4e8f825eec9d61034e8572bc8a22ec7cb58e0728cdc60f09e4748adda48d`
+	fee := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"","frozen":0,"balance":893942400000,"total":893942400000,"type":"personage","addr_type":"","height_index":51200001,"asset_symbol":"bty","asset_exec":"coins","height":0,"block_time":0}`
 	owner := `{"multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","address":"1KHwX7ZadNeQDjBGpnweb4k2dqj2CWtAYo","weight":8,"type":"owner"}`
 	txCount := `{"multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","tx_count":1}`
 	sigTx := `{"tx_hash":"914f4e8f825eec9d61034e8572bc8a22ec7cb58e0728cdc60f09e4748adda48d","type":"owner","multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","tx_id":0,"detail":{"operate":"add","old_owner":"","new_owner":"1KHwX7ZadNeQDjBGpnweb4k2dqj2CWtAYo","new_weight":8}}`
@@ -162,25 +165,25 @@ func Test_OwnerChange(t *testing.T) {
 	assert.Equal(t, fee, string(acc.Value()))
 
 	// owner
-	ownerRec, ok := records[2].(*multisig.MSUpdateOwnerRecord)
+	ownerRec, ok := records[3].(*multisig.MSUpdateOwnerRecord)
 	assert.True(t, ok)
 	assert.Equal(t, owner, string(ownerRec.Value()))
 	assert.Equal(t, "multisig/_doc/owner-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-1KHwX7ZadNeQDjBGpnweb4k2dqj2CWtAYo", ownerRec.Key())
 
 	// tx count
-	cnt, ok := records[3].(*multisig.MSUpdateTxCountRecord)
+	cnt, ok := records[4].(*multisig.MSUpdateTxCountRecord)
 	assert.True(t, ok)
 	assert.Equal(t, txCount, string(cnt.Value()))
 	assert.Equal(t, "multisig/_doc/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", cnt.Key())
 
 	// tx sig/list
-	sig, ok := records[4].(*multisig.SigTxRecord)
+	sig, ok := records[5].(*multisig.SigTxRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigTx, string(sig.Value()))
 	assert.Equal(t, "sig_tx/_doc/tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000000", sig.Key())
 	assert.Equal(t, "tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000000", sig.ID())
 
-	list, ok := records[5].(*multisig.SigListRecord)
+	list, ok := records[6].(*multisig.SigListRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigList, string(list.Value()))
 	assert.Equal(t, "sig_list/_doc/sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000000:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.Key())
@@ -193,13 +196,14 @@ func Test_LimitChange(t *testing.T) {
 
 	convert := multisig.NewConvert("", "bty", []string{transaction.RTransactionX, account.RAccountX, multisig.RMultiSignatureX})
 	records, err := convert.ConvertTx(env, db.SeqTypeAdd)
+	assertAccountPairs(t, records)
 	assert.Nil(t, err)
-	assert.Equal(t, 6, len(records))
+	assert.Equal(t, 7, len(records))
 
 	// 预期产生 Tx, limit，tx count,  Tx sig, tx list & Account fee
 	txExec, txAction := "multisig", "MultiSigAccOperate"
-	txKey := `transaction/transaction/0x27461cecbb74ad4098106bfcf1ab63505dd5ac4fe4367d02699653a2b53ec018`
-	fee := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"","frozen":0,"balance":893941600000,"total":893941600000,"type":"personage","height_index":51600001,"asset_symbol":"bty","asset_exec":"coins"}`
+	txKey := `transaction/_doc/0x27461cecbb74ad4098106bfcf1ab63505dd5ac4fe4367d02699653a2b53ec018`
+	fee := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"","frozen":0,"balance":893941600000,"total":893941600000,"type":"personage","addr_type":"","height_index":51600001,"asset_symbol":"bty","asset_exec":"coins","height":0,"block_time":0}`
 	limit := `{"multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","symbol":"BTY","execer":"coins","daily_limit":1200000000,"spent_today":0,"last_day":1565578152,"type":"limit"}`
 	txCount := `{"multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","tx_count":5}`
 	sigTx := `{"tx_hash":"27461cecbb74ad4098106bfcf1ab63505dd5ac4fe4367d02699653a2b53ec018","type":"account","multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","tx_id":4,"detail":{"dailyLimit":{"symbol":"BTY","execer":"coins","daily_limit":1200000000},"operate":"limit_operate"}}`
@@ -223,25 +227,25 @@ func Test_LimitChange(t *testing.T) {
 	assert.Equal(t, fee, string(acc.Value()))
 
 	// limit
-	limitRec, ok := records[2].(*multisig.MSUpdateLimitRecord)
+	limitRec, ok := records[3].(*multisig.MSUpdateLimitRecord)
 	assert.True(t, ok)
 	assert.Equal(t, limit, string(limitRec.Value()))
 	assert.Equal(t, "multisig/_doc/limit-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-coins-BTY", limitRec.Key())
 
 	// tx count
-	cnt, ok := records[3].(*multisig.MSUpdateTxCountRecord)
+	cnt, ok := records[4].(*multisig.MSUpdateTxCountRecord)
 	assert.True(t, ok)
 	assert.Equal(t, txCount, string(cnt.Value()))
 	assert.Equal(t, "multisig/_doc/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", cnt.Key())
 
 	// tx sig/list
-	sig, ok := records[4].(*multisig.SigTxRecord)
+	sig, ok := records[5].(*multisig.SigTxRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigTx, string(sig.Value()))
 	assert.Equal(t, "sig_tx/_doc/tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000004", sig.Key())
 	assert.Equal(t, "tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000004", sig.ID())
 
-	list, ok := records[5].(*multisig.SigListRecord)
+	list, ok := records[6].(*multisig.SigListRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigList, string(list.Value()))
 	assert.Equal(t, "sig_list/_doc/sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000004:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.Key())
@@ -255,15 +259,16 @@ func Test_TransferFrom(t *testing.T) {
 
 	convert := multisig.NewConvert("", "bty", []string{transaction.RTransactionX, account.RAccountX, multisig.RMultiSignatureX})
 	records, err := convert.ConvertTx(env, db.SeqTypeAdd)
+	assertAccountPairs(t, records)
 	assert.Nil(t, err)
-	assert.Equal(t, 8, len(records))
+	assert.Equal(t, 11, len(records))
 
 	// 预期产生 Tx, fee From To，tx count,  Limit, Tx sig, tx list
 	txExec, txAction := "multisig", "MultiSigAccExecTransfer"
-	txKey := `transaction/transaction/0x5473a2a38ae8c9af6ac65ca5ff591c2cc5a760d4173ae38bcd9179df8b56ed3e`
-	fee := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"","frozen":0,"balance":888928300000,"total":888928300000,"type":"personage","height_index":61600001,"asset_symbol":"bty","asset_exec":"coins"}`
-	from := `{"address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":6000000000,"balance":0,"total":6000000000,"type":"contractInternal","height_index":61600001,"asset_symbol":"bty","asset_exec":"coins"}`
-	to := `{"address":"1LDGrokrZjo1HtSmSnw8ef3oy5Vm1nctbj","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":0,"balance":2000000000,"total":2000000000,"type":"contractInternal","height_index":61600001,"asset_symbol":"bty","asset_exec":"coins"}`
+	txKey := `transaction/_doc/0x5473a2a38ae8c9af6ac65ca5ff591c2cc5a760d4173ae38bcd9179df8b56ed3e`
+	fee := `{"address":"12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv","exec":"","frozen":0,"balance":888928300000,"total":888928300000,"type":"personage","addr_type":"","height_index":61600001,"asset_symbol":"bty","asset_exec":"coins","height":0,"block_time":0}`
+	from := `{"address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":6000000000,"balance":0,"total":6000000000,"type":"contractInternal","addr_type":"","height_index":61600001,"asset_symbol":"bty","asset_exec":"coins","height":0,"block_time":0}`
+	to := `{"address":"1LDGrokrZjo1HtSmSnw8ef3oy5Vm1nctbj","exec":"14uBEP6LSHKdFvy97pTYRPVPAqij6bteee","frozen":0,"balance":2000000000,"total":2000000000,"type":"contractInternal","addr_type":"","height_index":61600001,"asset_symbol":"bty","asset_exec":"coins","height":0,"block_time":0}`
 	limit := `{"multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","symbol":"BTY","execer":"coins","daily_limit":1200000000,"spent_today":0,"last_day":1565578152,"type":"limit"}`
 	txCount := `{"multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","tx_count":8}`
 	sigTx := `{"tx_hash":"5473a2a38ae8c9af6ac65ca5ff591c2cc5a760d4173ae38bcd9179df8b56ed3e","type":"transfer","multi_signature_address":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS","tx_id":7,"detail":{"symbol":"BTY","amount":2000000000,"note":"test ","execname":"coins","to":"1LDGrokrZjo1HtSmSnw8ef3oy5Vm1nctbj","from":"38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS"}}`
@@ -286,36 +291,62 @@ func Test_TransferFrom(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, fee, string(acc.Value()))
 
-	acc, ok = records[2].(*account.Record)
+	acc, ok = records[3].(*account.Record)
 	assert.True(t, ok)
 	assert.Equal(t, from, string(acc.Value()))
 
-	acc, ok = records[3].(*account.Record)
+	acc, ok = records[5].(*account.Record)
 	assert.True(t, ok)
 	assert.Equal(t, to, string(acc.Value()))
 
 	// tx count
-	cnt, ok := records[4].(*multisig.MSUpdateTxCountRecord)
+	cnt, ok := records[7].(*multisig.MSUpdateTxCountRecord)
 	assert.True(t, ok)
 	assert.Equal(t, txCount, string(cnt.Value()))
 	assert.Equal(t, "multisig/_doc/ms-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS", cnt.Key())
 
 	// limit
-	limitRec, ok := records[5].(*multisig.MSUpdateLimitRecord)
+	limitRec, ok := records[8].(*multisig.MSUpdateLimitRecord)
 	assert.True(t, ok)
 	assert.Equal(t, limit, string(limitRec.Value()))
 	assert.Equal(t, "multisig/_doc/limit-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS-coins-BTY", limitRec.Key())
 
 	// tx sig/list
-	sig, ok := records[6].(*multisig.SigTxRecord)
+	sig, ok := records[9].(*multisig.SigTxRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigTx, string(sig.Value()))
 	assert.Equal(t, "sig_tx/_doc/tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007", sig.Key())
 	assert.Equal(t, "tx-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007", sig.ID())
 
-	list, ok := records[7].(*multisig.SigListRecord)
+	list, ok := records[10].(*multisig.SigListRecord)
 	assert.True(t, ok)
 	assert.Equal(t, sigList, string(list.Value()))
 	assert.Equal(t, "sig_list/_doc/sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.Key())
 	assert.Equal(t, "sig_list-38QFFgjSUozg6cGjis6cxACUJvkpfTD7ZS:00000007:12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", list.ID())
+}
+
+// assertAccountPairs 检查 account / account_record 成对出现，并覆盖新增字段与 asset 字段。
+func assertAccountPairs(t *testing.T, records []db.Record) {
+	t.Helper()
+	const accPrefix = "account/_doc/"
+	const recPrefix = "account_record/_doc/"
+	for i := 0; i < len(records); {
+		r, ok := records[i].(*account.Record)
+		if !ok || len(r.Key()) < len(accPrefix) || r.Key()[:len(accPrefix)] != accPrefix {
+			i++
+			continue
+		}
+		assert.NotEmpty(t, r.Acc.Address)
+		assert.Equal(t, "", r.Acc.AddrType)
+		assert.NotEmpty(t, r.Acc.AssetExec)
+		assert.NotEmpty(t, r.Acc.AssetSymbol)
+		if i+1 < len(records) {
+			rr, ok := records[i+1].(*account.Record)
+			if assert.True(t, ok, "account 后应紧跟 account_record") && len(rr.Key()) >= len(recPrefix) {
+				assert.Equal(t, recPrefix, rr.Key()[:len(recPrefix)])
+				assert.Equal(t, r.Acc.Detall, rr.Acc.Detall)
+			}
+		}
+		i += 2
+	}
 }
