@@ -3,28 +3,21 @@
 include .env
 
 # env/es7 默认是 ES 7.17；老环境要用 7.4，把包内 env/es7.4 的内容换到 env/es7 即可
-ENV_DIR ?= env/es${ES_VERSION}
+ENV_DIR ?= env/es7
 
 # scanner / erc20api 依赖 MySQL：MYSQL_ENABLED=true 才启动（见 .env）
 ERC20_SERVICES := $(if $(filter true,$(MYSQL_ENABLED)),scanner erc20api)
 # 主币余额定时校正：ACCOUNT_REFRESH_ENABLED=true 才启动
 REFRESH_SERVICES := $(if $(filter true,$(ACCOUNT_REFRESH_ENABLED)),accountrefresh)
 
-# 按 EX_SERVICE_TYPE 跑对应的初始化：
-#   proof   -> 存证索引/初始数据（env/<dir>/proof-init.bash）
-#   browser -> 浏览器用到的索引 settings（browser-init.bash：max_result_window / refresh_interval 等）
-#   common  -> 两者都跑
+# 初始化三个场景都跑同样两步（与 pkg 包一致，多跑没有副作用）：
+#   proof-init.bash  -> 存证索引/初始数据（env/<dir>/，脚本读 ../../.env）
+#   browser-init.bash -> 浏览器用到的索引 settings（max_result_window / refresh_interval / translog）
 # 注意 browser-init.bash 会调整 ${CONVERT_PREFIX}*/_settings（含 translog），
 # 但不会碰 seq_marker（进度索引），避免影响游标语义。
 define RUN_SERVICE_INIT
-	if [ "${EX_SERVICE_TYPE}" = "proof" ]; then \
-		cd ./$(ENV_DIR) && chmod +x proof-init.bash && ./proof-init.bash && cd ../..; \
-	elif [ "${EX_SERVICE_TYPE}" = "browser" ]; then \
-		chmod +x browser-init.bash && ./browser-init.bash; \
-	else \
-		cd ./$(ENV_DIR) && chmod +x proof-init.bash && ./proof-init.bash && cd ../..; \
-		chmod +x browser-init.bash && ./browser-init.bash; \
-	fi
+	cd ./$(ENV_DIR) && chmod +x proof-init.bash && ./proof-init.bash && cd ../..
+	chmod +x browser-init.bash && ./browser-init.bash
 endef
 
 quickStart:

@@ -232,39 +232,30 @@ docker: build ## build docker image for externaldb with sync convert jrpc
 		cd ..; \
 	fi; 
 
-pkgProof:
-	rm -rf build/externaldb-proof
-	mkdir -p build/externaldb-proof/ex/bin build/externaldb-proof/ex/etc build/externaldb-proof/es
-	cp build/rpc build/convert build/sync tools/proof-init-*.bash build/externaldb-proof/ex/bin
-	cp config/externaldb.toml build/externaldb-proof/ex/etc/
-	cp config/chain33.toml build/externaldb-proof/ex/etc/
-	cp tools/proof-es.yaml build/externaldb-proof/es/docker-compose.yaml
-	cp tools/externaldb.docker-compose.yaml build/externaldb-proof/ex/docker-compose.yaml
-	tar zcvf build/externaldb-proof.tgz -C build externaldb-proof
+# pkg: 老链路（node push → sync → ES → convert → jrpc/rpc）部署包 → build/externaldb.tgz
+#   - 一套物料：四个程序全装，场景由 .env 的 EX_SERVICE_TYPE 决定（proof/browser/common），
+#     不再按包区分；init 会把 proof-init 和 browser-init 都跑一遍（多跑没有副作用）
+#   - ES 只保留 7.x：env/es7 = 7.17（默认），env/es7.4 = 7.4.2（老环境把 es7.4 换到 es7 即可）
+#   - pkgProof / pkg-quickStart 是兼容别名，产物同为 externaldb.tgz
+pkg:
+	rm -rf build/externaldb
+	mkdir -p build/externaldb/bin build/externaldb/etc build/externaldb/env/es7 build/externaldb/env/es7.4
+	cp build/sync build/convert build/rpc build/jrpc build/externaldb/bin/
+	cp config/externaldb.toml config/chain33.toml build/externaldb/etc/
+	cp tools/env/es7/docker-compose.yaml build/externaldb/env/es7/docker-compose.yaml
+	cp tools/env/es7.4/docker-compose.yaml build/externaldb/env/es7.4/docker-compose.yaml
+	cp tools/env/proof-init.bash build/externaldb/env/es7/proof-init.bash
+	cp tools/env/proof-init.bash build/externaldb/env/es7.4/proof-init.bash
+	cp tools/pkg/docker-compose.yaml tools/pkg/docker-compose-update.yaml build/externaldb/
+	cp tools/pkg/Makefile tools/pkg/README.md build/externaldb/
+	cp tools/pkg/alter-config.sh tools/pkg/es-init.sh tools/pkg/browser-init.bash tools/pkg/reindex-shards.sh build/externaldb/
+	cp .env build/externaldb/
+	tar zcvf build/externaldb.tgz -C build externaldb
 
-pkg-quickStart:
-	rm -rf build/externaldb-proof
-	mkdir -p build/externaldb-proof/bin build/externaldb-proof/etc
-	mkdir -p build/externaldb-proof/env/es6 build/externaldb-proof/env/es7
-	cp build/rpc build/convert build/sync build/jrpc build/externaldb-proof/bin/
-	cp config/externaldb.toml build/externaldb-proof/etc/
-	cp config/chain33.toml build/externaldb-proof/etc/
-	cp tools/quick-start/proof-init-V6.bash build/externaldb-proof/env/es6/proof-init.bash
-	cp tools/quick-start/proof-init-V7.bash build/externaldb-proof/env/es7/proof-init.bash
-	cp tools/quick-start/proof-es6.yaml build/externaldb-proof/env/es6/docker-compose.yaml
-	cp tools/quick-start/proof-es7.yaml build/externaldb-proof/env/es7/docker-compose.yaml
-	cp tools/mime.types build/externaldb-proof/etc/mime.types
-	cp tools/quick-start/docker-compose.yaml build/externaldb-proof/
-	cp tools/quick-start/docker-compose-update.yaml build/externaldb-proof/
-	cp tools/quick-start/Makefile build/externaldb-proof/
-	cp tools/quick-start/README.md build/externaldb-proof/
-	cp tools/quick-start/alter-config.sh build/externaldb-proof/
-	cp tools/quick-start/es-init.sh build/externaldb-proof/
-	cp tools/quick-start/browser-init.bash build/externaldb-proof/
-	cp .env build/externaldb-proof/
-	tar zcvf build/externaldb-proof.tgz -C build externaldb-proof
+.PHONY: pkgProof pkg-quickStart
+pkgProof pkg-quickStart: pkg
 
-# pkg-pull: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
+# pkg-pull: 直连（pull + seq）部署包 = pkg 的直连版，物料脚本与 pkg 共用（tools/pkg、tools/env）
 #   - bin/：5 个常驻程序 pull_convert（pull+seq 展开）/ scanner（ERC20 扫块）/ jrpc（ES 查询）/
 #     erc20api（ERC20 查询，走 MySQL）/ account_refresh（BTY 余额定时校正）
 #   - tools/：离线/一次性工具（convert_check 对账，后续同类工具都放这里）
@@ -284,32 +275,22 @@ pkg-pull:
 	cp build/convert_check build/externaldb-pull/tools/
 	cp config/externaldb.toml build/externaldb-pull/etc/
 	cp config/chain33.toml build/externaldb-pull/etc/
-	cp tools/pull-convert/proof-es7.yaml build/externaldb-pull/env/es7/docker-compose.yaml
-	cp tools/quick-start/proof-init-V7.bash build/externaldb-pull/env/es7/proof-init.bash
-	cp tools/quick-start/proof-es7.yaml build/externaldb-pull/env/es7.4/docker-compose.yaml
-	cp tools/quick-start/proof-init-V7.bash build/externaldb-pull/env/es7.4/proof-init.bash
+	cp tools/env/es7/docker-compose.yaml build/externaldb-pull/env/es7/docker-compose.yaml
+	cp tools/env/proof-init.bash build/externaldb-pull/env/es7/proof-init.bash
+	cp tools/env/es7.4/docker-compose.yaml build/externaldb-pull/env/es7.4/docker-compose.yaml
+	cp tools/env/proof-init.bash build/externaldb-pull/env/es7.4/proof-init.bash
 	cp tools/pull-convert/mysql.yaml build/externaldb-pull/env/mysql/docker-compose.yaml
 	cp tools/pull-convert/mysql-init.sh build/externaldb-pull/
 	cp erc20scaner/database/schema.sql build/externaldb-pull/env/mysql/sql/schema.sql
 	cp tools/pull-convert/docker-compose.yaml build/externaldb-pull/
 	cp tools/pull-convert/Makefile build/externaldb-pull/
 	cp tools/pull-convert/README.md build/externaldb-pull/
-	cp tools/pull-convert/reindex-shards.sh build/externaldb-pull/
-	cp tools/quick-start/alter-config.sh build/externaldb-pull/
-	cp tools/quick-start/es-init.sh build/externaldb-pull/
-	cp tools/quick-start/browser-init.bash build/externaldb-pull/
+	cp tools/pkg/reindex-shards.sh build/externaldb-pull/
+	cp tools/pkg/alter-config.sh build/externaldb-pull/
+	cp tools/pkg/es-init.sh build/externaldb-pull/
+	cp tools/pkg/browser-init.bash build/externaldb-pull/
 	cp .env build/externaldb-pull/
 	tar zcvf build/externaldb-pull.tgz -C build externaldb-pull
-
-pkg:
-	rm -rf build/externaldb
-	mkdir -p build/externaldb/ex/bin build/externaldb/ex/etc build/externaldb/es
-	cp build/jrpc build/convert build/sync tools/browser-init.bash build/externaldb/ex/bin
-	cp config/externaldb.toml build/externaldb/ex/etc
-	cp config/chain33.toml build/externaldb/ex/etc
-	cp tools/proof-es.yaml build/externaldb/es/docker-compose.yaml
-	cp tools/externaldb.docker-compose.yaml build/externaldb/ex/docker-compose.yaml
-	tar zcvf build/externaldb.tgz -C build externaldb
 
 docker-compose: ## run docker-compose as jenkins-ci
 	@cd build && \

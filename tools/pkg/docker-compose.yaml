@@ -1,5 +1,7 @@
 version: '2'
 
+# 四个程序都在这里声明；起哪些由 .env 的 EX_SERVICE_TYPE 决定（见 Makefile 的 SERVICES）：
+#   proof -> sync convert rpc；browser -> sync convert jrpc；其它 -> 全部
 services:
   sync:
     container_name: ${PROJECT_NAME}-sync
@@ -27,7 +29,6 @@ services:
     volumes:
       - ./bin/:/root/bin/
       - ./etc/:/root/etc/
-      - ./etc/mime.type:/etc/mime.types # 用于处理文件后缀
     network_mode: "host"
     command: /root/bin/rpc -f /root/etc/externaldb.toml &
 

@@ -32,7 +32,9 @@ make proto
 # Generate swagger docs for rpc
 make swag
 
-# 部署包（直连链路，5 程序 + 离线工具）→ build/externaldb-pull.tgz
+# 部署包：老链路（sync/convert/rpc/jrpc，一套物料按 EX_SERVICE_TYPE 选场景）→ build/externaldb.tgz
+make pkg
+# 部署包：直连链路（5 程序 + 离线工具）→ build/externaldb-pull.tgz
 make pkg-pull
 ```
 
@@ -69,6 +71,7 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
   按三档（top N 1h / 活跃 24h / 全量 168h）从链上 `Chain33.GetBalance` 校正回 ES `account` 文档
   （只部分更新 balance/frozen/total 与 `balance_refresh_at`；配置段 `[accountRefresh]`）。
 - **离线/运维工具**：`cmd/convert_check`（对账，部署包里放 `tools/`）；`local/`（git 忽略）放不公开的过程文档与非通用工具：`local/tools/`、`local/docs/`。
+- **部署物料**：两个包共用一套脚本 —— `tools/pkg/`（包内 Makefile/README/compose/alter-config/es-init/browser-init/reindex-shards，老链路与直连包都从这里拷）、`tools/env/`（ES7 模板 es7/es7.4 + proof-init.bash）；`make pkgProof`/`make pkg-quickStart` 是 `make pkg` 的兼容别名，产物同名 `externaldb.tgz`。
 
 ## Key Abstractions
 
@@ -87,7 +90,7 @@ Converter plugins are registered in `db/` subdirectories (coins, trade, token, t
 The main config is `config/externaldb.toml`; 程序统一用 `-f`（直连程序）或 `-c`（erc20 程序）指定，部署时在 `etc/externaldb.toml`。
 It configures:
 - `[chain]`: chain33 node connection (gRPC `grpcHost`, HTTP `host`, title, symbol)
-- `[syncEs]`（老链路 sync）/ `[convertEs]`: ES hosts and index prefixes（6.x/7.x）
+- `[syncEs]`（老链路 sync）/ `[convertEs]`: ES hosts and index prefixes（7.x）
 - `[esIndex]`: 新建索引的分片/副本
 - `[sync]`: 老链路推送服务（host/port/startSeq）
 - `[rpc]`: jrpc 与 gin 的绑定地址、IP 白名单（`whiteList = ["*"]` 等于全开）
@@ -102,7 +105,8 @@ erc20 程序读同一份 toml：`erc20scaner/config/toml.go` 的 `FromProto` 做
 
 ## ES Version Handling
 
-Code dual-supports ES 6.x and 7.x. The version is set via `db.SetVersion()` at startup. ES client implementations live in `escli/v6/` and `escli/v7/`. The `escli` package provides a factory and common query parameter types.
+只支持 ES 7.x：`escli/v6/` 已删除，客户端实现在 `escli/v7/`，`db.SetVersion()` 在启动时设置版本。
+部署包也只有 ES7 模板（`tools/env/es7` = 7.17 默认，`tools/env/es7.4` = 7.4 备用），`.env` 里 `ES_VERSION` 填 6 会被 `make` 拦下。
 
 ## Dependencies
 

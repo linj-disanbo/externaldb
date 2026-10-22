@@ -20,7 +20,7 @@ externaldb-pull/
 ├── docker-compose.yaml        5 个服务：pull_convert / jrpc / scanner / erc20api / accountrefresh
 ├── Makefile                    内层一键脚本
 ├── .env                        物料表相关配置
-├── alter-config.sh / es-init.sh / browser-init.bash
+├── alter-config.sh / es-init.sh / browser-init.bash / reindex-shards.sh
 └── README.md
 ```
 

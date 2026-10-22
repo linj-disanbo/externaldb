@@ -2,6 +2,12 @@
 
 . .env
 
+# 只支持 ES 7.x（escli/v6 已删除）；ES_VERSION=6 由 Makefile 的 check-es-version 拦掉
+if [ "${ES_VERSION}" = "6" ]; then
+    echo "ES6 已不支持，请把 .env 的 ES_VERSION 设为 7"
+    exit 1
+fi
+
 exist_container=$(docker ps | grep -w "${ES_NAME}")
 exist_port=$(netstat -tunlp | grep ":${ES_PORT_HTTP}")
 
@@ -38,15 +44,9 @@ function verdict() {
         echo "es don't exist, to create es"
         mkdir -p "${ES_DIR}"
         chmod -R 777 "${ES_DIR}"
-        if [ "${ES_VERSION}" = 6 ]; then
-            echo "creating es6"
-            cp -f .env ./env/es6/
-            docker-compose -f ./env/es6/docker-compose.yaml up -d
-        else
-            echo "creating es7"
-            cp -f .env ./env/es7/
-            docker-compose -f ./env/es7/docker-compose.yaml up -d
-        fi
+        echo "creating es7"
+        cp -f .env ./env/es7/
+        docker-compose -f ./env/es7/docker-compose.yaml up -d
     fi
 }
 
