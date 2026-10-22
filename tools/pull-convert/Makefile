@@ -1,4 +1,4 @@
-.PHONY: quickStart run logs logs-convert logs-scanner logs-erc20api logs-jrpc logs-account-refresh stop restart rm down clean initConfig initES restartES downES initMySQL downMySQL restartMySQL initMySQLSchema mysql-cli check es-indices es-marker
+.PHONY: quickStart run logs logs-pull-convert logs-scanner logs-erc20api logs-jrpc logs-account-refresh stop restart rm down clean initConfig initES restartES downES initMySQL downMySQL restartMySQL initMySQLSchema mysql-cli check es-indices es-marker
 
 include .env
 
@@ -42,29 +42,29 @@ quickStart:
 	@bash alter-config.sh
 	@$(RUN_SERVICE_INIT)
 	@echo "============start run externaldb============"
-	@cd ./bin && chmod +x convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES)
+	@cd ./bin && chmod +x pull_convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES)
 	@if [ "${EX_SERVICE_TYPE}" = "proof" ]; then \
-		docker-compose -p ${PROJECT_NAME} up -d convert; \
+		docker-compose -p ${PROJECT_NAME} up -d pull_convert; \
 	else \
-		docker-compose -p ${PROJECT_NAME} up -d convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES); \
+		docker-compose -p ${PROJECT_NAME} up -d pull_convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES); \
 	fi
 	@echo "==================complete=================="
 
 run:
-	@cd ./bin && chmod +x convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES)
+	@cd ./bin && chmod +x pull_convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES)
 	@if [ "${EX_SERVICE_TYPE}" = "proof" ]; then \
-		docker-compose -p ${PROJECT_NAME} up -d convert; \
+		docker-compose -p ${PROJECT_NAME} up -d pull_convert; \
 	else \
-		docker-compose -p ${PROJECT_NAME} up -d convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES); \
+		docker-compose -p ${PROJECT_NAME} up -d pull_convert jrpc $(ERC20_SERVICES) $(REFRESH_SERVICES); \
 	fi
 
 # 对账/巡检（marker 链连续性、marker 与 block_info 一致性、旧 last_seq 是否停更）
 check:
 	@./tools/convert_check -f ./etc/externaldb.toml || true
 
-log-convert:
+log-pull-convert:
 	@tail -200f ./bin/logs/convert.log
-log-convert-err:
+log-pull-convert-err:
 	@tail -200f ./bin/logs/convert.error.log
 log-jrpc:
 	@tail -200f ./bin/logs/jrpc.log
@@ -78,8 +78,8 @@ log-account-refresh:
 logs:
 	@docker-compose -p ${PROJECT_NAME} logs
 
-logs-convert:
-	@docker-compose -p ${PROJECT_NAME} logs convert
+logs-pull-convert:
+	@docker-compose -p ${PROJECT_NAME} logs pull_convert
 
 logs-jrpc:
 	@docker-compose -p ${PROJECT_NAME} logs jrpc

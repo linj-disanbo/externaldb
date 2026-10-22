@@ -265,7 +265,7 @@ pkg-quickStart:
 	tar zcvf build/externaldb-proof.tgz -C build externaldb-proof
 
 # pkg-pullConvert: 直连（pull + seq）部署包 = pkg-quickStart 的改造版
-#   - bin/：5 个常驻程序 convert（pull+seq 展开）/ scanner（ERC20 扫块）/ jrpc（ES 查询）/
+#   - bin/：5 个常驻程序 pull_convert（pull+seq 展开）/ scanner（ERC20 扫块）/ jrpc（ES 查询）/
 #     erc20api（ERC20 查询，走 MySQL）/ account_refresh（BTY 余额定时校正）
 #   - tools/：离线/一次性工具（convert_check 对账，后续同类工具都放这里）
 #   - 不含老链路 sync/convert/rpc
@@ -276,7 +276,7 @@ pkg-quickStart:
 pkg-pullConvert:
 	rm -rf build/externaldb-pull
 	mkdir -p build/externaldb-pull/bin build/externaldb-pull/tools build/externaldb-pull/etc build/externaldb-pull/env/es7 build/externaldb-pull/env/es7.4 build/externaldb-pull/env/mysql/sql
-	cp build/pull_convert build/externaldb-pull/bin/convert
+	cp build/pull_convert build/externaldb-pull/bin/pull_convert
 	cp build/erc20scan build/externaldb-pull/bin/scanner
 	cp build/jrpc build/externaldb-pull/bin/jrpc
 	cp build/erc20api build/externaldb-pull/bin/erc20api

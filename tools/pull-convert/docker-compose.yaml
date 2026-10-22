@@ -1,7 +1,7 @@
 version: '2'
 
 # 直连（pull + seq）部署模板，4 个程序：
-#   convert  —— 唯一写方：按 seq 从 chain33 拉块并展开写入 ES（同一批索引不能有两个写方）
+#   pull_convert —— 唯一写方：按 seq 从 chain33 拉块并展开写入 ES（同一批索引不能有两个写方）
 #   jrpc     —— 浏览器/查询：读 ES
 #   scanner  —— ERC20 扫块：按 seq 拉块解析转账写入 MySQL
 #   erc20api —— ERC20 查询：读 MySQL（/evmapi/*）
@@ -9,8 +9,7 @@ version: '2'
 # scanner / erc20api 依赖 [mysql]（MYSQL_ENABLED=true 时才启动，见 Makefile）。
 # rpc（gin REST）与老链路 sync/convert 不在本包里。
 services:
-  convert:
-    # 容器名沿用旧包的 -pull-convert（服务名/二进制叫 convert），升级前后 docker ps 里是同一个名字，避免搞混
+  pull_convert: # 服务名/二进制/容器名都沿用旧包命名，升级前后一致
     container_name: ${PROJECT_NAME}-pull-convert
     image: docker.io/ubuntu:16.04
     working_dir: /root/bin
@@ -19,7 +18,7 @@ services:
       - ./etc/:/root/etc/
     network_mode: "host"
     # -c 必须给完整 chain33 配置：v1.72 起 fork 严格校验，缺失即 panic
-    command: /root/bin/convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
+    command: /root/bin/pull_convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
 
   jrpc: # 浏览器/查询使用
     container_name: ${PROJECT_NAME}-jrpc

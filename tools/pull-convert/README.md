@@ -2,23 +2,22 @@
 
 用于 **convert 直连（pull + seq 驱动）** 的一键部署，取代老链路 `sync + convert`。
 数据流：chain33 按 seq 拉块（`GetBlockSequences` + `GetBlockByHashes`）→ 展开写 ES，进度是 append-only 的 `seq_marker`（游标 = max(seq)）。
-切换步骤：停老链路写方（`sync`/`convert`）→ 起 `convert` → 等追平后 `make check`（`convert_check`）对账 → 确认旧 `db05_last_seq` 不再增长。
+切换步骤：停老链路写方（`sync`/`convert`）→ 起 `pull_convert` → 等追平后 `make check`（`convert_check`）对账 → 确认旧 `db05_last_seq` 不再增长。
 
-修复历史区间（补空洞/回放）：`./bin/convert -mode fix -from <起始seq> -to <结束seq> -f etc/externaldb.toml -c etc/chain33.toml`
+修复历史区间（补空洞/回放）：`./bin/pull_convert -mode fix -from <起始seq> -to <结束seq> -f etc/externaldb.toml -c etc/chain33.toml`
 （闭区间；不写 `seq_marker`、不做 `block_stat` 累计，跑完用 `convert_check -from/-to` 对账）。
 
 ## 包内容
 
 ```
 externaldb-pull/
-├── bin/            convert（=pull_convert）、scanner（=erc20scan）、jrpc、erc20api、account_refresh（常驻程序）
+├── bin/            pull_convert、scanner（=erc20scan）、jrpc、erc20api、account_refresh（常驻程序）
 ├── tools/          convert_check（离线对账；后续一次性/排障工具也放这里）
 ├── etc/            externaldb.toml、chain33.toml
 ├── env/mysql/      包内 MySQL 8.0 的 compose（sql/schema.sql 首次启动自动建表）
 ├── env/es7/        ES 7.17.29 的 compose + proof-init.bash（默认）
 ├── env/es7.4/      ES 7.4.2 的 compose + proof-init.bash（备用，见下）
-├── docker-compose.yaml        5 个服务：convert / jrpc / scanner / erc20api / accountrefresh
-│                               （convert 的容器名沿用 ${PROJECT_NAME}-pull-convert）
+├── docker-compose.yaml        5 个服务：pull_convert / jrpc / scanner / erc20api / accountrefresh
 ├── Makefile                    内层一键脚本
 ├── .env                        物料表相关配置
 ├── alter-config.sh / es-init.sh / browser-init.bash
@@ -39,7 +38,7 @@ externaldb-pull/
 
 | 程序 | 作用 | 依赖 |
 | --- | --- | --- |
-| `convert` | 按 seq 从 chain33 拉块、展开写 ES（唯一写方） | chain33 gRPC、ES |
+| `pull_convert` | 按 seq 从 chain33 拉块、展开写 ES（唯一写方） | chain33 gRPC、ES |
 | `jrpc` | 浏览器/查询：读 ES | ES（MySQL 可选，`getTransferLogs`） |
 | `scanner` | ERC20 扫块：解析转账写 MySQL | chain33 gRPC、MySQL、eth JSON-RPC（balanceOf） |
 | `erc20api` | ERC20 查询：`/evmapi/*` 读 MySQL | MySQL |
@@ -59,14 +58,14 @@ externaldb-pull/
 - `account_refresh` 受 `.env` 的 `ACCOUNT_REFRESH_ENABLED` 控制（默认 true），间隔在 `.env`
   （`ACCOUNT_REFRESH_TOP_INTERVAL`/`ACCOUNT_REFRESH_ACTIVE_INTERVAL`/`ACCOUNT_REFRESH_FULL_INTERVAL`）
   由 `alter-config.sh` 写入 `[accountRefresh]`；程序内部循环，不需要 cron。
-- 日志：`convert`/`jrpc` 在 `bin/logs/convert.log`、`jrpc.log`；`scanner`/`erc20api` 在 `bin/logs/scanner_app.log`、`rpc_app.log`
-  （`make log-convert`、`make log-scanner`、`make log-erc20api`）。
+- 日志：`pull_convert`/`jrpc` 在 `bin/logs/convert.log`、`jrpc.log`；`scanner`/`erc20api` 在 `bin/logs/scanner_app.log`、`rpc_app.log`
+  （`make log-pull-convert`、`make log-scanner`、`make log-erc20api`）。
 
 ## 注意
 
 - **ES 堆建议 ≥2g**：ES 的 coordination 断路器上限随堆走，512m 堆时只有 ~51MB，大 seq（genesis）写出大请求会被 429 拒绝
   （代码已按 ≤5MB 分片 + 429 退避重试兜底，但堆太小整体吞吐也差）。改 `env/es7/docker-compose.yaml` 的 `ES_JAVA_OPTS` 后 `make downES && make initES`。
-- **同一批索引只能有一个写方**：`convert` 与老 `convert` 不能同时跑（两套游标）。
+- **同一批索引只能有一个写方**：`pull_convert` 与老 `convert` 不能同时跑（两套游标）。
 - `pull_convert` 启动会自动自举游标；首次启动看日志里是 `已按旧 db05_last_seq 自举` 还是 `按配置 startSeq 起跑`——
   后者意味着会**从 startSeq 重跑**，切换前务必确认 `etc/externaldb.toml` 里 `[convert].startSeq` 与现状一致。
 - ES 7.17.29（默认）需要宿主机 `vm.max_map_count >= 262144`。
