@@ -71,6 +71,11 @@ func assertTx(t *testing.T, rec db.Record, hash, from, to, execer, action string
 
 // assertAccountPair 断言 records[i] 是 account、records[i+1] 是对应的 account_record，
 // 并覆盖新增的 addr_type/height/block_time 与 asset 字段。
+//
+// account 是当前态（id 不含高度，Op 恒为 Add）；account_record 是按高度的快照
+// （id 带高度，回滚时以 Del 按该 id 删除），两者 Detall 相同，见 db/account.RecordHelper。
+// 同一笔交易里同一地址可有两条日志（如 Test_ConvertTx：TyLogFee 扣手续费 + TyLogTransfer 转出），
+// 两对记录 id 相同，落库后只保留最后一条日志的态（7 条记录实为 5 个唯一 key）。
 func assertAccountPair(t *testing.T, records []db.Record, i int, w accWant) {
 	t.Helper()
 	accRec, ok := records[i].(*account.Record)

@@ -11,7 +11,7 @@ func Test_tojons(t *testing.T) {
 	acc := &Account{Detall: &Detall{Frozen: 1}, AssetSymbol: "b"}
 	v, _ := json.Marshal(acc)
 	//t.Error(string(v))
-	assert.Equal(t, `{"address":"","exec":"","frozen":1,"balance":0,"total":0,"type":"","height_index":0,"asset_symbol":"b","asset_exec":""}`, string(v))
+	assert.Equal(t, `{"address":"","exec":"","frozen":1,"balance":0,"total":0,"type":"","addr_type":"","height_index":0,"asset_symbol":"b","asset_exec":"","height":0,"block_time":0}`, string(v))
 }
 
 func Test_AddExecAddress(t *testing.T) {

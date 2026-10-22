@@ -326,6 +326,9 @@ func Test_TransferFrom(t *testing.T) {
 }
 
 // assertAccountPairs 检查 account / account_record 成对出现，并覆盖新增字段与 asset 字段。
+// account 是当前态（id 不含高度），account_record 是按高度的快照（回滚时以 Del 按该 id 删除），
+// 语义见 db/account.RecordHelper；multisig 的 account 文档 height/block_time 为 0，
+// 高度只体现在 HeightIndex 与 account_record 的 id 上。
 func assertAccountPairs(t *testing.T, records []db.Record) {
 	t.Helper()
 	const accPrefix = "account/_doc/"
