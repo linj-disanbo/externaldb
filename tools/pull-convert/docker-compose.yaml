@@ -10,7 +10,8 @@ version: '2'
 # rpc（gin REST）与老链路 sync/convert 不在本包里。
 services:
   convert:
-    container_name: ${PROJECT_NAME}-convert
+    # 容器名沿用旧包的 -pull-convert（服务名/二进制叫 convert），升级前后 docker ps 里是同一个名字，避免搞混
+    container_name: ${PROJECT_NAME}-pull-convert
     image: docker.io/ubuntu:16.04
     working_dir: /root/bin
     volumes:

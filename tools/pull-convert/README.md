@@ -17,7 +17,8 @@ externaldb-pull/
 ├── env/mysql/      包内 MySQL 8.0 的 compose（sql/schema.sql 首次启动自动建表）
 ├── env/es7/        ES 7.17.29 的 compose + proof-init.bash（默认）
 ├── env/es7.4/      ES 7.4.2 的 compose + proof-init.bash（备用，见下）
-├── docker-compose.yaml        4 个服务：convert / jrpc / scanner / erc20api
+├── docker-compose.yaml        5 个服务：convert / jrpc / scanner / erc20api / accountrefresh
+│                               （convert 的容器名沿用 ${PROJECT_NAME}-pull-convert）
 ├── Makefile                    内层一键脚本
 ├── .env                        物料表相关配置
 ├── alter-config.sh / es-init.sh / browser-init.bash
