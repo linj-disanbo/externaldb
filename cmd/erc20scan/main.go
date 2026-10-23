@@ -7,9 +7,9 @@ import (
 	"os"
 
 	chain33types "github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/erc20scaner/config"
-	"github.com/33cn/externaldb/erc20scaner/logger"
-	"github.com/33cn/externaldb/erc20scaner/scanner/engine"
+	"github.com/33cn/externaldb/erc20/config"
+	"github.com/33cn/externaldb/erc20/logger"
+	"github.com/33cn/externaldb/erc20/scanner/engine"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 

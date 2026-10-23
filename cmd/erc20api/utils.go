@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/33cn/externaldb/erc20scaner/txparser"
+	"github.com/33cn/externaldb/erc20/txparser"
 )
 
 // writeJSON 写入JSON响应

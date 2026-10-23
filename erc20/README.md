@@ -1,4 +1,4 @@
-# erc20scaner：ERC20 扫块与查询（库 + 文档）
+# erc20：ERC20 扫块与查询（库 + 文档）
 
 原先是一个独立 module（`erc20Scaner/`，自带 go.mod / Dockerfile / 打包脚本）。2026-10 起已并入主 module，
 **程序入口都在仓库 `cmd/` 下**，这里只放库代码和文档。

@@ -5,7 +5,7 @@
 //	docker run -d --name exdb-test-mysql -e MYSQL_ROOT_PASSWORD=testpw \
 //	  -e MYSQL_DATABASE=token_scanner -p 127.0.0.1:3307:3306 mysql:5.7
 //	TEST_DSN='root:testpw@tcp(127.0.0.1:3307)/token_scanner?charset=utf8mb4&parseTime=True&loc=Local' \
-//	  go test -tags=integration ./erc20scaner/database/ -run Marker -v
+//	  go test -tags=integration ./erc20/database/ -run Marker -v
 package database
 
 import (

@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/33cn/externaldb/erc20scaner/erc20abi/generated"
+	"github.com/33cn/externaldb/erc20/erc20abi/generated"
 )
 
 // ParsedTransfer represents a raw ERC20 Transfer event extracted from a receipt log.

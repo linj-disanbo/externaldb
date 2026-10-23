@@ -11,7 +11,7 @@ package database
 // 3. 使用示例:
 //
 //    import (
-//        "github.com/33cn/externaldb/erc20scaner/database"
+//        "github.com/33cn/externaldb/erc20/database"
 //    )
 //
 //    // 连接数据库

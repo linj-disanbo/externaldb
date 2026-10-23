@@ -12,7 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/33cn/externaldb/erc20scaner/txinspect"
+	"github.com/33cn/externaldb/erc20/txinspect"
 )
 
 func main() {

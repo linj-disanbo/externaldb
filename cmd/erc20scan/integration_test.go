@@ -8,7 +8,7 @@ package main
 import (
 	"testing"
 
-	"github.com/33cn/externaldb/erc20scaner/scanner/engine"
+	"github.com/33cn/externaldb/erc20/scanner/engine"
 	"github.com/ethereum/go-ethereum/common"
 )
 

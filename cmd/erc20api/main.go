@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/33cn/externaldb/erc20scaner/config"
-	"github.com/33cn/externaldb/erc20scaner/database"
-	"github.com/33cn/externaldb/erc20scaner/logger"
+	"github.com/33cn/externaldb/erc20/config"
+	"github.com/33cn/externaldb/erc20/database"
+	"github.com/33cn/externaldb/erc20/logger"
 )
 
 var slogger *slog.Logger

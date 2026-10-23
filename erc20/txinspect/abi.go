@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/33cn/externaldb/erc20scaner/erc20abi/generated"
+	"github.com/33cn/externaldb/erc20/erc20abi/generated"
 )
 
 func normalizeAddress(address string) string {

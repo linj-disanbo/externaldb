@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/33cn/externaldb/erc20scaner/txinspect"
+	"github.com/33cn/externaldb/erc20/txinspect"
 )
 
 // blockparseOut wraps the original ETH-RPC inspection plus an optional chain33 Note→eth second pass.

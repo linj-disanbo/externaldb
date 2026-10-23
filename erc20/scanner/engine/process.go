@@ -21,11 +21,11 @@ import (
 	chain33types "github.com/33cn/chain33/types"
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/db/block"
-	"github.com/33cn/externaldb/erc20scaner/blockalign"
-	"github.com/33cn/externaldb/erc20scaner/config"
-	"github.com/33cn/externaldb/erc20scaner/database"
-	"github.com/33cn/externaldb/erc20scaner/erc20abi/generated"
-	"github.com/33cn/externaldb/erc20scaner/txparser"
+	"github.com/33cn/externaldb/erc20/blockalign"
+	"github.com/33cn/externaldb/erc20/config"
+	"github.com/33cn/externaldb/erc20/database"
+	"github.com/33cn/externaldb/erc20/erc20abi/generated"
+	"github.com/33cn/externaldb/erc20/txparser"
 	"google.golang.org/grpc"
 )
 

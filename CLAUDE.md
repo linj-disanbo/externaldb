@@ -64,8 +64,8 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
   ABI 注册已从 jrpc 移除，改由仓库外私有工具（`local/tools/saveabi`，不随开源仓库发布）离线写入。
 - **rpc**（`cmd/rpc/`）：Gin REST，proof 相关；与 jrpc 独立，含白名单与 Sentinel 限流中间件。
 - **erc20 扫块/查询**：已并入主 module（不再是独立工程）。程序 `cmd/erc20scan`（扫 ERC20 转账写 MySQL）、
-  `cmd/erc20api`（`/evmapi/*` 读 MySQL，原 `erc20Scaner/rpc`）；库在 `erc20scaner/`（`scanner/engine`、`txparser`、
-  `database`、`config`、`erc20abi`、`blockalign`、`logger`、`txinspect`），文档在 `erc20scaner/docs/`；
+  `cmd/erc20api`（`/evmapi/*` 读 MySQL，原 `erc20Scaner/rpc`，现 `cmd/erc20api`）；库在 `erc20/`（`scanner/engine`、`txparser`、
+  `database`、`config`、`erc20abi`、`blockalign`、`logger`、`txinspect`），文档在 `erc20/docs/`；
   离线工具 `cmd/tools/erc20-{blockparse,scannerfix,txinfo}`。
 - **account_refresh**（`cmd/account_refresh`, `util/accountrefresh/`）：常驻循环，把主币（BTY）真实余额
   按三档（top N 1h / 活跃 24h / 全量 168h）从链上 `Chain33.GetBalance` 校正回 ES `account` 文档
@@ -101,7 +101,7 @@ It configures:
 
 Config types are generated from `proto/exdbconfig.proto`。改字段后手动生成：`cd proto && protoc --go_out=. exdbconfig.proto`
 （`make proto` 用的 `proto/create_protobuf.sh` 仍是老的 `--go_out=plugins=grpc` 写法，protoc-gen-go v1.33 会报错；先确认重新生成只多出预期的 diff）。
-erc20 程序读同一份 toml：`erc20scaner/config/toml.go` 的 `FromProto` 做映射（`.yaml` 老格式仍兼容）。
+erc20 程序读同一份 toml：`erc20/config/toml.go` 的 `FromProto` 做映射（`.yaml` 老格式仍兼容）。
 
 ## ES Version Handling
 

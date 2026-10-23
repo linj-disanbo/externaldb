@@ -283,7 +283,7 @@ pkg-pull:
 	cp deploy/env/proof-init.bash build/externaldb-pull/env/es7.4/proof-init.bash
 	cp deploy/pull-convert/mysql.yaml build/externaldb-pull/env/mysql/docker-compose.yaml
 	cp deploy/pull-convert/mysql-init.sh build/externaldb-pull/
-	cp erc20scaner/database/schema.sql build/externaldb-pull/env/mysql/sql/schema.sql
+	cp erc20/database/schema.sql build/externaldb-pull/env/mysql/sql/schema.sql
 	cp deploy/pull-convert/docker-compose.yaml build/externaldb-pull/
 	cp deploy/pull-convert/Makefile build/externaldb-pull/
 	cp deploy/pull-convert/README.md build/externaldb-pull/

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/33cn/externaldb/erc20scaner/database"
+	"github.com/33cn/externaldb/erc20/database"
 )
 
 // handleAccountsRouter 处理 /evmapi/accounts 路径
