@@ -74,7 +74,7 @@ fmt_shell: ## check shell file
 	find . -path ./local -prune -o -path ./.gomodcache -prune -o -path ./vendor -prune -o -name '*.sh' -print | xargs shfmt -w -s -i 4 -ci -bn
 
 shcheck: ## check shell
-	shellcheck tools/*sh
+	shellcheck tools/*sh deploy/*sh deploy/ci/*sh
 
 .PHONY: checkgofmt
 checkgofmt: ## get all go files and run go fmt on them
@@ -212,8 +212,8 @@ update_plugin: ## make update_plugin version=tag/branch/commit-hash
 	go mod tidy
 
 docker: build ## build docker image for externaldb with sync convert jrpc
-	cp tools/*Dockerfile build
-	cp tools/ci-*.sh build
+	cp deploy/docker/*Dockerfile build
+	cp deploy/ci/ci-*.sh build
 	if [ "${version}" = "" ]; then \
 		cd build && \
 		docker build . -f sync.Dockerfile   -t chain33/externaldb/sync:lastest; \
@@ -243,21 +243,21 @@ pkg:
 	mkdir -p build/externaldb/bin build/externaldb/etc build/externaldb/env/es7 build/externaldb/env/es7.4
 	cp build/sync build/convert build/rpc build/jrpc build/externaldb/bin/
 	cp config/externaldb.toml config/chain33.toml build/externaldb/etc/
-	cp tools/mime.types build/externaldb/etc/mime.types
-	cp tools/env/es7/docker-compose.yaml build/externaldb/env/es7/docker-compose.yaml
-	cp tools/env/es7.4/docker-compose.yaml build/externaldb/env/es7.4/docker-compose.yaml
-	cp tools/env/proof-init.bash build/externaldb/env/es7/proof-init.bash
-	cp tools/env/proof-init.bash build/externaldb/env/es7.4/proof-init.bash
-	cp tools/pkg/docker-compose.yaml tools/pkg/docker-compose-update.yaml build/externaldb/
-	cp tools/pkg/Makefile tools/pkg/README.md build/externaldb/
-	cp tools/pkg/alter-config.sh tools/pkg/es-init.sh tools/pkg/browser-init.bash tools/pkg/reindex-shards.sh build/externaldb/
+	cp deploy/mime.types build/externaldb/etc/mime.types
+	cp deploy/env/es7/docker-compose.yaml build/externaldb/env/es7/docker-compose.yaml
+	cp deploy/env/es7.4/docker-compose.yaml build/externaldb/env/es7.4/docker-compose.yaml
+	cp deploy/env/proof-init.bash build/externaldb/env/es7/proof-init.bash
+	cp deploy/env/proof-init.bash build/externaldb/env/es7.4/proof-init.bash
+	cp deploy/pkg/docker-compose.yaml deploy/pkg/docker-compose-update.yaml build/externaldb/
+	cp deploy/pkg/Makefile deploy/pkg/README.md build/externaldb/
+	cp deploy/pkg/alter-config.sh deploy/pkg/es-init.sh deploy/pkg/browser-init.bash deploy/pkg/reindex-shards.sh build/externaldb/
 	cp .env build/externaldb/
 	tar zcvf build/externaldb.tgz -C build externaldb
 
 .PHONY: pkgProof pkg-quickStart
 pkgProof pkg-quickStart: pkg
 
-# pkg-pull: 直连（pull + seq）部署包 = pkg 的直连版，物料脚本与 pkg 共用（tools/pkg、tools/env）
+# pkg-pull: 直连（pull + seq）部署包 = pkg 的直连版，物料脚本与 pkg 共用（deploy/pkg、deploy/env）
 #   - bin/：5 个常驻程序 pull_convert（pull+seq 展开）/ scanner（ERC20 扫块）/ jrpc（ES 查询）/
 #     erc20api（ERC20 查询，走 MySQL）/ account_refresh（BTY 余额定时校正）
 #   - tools/：离线/一次性工具（convert_check 对账，后续同类工具都放这里）
@@ -277,20 +277,20 @@ pkg-pull:
 	cp build/convert_check build/externaldb-pull/tools/
 	cp config/externaldb.toml build/externaldb-pull/etc/
 	cp config/chain33.toml build/externaldb-pull/etc/
-	cp tools/env/es7/docker-compose.yaml build/externaldb-pull/env/es7/docker-compose.yaml
-	cp tools/env/proof-init.bash build/externaldb-pull/env/es7/proof-init.bash
-	cp tools/env/es7.4/docker-compose.yaml build/externaldb-pull/env/es7.4/docker-compose.yaml
-	cp tools/env/proof-init.bash build/externaldb-pull/env/es7.4/proof-init.bash
-	cp tools/pull-convert/mysql.yaml build/externaldb-pull/env/mysql/docker-compose.yaml
-	cp tools/pull-convert/mysql-init.sh build/externaldb-pull/
+	cp deploy/env/es7/docker-compose.yaml build/externaldb-pull/env/es7/docker-compose.yaml
+	cp deploy/env/proof-init.bash build/externaldb-pull/env/es7/proof-init.bash
+	cp deploy/env/es7.4/docker-compose.yaml build/externaldb-pull/env/es7.4/docker-compose.yaml
+	cp deploy/env/proof-init.bash build/externaldb-pull/env/es7.4/proof-init.bash
+	cp deploy/pull-convert/mysql.yaml build/externaldb-pull/env/mysql/docker-compose.yaml
+	cp deploy/pull-convert/mysql-init.sh build/externaldb-pull/
 	cp erc20scaner/database/schema.sql build/externaldb-pull/env/mysql/sql/schema.sql
-	cp tools/pull-convert/docker-compose.yaml build/externaldb-pull/
-	cp tools/pull-convert/Makefile build/externaldb-pull/
-	cp tools/pull-convert/README.md build/externaldb-pull/
-	cp tools/pkg/reindex-shards.sh build/externaldb-pull/
-	cp tools/pkg/alter-config.sh build/externaldb-pull/
-	cp tools/pkg/es-init.sh build/externaldb-pull/
-	cp tools/pkg/browser-init.bash build/externaldb-pull/
+	cp deploy/pull-convert/docker-compose.yaml build/externaldb-pull/
+	cp deploy/pull-convert/Makefile build/externaldb-pull/
+	cp deploy/pull-convert/README.md build/externaldb-pull/
+	cp deploy/pkg/reindex-shards.sh build/externaldb-pull/
+	cp deploy/pkg/alter-config.sh build/externaldb-pull/
+	cp deploy/pkg/es-init.sh build/externaldb-pull/
+	cp deploy/pkg/browser-init.bash build/externaldb-pull/
 	cp .env build/externaldb-pull/
 	tar zcvf build/externaldb-pull.tgz -C build externaldb-pull
 
@@ -300,9 +300,9 @@ docker-compose: ## run docker-compose as jenkins-ci
 			make -C .. docker; \
 			mkdir ci/configs -p; \
 		fi; \
-		cp ../tools/docker-compose-ci.yaml ./ci/docker-compose.yaml; \
-		cp ../tools/ci-*sh ./ci/; \
-		cp ../tools/chain33.para.6.3.toml ./ci/configs/chain33.toml; \
+		cp ../deploy/docker/docker-compose-ci.yaml ./ci/docker-compose.yaml; \
+		cp ../deploy/ci/ci-*sh ./ci/; \
+		cp ../deploy/ci/chain33.para.6.3.toml ./ci/configs/chain33.toml; \
 		cp *toml ./ci/configs; \
 		cd ci && \
 		./ci-setup-config.sh; \
@@ -312,7 +312,7 @@ docker-compose: ## run docker-compose as jenkins-ci
 
 docker-compose-down: ## stop ci 
 	@cd build && if [ -d ci ]; then \
-	 	cp ../tools/docker-compose-ci.yaml ./ci/docker-compose.yaml; \
+	 	cp ../deploy/docker/docker-compose-ci.yaml ./ci/docker-compose.yaml; \
 	 	cd ci/ && \
 		 ./ci-setup-config.sh; \
 		 docker-compose down && \

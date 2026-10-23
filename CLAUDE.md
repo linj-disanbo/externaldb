@@ -71,7 +71,7 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
   按三档（top N 1h / 活跃 24h / 全量 168h）从链上 `Chain33.GetBalance` 校正回 ES `account` 文档
   （只部分更新 balance/frozen/total 与 `balance_refresh_at`；配置段 `[accountRefresh]`）。
 - **离线/运维工具**：`cmd/convert_check`（对账，部署包里放 `tools/`）；`local/`（git 忽略）放不公开的过程文档与非通用工具：`local/tools/`、`local/docs/`。
-- **部署物料**：两个包共用一套脚本 —— `tools/pkg/`（包内 Makefile/README/compose/alter-config/es-init/browser-init/reindex-shards，老链路与直连包都从这里拷）、`tools/env/`（ES7 模板 es7/es7.4 + proof-init.bash）；`make pkgProof`/`make pkg-quickStart` 是 `make pkg` 的兼容别名，产物同名 `externaldb.tgz`。
+- **部署物料**：两个包共用一套脚本 —— `deploy/pkg/`（包内 Makefile/README/compose/alter-config/es-init/browser-init/reindex-shards，老链路与直连包都从这里拷）、`deploy/env/`（ES7 模板 es7/es7.4 + proof-init.bash）；`deploy/` 下另有 pull-convert 包物料、docker/（Dockerfile、compose-ci）、ci/（CI 脚本与链配置模板）；`make pkgProof`/`make pkg-quickStart` 是 `make pkg` 的兼容别名，产物同名 `externaldb.tgz`。
 
 ## Key Abstractions
 
@@ -106,7 +106,7 @@ erc20 程序读同一份 toml：`erc20scaner/config/toml.go` 的 `FromProto` 做
 ## ES Version Handling
 
 只支持 ES 7.x：`escli/v6/` 已删除，客户端实现在 `escli/v7/`，`db.SetVersion()` 在启动时设置版本。
-部署包也只有 ES7 模板（`tools/env/es7` = 7.17 默认，`tools/env/es7.4` = 7.4 备用），`.env` 里 `ES_VERSION` 填 6 会被 `make` 拦下。
+部署包也只有 ES7 模板（`deploy/env/es7` = 7.17 默认，`deploy/env/es7.4` = 7.4 备用），`.env` 里 `ES_VERSION` 填 6 会被 `make` 拦下。
 
 ## Dependencies
 
