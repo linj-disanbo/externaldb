@@ -1,54 +1,52 @@
 version: '2'
 
+# 镜像部署版 compose：适用于用 docker 镜像（chain33/externaldb/*）而非解包二进制的方式。
+# 二进制部署走 deploy/pkg（make pkg 产物），两者不要混用。
+# ES 固定 7.17（与 deploy/env/es7 一致）：7.17 需要宿主机 vm.max_map_count >= 262144。
+# 堆按机器内存调，建议不超过内存一半、最多 ~31g。
 services:
-  elasticsearch: # Elasticsearch Instance
-    container_name: elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:6.1.1
-    volumes: # Persist ES data in seperate "esdata" volume
-      - /home/linj/top-asset/ES/data2:/usr/share/elasticsearch/data
+  externaldb-es7:
+    container_name: ${ES_NAME}
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.29
+    volumes:
+      - ${ES_DIR}:/usr/share/elasticsearch/data
     environment:
-      - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=false
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
       - discovery.type=single-node
-      - "xpack.security.enabled=false"
-    network_mode: "host"
-    ports: # Expose Elasticsearch ports
-      - "9300:9300"
-      - "9200:9200"
+      - "xpack.security.enabled=true"
+      - ELASTIC_PASSWORD=${ES_PASSWORD}
+    ports:
+      - ${ES_BIND}:${ES_PORT_HTTP}:9200
+      - ${ES_BIND}:${ES_PORT_TCP}:9300
 
   sync:
-    container_name: externaldb-sync
-    image: chain33/externaldb/sync:lastest
+    container_name: ${PROJECT_NAME}-sync
+    image: chain33/externaldb/sync:latest
     depends_on:
-      - elasticsearch
+      - externaldb-es7
     volumes:
-      - "/home/linj/d-d/sync:/root/config/"
+      - ./etc/:/root/etc/
     network_mode: "host"
-    ports:
-      - "20000:20000"
-    command: /root/sync -f /root/config/externaldb.toml &
-
+    command: /root/sync -f /root/etc/externaldb.toml &
 
   convert:
-    container_name: externaldb-convert
-    image: chain33/externaldb/convert:lastest
+    container_name: ${PROJECT_NAME}-convert
+    image: chain33/externaldb/convert:latest
     depends_on:
-      - elasticsearch
+      - externaldb-es7
       - sync
     volumes:
-      - "/home/linj/d-d/convert:/root/config/"
+      - ./etc/:/root/etc/
     network_mode: "host"
-    command: /root/convert -f /root/config/externaldb.toml &
+    command: /root/convert -f /root/etc/externaldb.toml -c /root/etc/chain33.toml &
 
   jrpc:
-    container_name: externaldb-jrpc
-    image: chain33/externaldb/jrpc:lastest
+    container_name: ${PROJECT_NAME}-jrpc
+    image: chain33/externaldb/jrpc:latest
     depends_on:
-      - elasticsearch
+      - externaldb-es7
     volumes:
-      - "/home/linj/d-d/jrpc:/root/config/"
+      - ./etc/:/root/etc/
     network_mode: "host"
-    ports:
-      - "20001:20001"
-    command: /root/jrpc -f /root/config/externaldb.toml &
-
+    command: /root/jrpc -f /root/etc/externaldb.toml &

@@ -171,10 +171,10 @@ msan: ## Run memory sanitizer
 	@go test -msan -short $(PKG_LIST)
 
 coverage: ## Generate global code coverage report
-	@./build/tools/coverage.sh
+	@./tools/coverage.sh
 
 coverhtml: ## Generate global code coverage report in HTML
-	@./build/tools/coverage.sh html
+	@./tools/coverage.sh html
 
 
 
