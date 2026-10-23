@@ -1,360 +1,127 @@
 # externaldb 部署
 
-## 整体结构介绍
+两种部署包，按链路二选一（同一批索引只能有一个写方）：
 
-由5部分组成 ![结构图](./assets/deploy-externaldb.png)
- 1. 外部依赖：chain33 节点
- 1. 内部依赖：elastic search
- 1. 模块：sync， convert， jrpc
+| 包 | 产物 | 内容 | 适用 |
+|---|---|---|---|
+| 老链路 `make pkg` | `build/externaldb.tgz` | `sync` `convert` `rpc` `jrpc` | 已有 push 链路的环境、需要回退时 |
+| 直连链路 `make pkg-pull` | `build/externaldb-pull.tgz` | `pull_convert` `scanner`(=erc20scan) `jrpc` `erc20api` `account_refresh` + `tools/convert_check` | 新部署（当前生产） |
 
-### 依赖说明
+两个包的物料脚本是同一套（`deploy/pkg`、`deploy/env` 拷进包里），区别只在 `bin/` 的程序、包内 `docker-compose.yaml`
+和包内 `Makefile`。
 
- 1. elastic search
-    1. 用途 用来保存数据
-    1. 配置 esHost/esHostWrite/esHostRead: 如 "http://127.0.0.1:9200/"
- 1. chain33 节点
-    1. 用途 用来推送区块序列
-    1. 配置 节点jrpc: chain33Host "http://localhost:8801" 
-    1. 配置 平行链title para="" 为平行链为空
-    1. 配置 主币名称 symbol="bty"
-
-### 模块说明
-
- 1. sync: 同步区块序列
-    1. 需要和chain33 通信
-    1. 需要写 es节点
- 1. convert: 展开数据
-    1. 需要读写 es节点
- 1. jrpc: 提供rpc 接口
-    1. 需要读 es节点
-
-配置
- 1. 配置依赖相关配置项
- 1. 配置数据相关项的前缀
-
-启动
- 1. ./sync -f 配置文件 >log 2>&1 &
- 1. ./convert -f 配置文件 -c 节点的配置 >log 2>&1 &
- 1. ./jrpc -f 配置文件 >log 2>&1 &
-
-### sync 配置
+## 1. 打包含什么
 
 ```
-# elastic search
-esHost="http://127.0.0.1:9200/"
-
-# chain33 节点
-chain33Host="http://localhost:8801"
-# 空为主链， 非空为title
-para=""
-
-# 接受推送的配置
-pushHost="192.168.3.34:20000"
-# 程序自身bind 的配置， 在云上或通过端口映射的ip/port 会不一样
-pushBind="192.168.3.34:20000"
-
-pushName="lj_test"
-# 数据库前缀， 这样可以允许多条链的数据导入到一个库
-prefix=""
-name="bty3_sync"
+externaldb/                 externaldb-pull/
+├── bin/                    程序（前者 4 个，后者 5 个 + tools/convert_check）
+├── etc/                    externaldb.toml、chain33.toml
+├── env/es7/                ES 7.17 的 compose + proof-init.bash（默认）
+├── env/es7.4/              ES 7.4.2 的 compose + proof-init.bash（备用）
+├── env/mysql/              包内 MySQL（仅 pull 包，MYSQL_LOCAL_START=true 时用）
+├── docker-compose.yaml     服务声明；起哪些由 EX_SERVICE_TYPE / 开关决定
+├── Makefile                包内一键脚本（quickStart / initES / initConfig / run / logs…）
+├── README.md               包内说明（与本文件对应）
+├── alter-config.sh         把 .env 写进 etc/externaldb.toml
+├── es-init.sh              起包内 ES
+├── browser-init.bash       浏览器索引 settings（max_result_window / refresh_interval / translog）
+└── reindex-shards.sh       已有索引换分片（reindex + 同名别名）
 ```
 
-### convert 配置
+ES 只支持 7.x（项目已删掉 ES6 客户端）。包内默认 `env/es7` 是 7.17.29；
+老环境要用 7.4，把 `env/es7.4` 的内容换到 `env/es7` 即可，不改脚本、不加版本配置。
 
+## 2. `.env` 配置
 
-```
-# 可以配置一样，
-# sync-block 写数据的数据库
-esHostRead="http://127.0.0.1:9200/"
-prefix=""
-# 展开数据保存的数据库
-esHostWrite="http://127.0.0.1:9200/"
-prefixWrite="7_"
+解压后先改 `.env`：
 
-# 空为主链， 非空为title
-para=""
-symbol="bty"
+| 分类 | 变量 | 说明 |
+|---|---|---|
+| 场景 | `EX_SERVICE_TYPE` | `proof`（存证）/ `browser`（浏览器）/ 其它（通用） |
+| | `PROJECT_NAME` | 容器名前缀，同机多套时用来区分 |
+| ES | `ES_VERSION` | 只填 7（填 6 会被 `make` 直接拦下）|
+| | `ES_SHARDS` / `ES_REPLICAS` | 新建索引的分片/副本 |
+| | `ES_NAME` / `ES_DIR` / `ES_BIND` / `ES_PORT_HTTP` / `ES_PORT_TCP` / `ES_PASSWORD` | 包内 ES 容器 |
+| 链 | `CHAIN_TITLE` | 主链留空；平行链填 `user.p.XXX.` |
+| | `CHAIN_HOST` / `CHAIN_GRPC_HOST` | 节点 HTTP / gRPC 地址（直连链路用 gRPC）|
+| | `CHAIN_SYMBOL` / `ADDR_DRIVER` / `DEAL_OTHER_CHAIN` | 币种、地址驱动（btc/eth）、是否处理它链交易 |
+| 索引 | `SYNC_PREFIX` / `CONVERT_PREFIX` | 原始 seq 索引 / 解析后文档索引前缀 |
+| 起点 | `START_SEQ` / `START_HEIGHT` | 起始 seq / 高度 |
+| 老链路推送 | `PUSH_BIND` / `PUSH_HOST` / `PUSH_NAME` / `PUSH_FORMAT` | sync 注册到节点的推送配置（pb/json）|
+| 端口 | `RPC_HOST` / `JRPC_HOST` / `SWAGGER_HOST` | rpc / jrpc 监听地址 |
+| 存证 | `PROOF_MANAGER` | 存证管理员地址（逗号分隔，`proof-init.bash` 写入 `proof_config`）|
+| ERC20 | `MYSQL_ENABLED` | `true` 才起 `scanner`/`erc20api` |
+| | `MYSQL_LOCAL_START` | `true` 起包内 MySQL 容器；连已有实例填 `MYSQL_DSN` |
+| | `MYSQL_NAME`/`MYSQL_DIR`/`MYSQL_BIND`/`MYSQL_PORT`/`MYSQL_ROOT_PASSWORD`/`MYSQL_DATABASE` | 包内 MySQL 参数 |
+| | `ERC20_ETH_URL` / `ERC20_START_BLOCK` / `ERC20_API_PORT` | 链上 `balanceOf` 的 eth JSON-RPC、扫块起点、API 端口 |
+| 余额校正 | `ACCOUNT_REFRESH_ENABLED` / `ACCOUNT_REFRESH_TOP_N` / `*_INTERVAL` | `account_refresh` 三档间隔（top 1h / 活跃 24h / 全量 168h）|
 
-# 请不要修改
-# 不为0的时候可以方便测试指定的高度
-startSeq=0
+`etc/chain33.toml` 是**完整**的 chain33 配置（含所有 fork 段）。convert 家族的程序会做 fork 严格校验，
+少一段就会启动 panic —— 升级 chain33/plugin 后要同步这份文件，不要只改局部。
+（内嵌给单测/工具用的那份默认配置会 `DisableForkCheck`，生产不要用。）
 
-# 配置链上合约地址, 用来区分合约地址和个人地址的 
-# TODO 用工具生成
-execAddresses=["16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp"]
-
-appName="convert_bty3"
-
-
-# 列表是全部支持的数据类型, 如果不需要整节删除
-
-# 展开数据项配置支持
-# 每类合约都会生成N中数据，按需要控制来生成的数据种类
-[[data]]
-# 为common时，通用配置
-# 目前支持两项 ["account", "transaction"]
-# transaction: 为所有合约交易生成数据： 为支持合约的交易生成更详细的数据
-#              如调用的函数， 涉及的金额等
-# account: 为支持的合约生成数据，因为不支持的合约不能辨别资产信息
-exec="common"
-# all：演示用， 把所有能展开的数据类型列出来， 方便 generate 配置
-all=["account", "transaction"]
-generate=["account", "transaction"]
-
-[[data]]
-exec="coins"
-all=[]
-generate=[]
-
-[[data]]
-exec="ticket"
-all=["ticket", "bind"]
-generate=["ticket", "bind"]
-
-[[data]]
-exec="unfreeze"
-all=[]
-generate=[]
-
-[[data]]
-exec="trade"
-all=[]
-generate=[]
-
-[[data]]
-exec="token"
-all=[]
-generate=[]
-
-[[data]]
-exec="multisig"
-all=[]
-generate=[]
-
-[[stat]]
-stat="block"
-
-```
-
-### jrpc 配置
-
-```
-# rpc 地址
-host="localhost:9991"
-# 白名单， 不限制为 "*"
-whiteList=["*"]
-name="jrpc_bty3"
-
-[[chain]]
-title="bityuan"
-prefix="14_"
-esHost="http://127.0.0.1:9200/"
-symbol="bty"
-
-```
-
- 访问rpc 时URL 为 host/title, 如
-
-```
-http://127.0.0.1:9991/bityuan
-```
-
-
-## 现在的测试部署结构
-
-项目起来后，平行链可能会很多, 要部署很多, jrpc 虽然支持直接做多条链的入口, 但升级或换包受到限制。 所以以链为单位部署管理比较方便和直观
-
-在和几个项目联调尝试后， 比较有效的部署方式是 
- 1. 针对链部署。即多某链部署 三个模块(sync, convert, jrpc)
- 1. 接口jrpc 可以其他方式在入口聚合，再转发到对应的jrpc端口
- 1. 主链数据比较多， 主链和平行链分开部署
- 1. 同一个条链的不同项目， 如果没有关系， 可以共用数据， jrpc 分开。可以的话也分开部署。 不同项目的话， 涉及到数据升级可能会互相影响
-
-## docker-compose 
-
- 1. 生成镜像， 包含默认的配置文件。 需要根据项目配置
-
-```
-docker 镜像
-
-make docker version=1.0.0 # 生成三个镜像
-
-$ docker image list | grep externaldb | grep 1.0.0
-chain33/externaldb/jrpc                         1.0.0               2d6bc23e5be5        21 minutes ago      138MB
-chain33/externaldb/convert                      1.0.0               7a45b61851f2        21 minutes ago      137MB
-chain33/externaldb/sync                         1.0.0               2d08020ef63b        22 minutes ago      140MB
-
-```
- 
- 1. 准备配置文件
-
-```
-按上面3个模块的说明修改配置文件
-
-将文件放在 docker-compose 中的指定目录下
-```
- 
-
-1. docker-compose 启动
-
-```
-# 1. 确认docker-compose 中的目录和部署机器上的一致
-
-# 2. 先启动 elasticsearch
-(docker-compose  up elasticsearch >log1 2>&1  &)
-# 3. 等启动成功后，启动下面三个模块
-(docker-compose  up sync convert jrpc >log2 2>&1 &)
-```
-
-## 验证部署
-
-在节点有数据的情况下(即同步好数据), 满足一下两点
- 1. 可以在es 中看到数据
- 1. 可以在jrpc 中读到数据
-
-```
-# 1. 可以在es 中看到数据
-$ curl 'localhost:9200/_cat/indices?v'
-
-# dc5 是我本地测试配置的前缀，有多条链数据都在 所以有grep
-$ curl 'localhost:9200/_cat/indices?v' | sort  | grep dc5
-
-yellow open   dc5_account                 w9YPIQ0uRpqjjZfDmiICrA   5   1          4            7     19.7kb         19.7kb
-yellow open   dc5_last_seq                rm9zm2wCReiNNTP1lraM2g   5   1          1           37      4.5kb          4.5kb
-yellow open   dc5_multisig                iVG_cwFrSzef7fQbFvacwA   5   1         10            3     37.2kb         37.2kb
-yellow open   dc5_sig_list                y32h0AclQiyfUoIoOZyPRw   5   1         12            0     56.1kb         56.1kb
-yellow open   dc5_sig_tx                  iwzk3dGOTlm3fnxZYO3WzA   5   1         12            0     33.4kb         33.4kb
-yellow open   dc5_transaction             HZvKAxQqS-egBZbXLa1z-w   5   1         20            0    100.3kb        100.3kb
-
-# 2. 可以在jrpc 中读到数据。
-# 如果是平行链。 curl 中 bityuan 换成其他平行链的title (不要少了最后的点 ".")
-# 即 jrpc 配置的 title
-#  
-
-$ curl http://localhost:20001/bityuan -X POST -d@tx.list.1..json | json_pp
-{
-   "id" : 1,
-   "result" : [
-      {
-         "height_index" : 6,
-         "success" : true,
-         "block_hash" : "0x67c58d6ba9175313f0468ae4e0ddec946549af7748037c2fdd5d54298afd20b6",
-         "fee" : 0,
-         "action_name" : "genesis",
-         "height" : 0,
-         "block_time" : 1514533394,
-         "options" : null,
-         "is_withdraw" : false,
-         "index" : 6,
-         "next" : "",
-         "to" : "1EDnnePAZN48aC2hiTDzhkczfF39g1pZZX",
-         "hash" : "0x9282a2cbc1549b76ce0f09ca9b9758bff1b32f888553b861de976d4546c8310e",
-         "group_count" : 0,
-         "execer" : "coins",
-         "amount" : 1000000000000,
-         "from" : "1HT7xU2Ngenf7D4yocz2SAcnNLW7rK8d4E",
-         "assets" : [],
-         "is_para" : false
-      },
-      {
-         "fee" : 0,
-         "action_name" : "genesis",
-         "height" : 0,
-         "success" : true,
-         "height_index" : 3,
-         "block_hash" : "0x67c58d6ba9175313f0468ae4e0ddec946549af7748037c2fdd5d54298afd20b6",
-         "hash" : "0xd29b6a7a7167100f73cbf25b8967fac4e5a9e316d20a65a4065df236849219a2",
-         "group_count" : 0,
-         "execer" : "coins",
-         "amount" : 1000000000000,
-         "from" : "1HT7xU2Ngenf7D4yocz2SAcnNLW7rK8d4E",
-         "assets" : [],
-         "is_para" : false,
-         "block_time" : 1514533394,
-         "is_withdraw" : false,
-         "options" : null,
-         "index" : 3,
-         "next" : "",
-         "to" : "1PUiGcbsccfxW3zuvHXZBJfznziph5miAo"
-      }
-   ],
-   "error" : null
-}
-
-# 输入 tx.list.1..json 
-$ cat tx.list.1..json 
-{
-   "id" : 1,
-   "method" : "Tx.TxList",
-   "params" : [
-      {
-         "sort" : [
-            {
-               "key" : "height",
-               "ascending" : true
-            }
-         ],
-         "page" : {
-            "number" : 1,
-            "size" : 2
-         }
-      }
-   ]
-}
-
-```
-
-### 注意事项
-
- 1. 在依赖的节点，重新同步后， 数据服务也需要清理数据，重新同步
- 1. 推送的名字不要重名，重名的推送被认为是一个，会把原来的推送覆盖掉。新的推送会从一半开始，但接受端不是从零开始，会报错0，导致数据同步没有像预期的一样进行。
- 
-
-## 应急操作（sync/convert 老链路）
-
-老链路（`sync` 推送 → `seq05_seq` → `convert`）的游标与进度都在 ES 里，手工改之前**先停写**。
-下面命令里的 ES 地址/账号按现场替换；密码统一写成 `***`（见部署物料，勿写进文档）。
-
-### 手工改 convert 的起点（跳块 / 修复历史）
-
-`convert` 的进度是 `seq05_last_seq` 索引里 id = `[convert].appName`（默认 `convert`）的文档，
-`sync_seq` 表示**下一个待展开的 seq**（不是已处理到的 seq）：
+## 3. 启动
 
 ```bash
-curl -X PUT 'http://elastic:***@127.0.0.1:9200/seq05_last_seq/_doc/convert' \
-  -H 'Content-Type: application/json' -d '{"sync_seq":36316153}'
+unzip externaldb.tgz && cd externaldb
+vi .env
+
+make quickStart      # 起 ES → 等就绪 → alter-config → proof/browser 初始化 → 起服务
 ```
 
-要点：
-
-- 改之前停 `convert`，否则它下一轮会用内存里的值覆盖回去；
-- `sync_seq` 是"下一个要处理的 seq"，填错会重放或漏块；
-- 直连链路（`pull_convert`）不用这个游标（它用 `seq_marker`），只在切回老链路或对账时参考。
-
-### 看展开进度 `db05_last_seq` 的写入是否落盘
-
-`convert` 每块覆盖写 `db05_last_seq`，索引很小 → translog 容易堆积（曾堆到 350 万条、
-ES 重启回放 126 秒）。`stats` 里的 `translog.uncommitted_operations` 就是尚未 flush 的写入数：
+分步执行（推荐连已有 ES 时）：
 
 ```bash
-curl -X GET 'http://elastic:***@127.0.0.1:9200/db05_last_seq/stats?pretty' \
-  -H 'Content-Type: application/json'
-
-#   "translog" : {
-#     "operations" : 1082605,
-#     "size_in_bytes" : 84443465,
-#     "uncommitted_operations" : 1082605,
-#     "uncommitted_size_in_bytes" : 84443465,
-#     "earliest_last_modified_age" : 0
-#   },
+make initES          # 起包内 ES（连已有 ES 则跳过）
+make initConfig      # 写配置 + 索引初始化（proof-init + browser-init 都跑，幂等）
+make run             # 按 EX_SERVICE_TYPE 起服务
 ```
 
-`_refresh` 让进度文档立即可读（`_refresh` 只影响搜索可见性；要清空 translog 用 `_flush`）：
+`EX_SERVICE_TYPE` 只决定起哪些服务；初始化固定两步都跑（多跑没有副作用）：
 
-```bash
-curl -X POST 'http://elastic:***@127.0.0.1:9200/db05_last_seq/_refresh' \
-  -H 'Content-Type: application/json'
-```
+| 值 | 起的服务（老链路包）| jrpc 的 browser 段 |
+|---|---|---|
+| `proof` | sync convert rpc | 关闭，`openAccessControl=true`、`saveBlockInfo=false` |
+| `browser` | sync convert jrpc | 打开，`saveBlockInfo=true` |
+| 其它 | 全部 | 打开 |
 
-长期堆积的解决办法：调小 `translog.flush_threshold_size` / `flush_threshold_period`，
-或降低进度写入频率；加堆/重启前先对进度索引 `_flush`。
+直连包同理：`pull_convert` 必起，`proof` 场景不起 jrpc；MySQL 开关与 `ACCOUNT_REFRESH_ENABLED` 决定
+`scanner`/`erc20api`/`account_refresh` 是否启动。
+
+其它常用命令：`make logs[-sync|-convert|-rpc|-jrpc]`、`make stop|restart|down`、`make downES`、
+`make es-indices`（看索引与条数）、`make reindex-shards N=3 IDX="account transaction"`（换分片，先停写）。
+
+## 4. 直连链路要点
+
+- 起点优先级：`-from` → 已有 `seq_marker`（与节点比对）→ 旧 `last_seq` 自举 → `startSeq-1`。
+- 进度索引 `seq_marker` 是 append-only（doc id = seq，游标 = max(seq)），回滚时补写 del 记录。
+- 只修一段：`./bin/pull_convert -mode fix -from <seq> -to <seq> -f etc/externaldb.toml -c etc/chain33.toml`
+  （不写 marker、不做统计累计；修完仍要用 `convert_check` 对账）。
+- `[convert]` 里的 `pullBatch`/`pullPollMs`/`pullDetailCache`/`pullMarkerKeep` 控制批量、轮询间隔、
+  详情缓存与 marker 保留条数。
+- 切换写方：停旧写方 → 起 `pull_convert`（自动自举游标）→ `tools/convert_check` 对账 → 观察 marker 单调。
+
+## 5. 常见问题
+
+| 现象 | 处理 |
+|---|---|
+| 启动即 panic `exec xxx not enable in config file` | `etc/chain33.toml` 缺 fork 段（升级 chain33/plugin 后常见），补齐 |
+| ES 写入 429 / coordination 断路器拒绝 | 堆太小（2g 起，按机器调）；大 seq（genesis）会写大请求 |
+| ES 重启特别慢 | `seq05_seq`/大索引 translog 回放；重启前 `_flush`，或停写后再重启 |
+| `browser-init.bash` 首次跑没效果 | 目标索引还不存在时 PUT `_settings` 返回 404，但 curl 退出码仍是 0；先让 convert 建索引再跑一次 |
+| 直连扫块静默退出 | 节点 eth JSON-RPC 不通，程序启动自检会 FATAL（`erc20scan` 用 `[erc20scan].ethUrl`，注意用 HTTP 端口，不是 ws）|
+| 分片想从 1 改 3 | 分片创建后不可改，只能 reindex 到新索引再建同名别名（`reindex-shards.sh`）|
+| 7.17 起不来 `max virtual memory areas` | `sysctl -w vm.max_map_count=262144` |
+
+## 6. 镜像部署（可选）
+
+用 docker 镜像（`chain33/externaldb/*`）而非解包二进制时，用 `deploy/docker/docker-compose.yaml`：
+先 `make build` 再 `make docker` 打镜像，compose 里 `etc/` 挂载配置目录，参数同样走 `.env`。
+两种方式不要混用（同一批索引只能有一个写方）。
+
+## 7. 相关文档
+
+- 转换器与新增合约解析：`convert/README.md`
+- 底层库分层：`lib/README.md`
+- 需求文档：`docs/requirements/`
+- 运行手册与排查记录：`local/docs/`（私有，不入库）
