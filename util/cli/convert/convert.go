@@ -162,7 +162,7 @@ func NewApp(cfg *proto.ConfigNew) *App {
 	// 统计插件
 	a.stats = make(map[string]stat.Stat)
 	for _, statName := range cfg.Convert.Stat {
-		newStat, _ := converts.LoadStat(statName.Stat)
+		newStat, _ := stat.Load(statName.Stat)
 		if newStat == nil {
 			panic("stat convert not exist: " + statName.Stat)
 		}

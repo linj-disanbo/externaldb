@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/33cn/externaldb/converts"
+	"github.com/33cn/externaldb/stat"
 )
 
 // 守门测试：打包配置 (config/externaldb.toml) 里列出的 exec / stat 必须都能注册上。
@@ -36,7 +37,7 @@ func TestConfiguredExecsAndStatsRegistered(t *testing.T) {
 	statRe := regexp.MustCompile(`(?m)^[ \t]*#?[ \t]*stat[ \t]*=[ \t]*"([^"]+)"`)
 	for _, m := range statRe.FindAllStringSubmatch(cfg, -1) {
 		name := m[1]
-		d, err := converts.LoadStat(name)
+		d, err := stat.Load(name)
 		assert.NoError(t, err)
 		assert.NotNil(t, d, "stat 未注册（二进制漏 import 包）: %s", name)
 	}

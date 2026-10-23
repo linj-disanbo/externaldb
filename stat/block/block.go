@@ -6,7 +6,6 @@ import (
 
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/converts"
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
@@ -44,7 +43,7 @@ var (
 )
 
 func init() {
-	converts.RegisterStat(NameX, NewStat)
+	stat.Register(NameX, NewStat)
 }
 
 // ID id

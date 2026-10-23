@@ -6,6 +6,25 @@ import (
 	"github.com/33cn/externaldb/escli"
 )
 
+// StatCreateFunc 创建统计器
+type StatCreateFunc func(title, symbol string, genesis, coin int64) Stat
+
+var statConverts = make(map[string]StatCreateFunc)
+
+// Register 注册统计器（由各统计实现包在 init() 里调用）
+func Register(name string, create StatCreateFunc) {
+	statConverts[name] = create
+}
+
+// Load 查找统计器
+func Load(name string) (driver StatCreateFunc, err error) {
+	c, ok := statConverts[name]
+	if !ok {
+		return nil, nil
+	}
+	return c, nil
+}
+
 // Stat 统计
 type Stat interface {
 	db.DBSaver
