@@ -1,7 +1,7 @@
 package health
 
 import (
-	"github.com/33cn/externaldb/version"
+	"github.com/33cn/externaldb/lib/version"
 )
 
 // Health 服务健康状态

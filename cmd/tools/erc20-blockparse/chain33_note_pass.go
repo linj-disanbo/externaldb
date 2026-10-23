@@ -8,7 +8,7 @@ import (
 	"time"
 
 	chain33types "github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	etypes "github.com/ethereum/go-ethereum/core/types"
 	"google.golang.org/grpc"

@@ -18,7 +18,7 @@ import (
 	tml "github.com/BurntSushi/toml"
 	"github.com/gin-gonic/gin"
 
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/cmd/rpc/docs"
 	"github.com/33cn/externaldb/cmd/rpc/middleware/protocol"
 	"github.com/33cn/externaldb/cmd/rpc/middleware/sentinel"
@@ -28,7 +28,7 @@ import (
 	"github.com/33cn/externaldb/cmd/rpc/service/proofmember"
 	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/33cn/externaldb/util"
-	"github.com/33cn/externaldb/version"
+	"github.com/33cn/externaldb/lib/version"
 	cors "github.com/rs/cors/wrapper/gin"
 )
 

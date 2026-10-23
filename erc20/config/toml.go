@@ -7,7 +7,7 @@ import (
 
 	tml "github.com/BurntSushi/toml"
 
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 )
 
 // LoadConfigFile 按扩展名选择配置格式：

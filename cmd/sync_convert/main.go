@@ -16,12 +16,12 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/store/syncseq"
 	"github.com/33cn/externaldb/util"
 	"github.com/33cn/externaldb/util/cli/sync"
 	"github.com/33cn/externaldb/util/localfile"
-	"github.com/33cn/externaldb/version"
+	"github.com/33cn/externaldb/lib/version"
 	tml "github.com/BurntSushi/toml"
 )
 

@@ -16,7 +16,7 @@ import (
 
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 )
 
 type config struct {

@@ -20,7 +20,7 @@ PKG_LIST_Q := `go list ./... | grep -v "mocks"`
 PKG_LIST_GOSEC := `go list -f "{{.Dir}}" ./... | grep -v "mocks" | grep -v "cmd" | grep -v "types" | grep -v "commands" | grep -v "log15"`
 
 # 版本信息
-VERSION_LDFLAGS = -X github.com/33cn/externaldb/version.GitCommit=`git rev-parse --short=8 HEAD` -X github.com/33cn/externaldb/version.ReleaseDate=`date +%Y%m%d`
+VERSION_LDFLAGS = -X github.com/33cn/externaldb/lib/version.GitCommit=`git rev-parse --short=8 HEAD` -X github.com/33cn/externaldb/lib/version.ReleaseDate=`date +%Y%m%d`
 # 动态编译
 BUILD_FLAGS = -ldflags "$(VERSION_LDFLAGS)"
 # 静态编译 (CGO_ENABLED=0, 纯 Go 无需 musl)
@@ -49,7 +49,7 @@ dep: ## Get the dependencies
 
 .PHONY: proto
 proto: ## Generate protbuf file of types package
-	@cd ./proto && ./create_protobuf.sh && cd ..
+	@cd ./lib/proto && ./create_protobuf.sh && cd ../..
 
 .PHONY: swag
 swag: ## gen rpc doc with swag

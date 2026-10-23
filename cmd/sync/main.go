@@ -16,12 +16,12 @@ import (
 	tml "github.com/BurntSushi/toml"
 
 	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/store"
 	"github.com/33cn/externaldb/store/syncseq"
 	"github.com/33cn/externaldb/util"
 	"github.com/33cn/externaldb/util/cli/sync"
-	"github.com/33cn/externaldb/version"
+	"github.com/33cn/externaldb/lib/version"
 )
 
 var (

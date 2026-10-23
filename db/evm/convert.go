@@ -22,7 +22,7 @@ import (
 	dbcom "github.com/33cn/externaldb/db/common"
 	proofconfig "github.com/33cn/externaldb/db/proof_config"
 	"github.com/33cn/externaldb/db/transaction"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/util"
 )
 

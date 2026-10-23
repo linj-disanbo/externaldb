@@ -5,7 +5,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 
 	"github.com/33cn/chain33/common"
 	l "github.com/33cn/chain33/common/log/log15"

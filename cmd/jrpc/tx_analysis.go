@@ -10,7 +10,7 @@ import (
 
 	"github.com/33cn/chain33/common"
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"google.golang.org/grpc"
 
 	dbevm "github.com/33cn/externaldb/db/evm"

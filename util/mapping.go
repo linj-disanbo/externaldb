@@ -3,7 +3,7 @@ package util
 import (
 	"encoding/json"
 
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 )
 
 var mappings = make(map[string]interface{})

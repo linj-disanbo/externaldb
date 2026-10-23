@@ -16,7 +16,7 @@ import (
 	"github.com/33cn/externaldb/db/pos33"
 	proofconfig "github.com/33cn/externaldb/db/proof_config"
 	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/store"
 	"github.com/33cn/externaldb/store/syncseq"
 	"github.com/33cn/externaldb/util"

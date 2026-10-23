@@ -9,7 +9,7 @@ import (
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/store"
 	"github.com/33cn/externaldb/util"
 )

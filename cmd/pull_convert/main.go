@@ -30,10 +30,10 @@ import (
 	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/db/seqmark"
 	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/util"
 	"github.com/33cn/externaldb/util/cli/convert"
-	"github.com/33cn/externaldb/version"
+	"github.com/33cn/externaldb/lib/version"
 
 	// 注册所有 converter（同 cmd/convert/main.go）
 	_ "github.com/33cn/externaldb/db/account"

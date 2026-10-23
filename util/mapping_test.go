@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 )
 
 // [esIndex] 的 numberOfShards/numberOfReplicas 必须真的写进创建索引的 body

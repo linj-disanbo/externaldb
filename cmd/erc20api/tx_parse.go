@@ -12,7 +12,7 @@ import (
 
 	"github.com/33cn/chain33/types"
 	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	etypes "github.com/ethereum/go-ethereum/core/types"
 	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"google.golang.org/grpc"

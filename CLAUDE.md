@@ -99,8 +99,8 @@ It configures:
 - `[erc20scan]`: `ethUrl`/`startBlock`/`endBlock`/`skipInlineBalanceUpdate`/`apiPort`，
   子段 `[erc20scan.balanceRefresher]`、`[erc20scan.log]`
 
-Config types are generated from `proto/exdbconfig.proto`。改字段后手动生成：`cd proto && protoc --go_out=. exdbconfig.proto`
-（`make proto` 用的 `proto/create_protobuf.sh` 仍是老的 `--go_out=plugins=grpc` 写法，protoc-gen-go v1.33 会报错；先确认重新生成只多出预期的 diff）。
+Config types are generated from `lib/proto/exdbconfig.proto`。改字段后手动生成：`cd lib/proto && protoc --go_out=. exdbconfig.proto`
+（`make proto` 用的 `lib/proto/create_protobuf.sh` 仍是老的 `--go_out=plugins=grpc` 写法，protoc-gen-go v1.33 会报错；先确认重新生成只多出预期的 diff）。
 erc20 程序读同一份 toml：`erc20/config/toml.go` 的 `FromProto` 做映射（`.yaml` 老格式仍兼容）。
 
 ## ES Version Handling

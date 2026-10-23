@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	tml "github.com/BurntSushi/toml"
 )
 

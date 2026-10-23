@@ -34,9 +34,9 @@ import (
 	_ "github.com/33cn/externaldb/db/token"
 	_ "github.com/33cn/externaldb/db/trade"
 	_ "github.com/33cn/externaldb/db/unfreeze"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/util"
-	"github.com/33cn/externaldb/version"
+	"github.com/33cn/externaldb/lib/version"
 	tml "github.com/BurntSushi/toml"
 
 	_ "github.com/33cn/externaldb/stat/block"

@@ -23,9 +23,9 @@ import (
 	"time"
 
 	l "github.com/33cn/chain33/common/log/log15"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/util"
-	"github.com/33cn/externaldb/version"
+	"github.com/33cn/externaldb/lib/version"
 	tml "github.com/BurntSushi/toml"
 	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/rs/cors"

@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/proto"
+	"github.com/33cn/externaldb/lib/proto"
 )
 
 func ESCheckAndRepair(cfg *proto.ConfigNew, EsWrite escli.ESClient) error {
