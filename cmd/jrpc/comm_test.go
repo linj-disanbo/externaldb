@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/esdoc/block"
 )
 
 func getLastSeq(prefix, id string) int64 {

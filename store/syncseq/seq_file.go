@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/block"
+	"github.com/33cn/externaldb/lib/esdoc/block"
+	"github.com/33cn/externaldb/lib/schema"
 	"github.com/33cn/externaldb/store"
 	"github.com/33cn/externaldb/util/localfile"
 )
@@ -51,7 +51,7 @@ func (s *fileSeqNumStore) LastSeq() (*store.SeqNum, error) {
 }
 
 // UpdateLastSeq 更新同步进度到本地文件。
-func (s *fileSeqNumStore) UpdateLastSeq(seq db.Record) error {
+func (s *fileSeqNumStore) UpdateLastSeq(seq schema.Record) error {
 	if seq == nil {
 		return s.fp.Save(0)
 	}

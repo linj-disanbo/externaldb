@@ -3,9 +3,9 @@ package main
 import (
 	"strings"
 
-	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/esdoc/block"
 	"github.com/33cn/externaldb/util"
 )
 
@@ -31,7 +31,7 @@ func (c *Comm) LastSeq(out *interface{}) error {
 	return nil
 }
 
-//GetLastSeq 获取已经同步或者解析的最新seq值
+// GetLastSeq 获取已经同步或者解析的最新seq值
 func GetLastSeq(host, prefix, id string, version int32, user, pwd string) int64 {
 	cli, err := escli.NewESShortConnect(host, prefix, version, user, pwd)
 	if err != nil {

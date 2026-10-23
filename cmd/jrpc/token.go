@@ -11,9 +11,9 @@ import (
 	"fmt"
 
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/db/account"
-	"github.com/33cn/externaldb/db/token"
-	"github.com/33cn/externaldb/db/transaction"
+	"github.com/33cn/externaldb/convert/token"
+	"github.com/33cn/externaldb/lib/esdoc/account"
+	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	"github.com/pkg/errors"
 )
 
@@ -57,7 +57,7 @@ type Token struct {
 	*DBRead
 }
 
-//TokenAddrsInfo 代币持有人列表
+// TokenAddrsInfo 代币持有人列表
 type TokenAddrsInfo struct {
 	Symbol string         `json:"symbol"`
 	Total  int64          `json:"total"`
@@ -70,7 +70,7 @@ type AddrBalance struct {
 	Balance int64  `json:"balance"`
 }
 
-//缓存数据
+// 缓存数据
 type tokenCache struct {
 	//各代币总发行量
 	TokenList map[string]int64
@@ -105,7 +105,7 @@ func InitCache(t *Token) {
 	}
 }
 
-//更新token列表
+// 更新token列表
 func initTokenList(cli escli.ESClient) error {
 	q := querypara.Query{
 		Page: &querypara.QPage{Size: 10000, Number: 1},
@@ -161,7 +161,7 @@ func (t *Token) TxList(q *querypara.Query, out *interface{}) error {
 	return nil
 }
 
-//TxCount 代币交易数
+// TxCount 代币交易数
 func (t *Token) TxCount(q *querypara.Query, out *interface{}) error {
 	err := checkQuery(q, txSupportKey)
 	if err != nil {
@@ -184,7 +184,7 @@ func (t *Token) TxCount(q *querypara.Query, out *interface{}) error {
 	return nil
 }
 
-//AddrsInfo 对应代币持有人列表，按持币量降序
+// AddrsInfo 对应代币持有人列表，按持币量降序
 func (t *Token) AddrsInfo(q *TokenAddrsInfoQuery, out *interface{}) error {
 	if len(q.Tokens) == 0 {
 		return errors.New("null token list")
@@ -240,7 +240,7 @@ func (t *Token) AddrsInfo(q *TokenAddrsInfoQuery, out *interface{}) error {
 	return nil
 }
 
-//ListToken 代币列表及其发行量
+// ListToken 代币列表及其发行量
 func (t *Token) ListToken(_ interface{}, out *interface{}) error {
 	cli, err := escli.NewESShortConnect(t.Host, t.Prefix, t.Version, t.Username, t.Password)
 	if err != nil {
@@ -255,7 +255,7 @@ func (t *Token) ListToken(_ interface{}, out *interface{}) error {
 	return nil
 }
 
-//TokenCount 代币种类总数量
+// TokenCount 代币种类总数量
 func (t *Token) TokenCount(q *querypara.Query, out *interface{}) error {
 	cli, err := escli.NewESShortConnect(t.Host, t.Prefix, t.Version, t.Username, t.Password)
 	if err != nil {
@@ -271,7 +271,7 @@ func (t *Token) TokenCount(q *querypara.Query, out *interface{}) error {
 	return nil
 }
 
-//TokenAddrCount 代币持有人地址数量
+// TokenAddrCount 代币持有人地址数量
 func (t *Token) TokenAddrCount(qs []*querypara.Query, out *interface{}) error {
 	if len(qs) == 0 {
 		return errors.New("null token list")

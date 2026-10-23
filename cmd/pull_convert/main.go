@@ -27,34 +27,35 @@ import (
 	tml "github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/seqmark"
 	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/chaincfg"
+	"github.com/33cn/externaldb/lib/esdoc/seqmark"
 	"github.com/33cn/externaldb/lib/proto"
-	"github.com/33cn/externaldb/util"
-	"github.com/33cn/externaldb/util/cli/convert"
+	"github.com/33cn/externaldb/lib/schema"
 	"github.com/33cn/externaldb/lib/version"
+	"github.com/33cn/externaldb/util"
 
 	// 注册所有 converter（同 cmd/convert/main.go）
-	_ "github.com/33cn/externaldb/db/account"
-	_ "github.com/33cn/externaldb/db/coins"
-	_ "github.com/33cn/externaldb/db/coinsx"
-	_ "github.com/33cn/externaldb/db/evm"
-	_ "github.com/33cn/externaldb/db/evm/erc1155"
-	_ "github.com/33cn/externaldb/db/evm/erc721"
-	_ "github.com/33cn/externaldb/db/evm/nft"
-	_ "github.com/33cn/externaldb/db/evmxgo"
-	_ "github.com/33cn/externaldb/db/filepart"
-	_ "github.com/33cn/externaldb/db/filesummary"
-	_ "github.com/33cn/externaldb/db/multisig"
-	_ "github.com/33cn/externaldb/db/pos33"
-	_ "github.com/33cn/externaldb/db/proof"
-	_ "github.com/33cn/externaldb/db/proof_config"
-	_ "github.com/33cn/externaldb/db/ticket"
-	_ "github.com/33cn/externaldb/db/token"
-	_ "github.com/33cn/externaldb/db/trade"
-	_ "github.com/33cn/externaldb/db/unfreeze"
-	_ "github.com/33cn/externaldb/stat/block"
+	_ "github.com/33cn/externaldb/convert/coins"
+	_ "github.com/33cn/externaldb/convert/coinsx"
+	_ "github.com/33cn/externaldb/convert/evm"
+	_ "github.com/33cn/externaldb/convert/evm/erc1155"
+	_ "github.com/33cn/externaldb/convert/evm/erc721"
+	_ "github.com/33cn/externaldb/convert/evm/nft"
+	_ "github.com/33cn/externaldb/convert/evmxgo"
+	_ "github.com/33cn/externaldb/convert/filepart"
+	_ "github.com/33cn/externaldb/convert/filesummary"
+	_ "github.com/33cn/externaldb/convert/multisig"
+	pipeline "github.com/33cn/externaldb/convert/pipeline"
+	_ "github.com/33cn/externaldb/convert/pos33"
+	_ "github.com/33cn/externaldb/convert/proof"
+	_ "github.com/33cn/externaldb/convert/proof_config"
+	_ "github.com/33cn/externaldb/convert/stat/block"
+	_ "github.com/33cn/externaldb/convert/ticket"
+	_ "github.com/33cn/externaldb/convert/token"
+	_ "github.com/33cn/externaldb/convert/trade"
+	_ "github.com/33cn/externaldb/convert/unfreeze"
+	_ "github.com/33cn/externaldb/lib/esdoc/account"
 )
 
 var (
@@ -102,7 +103,7 @@ func main() {
 			abs, cfg.Convert.GetAppName())
 	}
 	util.InitMapSet(cfg.EsVersion, cfg.EsIndex)
-	db.SetVersion(cfg.EsVersion)
+	schema.SetVersion(cfg.EsVersion)
 
 	workDir := pwd()
 	if err := os.Chdir(workDir); err != nil {
@@ -120,12 +121,12 @@ func main() {
 			"改 .env 里的 ES_PASSWORD 不会跟着改密码）",
 			"host", cfg.ConvertEs.Host, "user", cfg.ConvertEs.User, "err", err)
 	}
-	// 索引初始化（converter 的 InitDB 走 convert.EsWrite）；ES 已确认可连，不会再 panic
-	convert.InitWriteDB(cfg.ConvertEs, cfg.EsVersion)
-	db.SetAddrID(cfg.Convert.AddressDriver)
-	convert.InitContract(cfg)
-	convert.InitConfig(cfg)
-	app := convert.NewApp(cfg)
+	// 索引初始化（converter 的 InitDB 走 pipeline.EsWrite）；ES 已确认可连，不会再 panic
+	pipeline.InitWriteDB(cfg.ConvertEs, cfg.EsVersion)
+	chaincfg.SetAddrID(cfg.Convert.AddressDriver)
+	pipeline.InitContract(cfg)
+	pipeline.InitConfig(cfg)
+	app := pipeline.NewApp(cfg)
 	if !fixMode {
 		if err := seqmark.InitDB(esClient); err != nil {
 			fatal("seqmark.InitDB failed", "err", err)
@@ -138,7 +139,7 @@ func main() {
 	}
 
 	// 2. 节点 seq 来源
-	src, err := convert.NewGRPCSource(cfg.Chain.GrpcHost)
+	src, err := pipeline.NewGRPCSource(cfg.Chain.GrpcHost)
 	if err != nil {
 		fatal("connect chain33 failed", "grpcHost", cfg.Chain.GrpcHost, "err", err)
 	}
@@ -180,7 +181,7 @@ func main() {
 		StartSeq:   cfg.Convert.StartSeq,
 		AppConvert: app,
 	}
-	opt := convert.PullOptions{
+	opt := pipeline.PullOptions{
 		Cursor:       cursor,
 		Batch:        int(cfg.Convert.PullBatch),
 		PollInterval: time.Duration(cfg.Convert.PullPollMs) * time.Millisecond,
@@ -193,8 +194,8 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := convert.RunPull(ctx, src, convert.NewESWriter(esClient), mod,
-		convert.NewDetailCache(int(cfg.Convert.PullDetailCache)), opt); err != nil {
+	if err := pipeline.RunPull(ctx, src, pipeline.NewESWriter(esClient), mod,
+		pipeline.NewDetailCache(int(cfg.Convert.PullDetailCache)), opt); err != nil {
 		fatal("pull_convert 异常退出", "err", err)
 	}
 	log.Info("pull_convert stopped")
@@ -204,8 +205,8 @@ func main() {
 //
 //   - 探测节点 seq 能力：GetLastBlockSequence 必须可用（节点需开启 isRecordBlockSequence 且从 0 高度起完整）；
 //     再用最后一个 seq 自检 GetBlockSequences/GetBlockByHashes 能取到块。
-//   - 起点优先级见 convert.ResolveCursor：-from → 已有 marker（与节点比对）→ 旧 last_seq 自举 → startSeq-1。
-func resolveCursor(src convert.SeqSource, esClient escli.ESClient, cfg *proto.ConfigNew, fromSeq int64) (int64, int64, error) {
+//   - 起点优先级见 pipeline.ResolveCursor：-from → 已有 marker（与节点比对）→ 旧 last_seq 自举 → startSeq-1。
+func resolveCursor(src pipeline.SeqSource, esClient escli.ESClient, cfg *proto.ConfigNew, fromSeq int64) (int64, int64, error) {
 	last, err := src.LastSeq()
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "探测节点 seq 失败（确认 blockchain.isRecordBlockSequence=true 且从 0 高度起完整）")
@@ -229,7 +230,7 @@ func resolveCursor(src convert.SeqSource, esClient escli.ESClient, cfg *proto.Co
 		oldSeq = -1
 	}
 
-	return convert.ResolveCursor(src, convert.CursorSources{
+	return pipeline.ResolveCursor(src, pipeline.CursorSources{
 		MarkerSeq: seq,
 		Marker:    marker,
 		OldSeq:    oldSeq,

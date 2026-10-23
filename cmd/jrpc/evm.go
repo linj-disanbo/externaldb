@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/address"
-	"github.com/33cn/externaldb/db/contract"
-	"github.com/33cn/externaldb/db/evm"
+	converter "github.com/33cn/externaldb/convert"
+	"github.com/33cn/externaldb/convert/evm"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/esdoc/address"
+	"github.com/33cn/externaldb/lib/esdoc/contract"
 	"github.com/pkg/errors"
 )
 
@@ -252,7 +252,7 @@ func (t *EVM) IsContract(address string, out *interface{}) error {
 	id := "contract-" + address
 	_, err := t.get(contract.TableName, contract.TableName, id)
 	if err != nil {
-		if err == db.ErrDBNotFound {
+		if err == converter.ErrDBNotFound {
 			*out = false
 		} else {
 			return err

@@ -7,11 +7,11 @@ import (
 
 	l "github.com/33cn/chain33/common/log/log15"
 
-	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/escli/aggdecode"
 	"github.com/33cn/externaldb/escli/querypara"
 	"github.com/33cn/externaldb/escli/status"
 	v7 "github.com/33cn/externaldb/escli/v7"
+	"github.com/33cn/externaldb/lib/schema"
 )
 
 var log = l.New("module", "escli")
@@ -27,12 +27,12 @@ type (
 // 失败记录的重写是幂等的（值是绝对值），而整批重跑转换器不是
 // （db/address 的 TxCount、block_stat 是读改写累计，会重复计数）。
 // 返回 nil 表示无法定位（调用方按整批失败处理）。
-func FilterFailed(cli ESClient, rs []db.Record, bulkErr error) []db.Record {
+func FilterFailed(cli ESClient, rs []schema.Record, bulkErr error) []schema.Record {
 	if bulkErr == nil {
 		return nil
 	}
 	type failFilter interface {
-		FilterFailed([]db.Record, error) []db.Record
+		FilterFailed([]schema.Record, error) []schema.Record
 	}
 	if f, ok := cli.(failFilter); ok {
 		return f.FilterFailed(rs, bulkErr)
@@ -45,13 +45,13 @@ const RefreshWaitFor = "wait_for"
 
 type ESClient interface {
 	Update(index, typ, id string, value string) error
-	Set(index, typ, id string, value db.Record) error
+	Set(index, typ, id string, value schema.Record) error
 	Get(index, typ, id string) (*json.RawMessage, error)
-	List(index, typ string, kv []*db.ListKV) ([]*json.RawMessage, error)
-	BulkUpdate(rs []db.Record) error
+	List(index, typ string, kv []*schema.ListKV) ([]*json.RawMessage, error)
+	BulkUpdate(rs []schema.Record) error
 	// BulkUpdateRefresh 同 BulkUpdate，但带 refresh 策略（RefreshWaitFor）。
 	// 注意：refresh=wait_for 每次要等一个 refresh 周期（实测 ~1s），不要放进逐块热路径。
-	BulkUpdateRefresh(rs []db.Record, refresh string) error
+	BulkUpdateRefresh(rs []schema.Record, refresh string) error
 	// RefreshIndex 显式 refresh 一个索引（索引名不含前缀）。
 	// 游标类索引用它：写入用普通 bulk，重启/关键时刻显式 refresh 一次即可被 search 到。
 	RefreshIndex(index string) error

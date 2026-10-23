@@ -6,11 +6,11 @@ package comm
 
 import (
 	l "github.com/33cn/chain33/common/log/log15"
-	"github.com/33cn/externaldb/db/block"
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/cmd/rpc/middleware/protocol"
 	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
+	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/esdoc/block"
+	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/util"
 	"github.com/33cn/externaldb/util/health"
 	"github.com/gin-gonic/gin"
@@ -65,7 +65,7 @@ func (comm *Comm) LastSeq(c *gin.Context) {
 
 }
 
-//lastSeq 获取已经同步或者解析的最新seq值
+// lastSeq 获取已经同步或者解析的最新seq值
 func lastSeq(host, prefix, id string, version int32, username, password string) int64 {
 	log.Debug("lastSeq", "host", host, "prefix", prefix, "id", id)
 

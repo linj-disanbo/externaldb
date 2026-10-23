@@ -29,12 +29,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/proto"
+	"github.com/33cn/externaldb/lib/schema"
+	"github.com/33cn/externaldb/lib/version"
 	"github.com/33cn/externaldb/util"
 	"github.com/33cn/externaldb/util/accountrefresh"
-	"github.com/33cn/externaldb/lib/version"
 )
 
 var log = l.New("module", "account_refresh")
@@ -61,8 +62,8 @@ func main() {
 		log.Info("account_refresh disabled（[accountRefresh].enabled=false），退出")
 		return
 	}
-	db.SetVersion(cfg.GetEsVersion())
-	db.SetAddrID(cfg.GetConvert().GetAddressDriver())
+	schema.SetVersion(cfg.GetEsVersion())
+	chaincfg.SetAddrID(cfg.GetConvert().GetAddressDriver())
 
 	es, err := escli.NewESLongConnect(cfg.ConvertEs.Host, cfg.ConvertEs.Prefix, cfg.EsVersion,
 		cfg.ConvertEs.User, cfg.ConvertEs.Pwd)

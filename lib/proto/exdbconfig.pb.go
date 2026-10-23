@@ -7,10 +7,11 @@
 package proto
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -1032,7 +1033,7 @@ type AccountRefresh struct {
 	PageSize int64 `protobuf:"varint,8,opt,name=pageSize,proto3" json:"pageSize,omitempty"`
 	// 资产符号，空则用 [chain].symbol
 	Symbol string `protobuf:"bytes,9,opt,name=symbol,proto3" json:"symbol,omitempty"`
-	// ticket 执行器地址；空则用 db.ExecAddress([chain].title+"ticket") 推算
+	// ticket 执行器地址；空则用 chaincfg.ExecAddress([chain].title+"ticket") 推算
 	TicketExec string `protobuf:"bytes,10,opt,name=ticketExec,proto3" json:"ticketExec,omitempty"`
 }
 

@@ -7,9 +7,9 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/33cn/externaldb/db/account"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/pkg/errors"
 )
 

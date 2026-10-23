@@ -1,5 +1,7 @@
 package database
 
+import ()
+
 // 使用示例
 //
 // 1. 安装MySQL驱动:

@@ -8,10 +8,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/33cn/externaldb/db/account"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/aggdecode"
 	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/esdoc/account"
 )
 
 var symbol string
@@ -71,12 +71,18 @@ func (c *cacheAccount) getAccountCount() int {
 var btyCache = cacheAccount{ts: nil, RWMutex: new(sync.RWMutex)}
 
 // TopAsset 定制需求 返回资产topN
-//  主链浏览器：目前去bityuan链的 coins/ticket 合约中
+//
+//	主链浏览器：目前去bityuan链的 coins/ticket 合约中
+//
 // 固定参数：指定资产，coins/bty
-//         指定在合约，coins+ticket
-//         排序 total/frozen/balance
+//
+//	指定在合约，coins+ticket
+//	排序 total/frozen/balance
+//
 // 实现：由于数据聚合没有分页功能， 有两个选择： 每次重新取; 用缓存。
-//      由于目前需求：资产/合约都是特定的，所有缓冲更有效
+//
+//	由于目前需求：资产/合约都是特定的，所有缓冲更有效
+//
 // 目前接受参数：1. 分页, 默认 1, 10
 func (t *Account) TopAsset(req *querypara.Query, out *interface{}) error {
 	number, size := 1, 10

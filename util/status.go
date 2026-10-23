@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 
 	l "github.com/33cn/chain33/common/log/log15"
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/esdoc/block"
+	"github.com/33cn/externaldb/lib/schema"
 )
 
 var log = l.New("module", "util")
@@ -16,9 +16,9 @@ var log = l.New("module", "util")
 
 // GetLastSyncSeq 获得最后同步的seq
 func LastSyncSeq(client escli.ESClient, id string) (int64, error) {
-	result, err := client.Get(db.LastSeqDB, db.LastSeqDB, id)
+	result, err := client.Get(schema.LastSeqDB, schema.LastSeqDB, id)
 	if err != nil {
-		if err == db.ErrDBNotFound {
+		if err == schema.ErrDBNotFound {
 			// 第一个连上
 			return -1, nil
 		}
@@ -34,7 +34,7 @@ func LastSyncSeq(client escli.ESClient, id string) (int64, error) {
 }
 
 //func SaveLastSyncSeq(client *escli.ESClient, id string, seq int64) error {
-//	record := newLastRecord(db.LastSeqDB, db.LastSeqDB, id, seq)
+//	record := newLastRecord(schema.LastSeqDB, schema.LastSeqDB, id, seq)
 //	return client.Update(record.Index(), record.Type(), record.ID(), string(record.Value()))
 //}
 
@@ -42,18 +42,18 @@ func LastSyncSeq(client escli.ESClient, id string) (int64, error) {
 func NewLastRecord(id string, seq int64) *block.LastSyncSeqRecord {
 	s := &block.LastSyncSeq{SyncSeq: seq}
 	return &block.LastSyncSeqRecord{
-		IKey: db.NewIKey(db.LastSeqDB, db.LastSeqDB, id),
-		Op:   db.NewOp(db.OpAdd),
+		IKey: schema.NewIKey(schema.LastSeqDB, schema.LastSeqDB, id),
+		Op:   schema.NewOp(schema.OpAdd),
 		Seq:  s,
 	}
 }
 
 // Save 保存convert后的结果到ES
-func SaveToES(client escli.ESClient, blockItems []db.Record) error {
+func SaveToES(client escli.ESClient, blockItems []schema.Record) error {
 	if len(blockItems) == 0 {
 		return nil
 	}
-	var rs []db.Record
+	var rs []schema.Record
 	for i, v := range blockItems {
 		rs = append(rs, v)
 		log.Debug("save", "op", v.OpType(), "idx", i, "ID", v.Key(), "v", string(v.Value()))
@@ -61,12 +61,12 @@ func SaveToES(client escli.ESClient, blockItems []db.Record) error {
 	return client.BulkUpdate(rs)
 }
 
-func SaveToESSelectBulk(client escli.ESClient, blockItems []db.Record, bulk bool) error {
+func SaveToESSelectBulk(client escli.ESClient, blockItems []schema.Record, bulk bool) error {
 	if len(blockItems) == 0 {
 		return nil
 	}
 	if bulk {
-		var rs []db.Record
+		var rs []schema.Record
 		for i, v := range blockItems {
 			rs = append(rs, v)
 			log.Info("SaveToESSelectBulk bulk", "op", v.OpType(), "idx", i, "ID", v.Key(), "v", string(v.Value()))

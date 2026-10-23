@@ -6,10 +6,10 @@ import (
 
 	l "github.com/33cn/chain33/common/log/log15"
 
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/esdoc/block"
 	"github.com/33cn/externaldb/lib/proto"
+	"github.com/33cn/externaldb/lib/schema"
 	"github.com/33cn/externaldb/store"
 	"github.com/33cn/externaldb/util"
 )
@@ -92,7 +92,7 @@ func (s *seqNumStore) LastSeq() (*store.SeqNum, error) {
 }
 
 // UpdateLastSeq 更新最后同步的seq
-func (s *seqNumStore) UpdateLastSeq(seq db.Record) error {
+func (s *seqNumStore) UpdateLastSeq(seq schema.Record) error {
 	err := s.seqNumClient.Update(seq.Index(), seq.Type(), seq.ID(), string(seq.Value()))
 	log.Debug("save", "ID", seq.Key(), "value", string(seq.Value()))
 	if err != nil {
@@ -103,12 +103,12 @@ func (s *seqNumStore) UpdateLastSeq(seq db.Record) error {
 }
 
 // SaveSeqs 输出同步区块信息到ES
-func (s *esSeqStore) SaveSeqs(blockItems []db.Record) error {
+func (s *esSeqStore) SaveSeqs(blockItems []schema.Record) error {
 	if len(blockItems) == 0 {
 		return nil
 	}
 	if s.bulk {
-		var rs []db.Record
+		var rs []schema.Record
 		for i, v := range blockItems {
 			rs = append(rs, v)
 			log.Debug("save", "op", v.OpType(), "idx", i, "ID", v.Key(), "v", string(v.Value()))

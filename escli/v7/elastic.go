@@ -15,9 +15,9 @@ import (
 	elasticV7 "github.com/olivere/elastic/v7"
 	"github.com/pkg/errors"
 
-	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/escli/querypara"
 	"github.com/33cn/externaldb/escli/status"
+	"github.com/33cn/externaldb/lib/schema"
 )
 
 var (
@@ -91,7 +91,7 @@ func (cli *ESClientV7) Update(index, _, id string, value string) error {
 }
 
 // Set db operator:
-func (cli *ESClientV7) Set(index, _, id string, value db.Record) error {
+func (cli *ESClientV7) Set(index, _, id string, value schema.Record) error {
 	_, err := cli.Client.Index().Index(cli.index(index)).Id(id).BodyJson(string(value.Value())).Do(context.Background())
 	if err != nil {
 		log.Error("escli set failed", "index", index, "typ", "_doc", "id", id, "value", value)
@@ -105,7 +105,7 @@ func (cli *ESClientV7) Get(index, _, id string) (*json.RawMessage, error) {
 	res, err := cli.Client.Get().Index(cli.index(index)).Id(id).Do(context.Background())
 	if err != nil {
 		if elasticV7.IsNotFound(err) {
-			return nil, db.ErrDBNotFound
+			return nil, schema.ErrDBNotFound
 		}
 		log.Error("escli get failed", "index", index, "typ", "_doc", "id", id, "err", err)
 		return nil, err
@@ -115,9 +115,9 @@ func (cli *ESClientV7) Get(index, _, id string) (*json.RawMessage, error) {
 }
 
 // List RawMessage
-func (cli *ESClientV7) List(index, _ string, kv []*db.ListKV) ([]*json.RawMessage, error) {
+func (cli *ESClientV7) List(index, _ string, kv []*schema.ListKV) ([]*json.RawMessage, error) {
 	if len(kv) == 0 {
-		return nil, db.ErrDBBadParam
+		return nil, schema.ErrDBBadParam
 	}
 	query := querypara.Query{
 		Match: make([]*querypara.QMatch, 0),
@@ -155,17 +155,17 @@ func (cli *ESClientV7) List(index, _ string, kv []*db.ListKV) ([]*json.RawMessag
 }
 
 // BulkUpdate 一个区块对应的记录一起更新
-func (cli *ESClientV7) BulkUpdate(rs []db.Record) error {
+func (cli *ESClientV7) BulkUpdate(rs []schema.Record) error {
 	return cli.bulkUpdate(rs, "")
 }
 
 // BulkUpdateRefresh 同 BulkUpdate，但带 refresh 策略（如 "wait_for"）。
 // seq_marker 用它写入：返回时 marker 已可被 search 到，游标（max(seq)）就不会读到旧值。
-func (cli *ESClientV7) BulkUpdateRefresh(rs []db.Record, refresh string) error {
+func (cli *ESClientV7) BulkUpdateRefresh(rs []schema.Record, refresh string) error {
 	return cli.bulkUpdate(rs, refresh)
 }
 
-func (cli *ESClientV7) bulkUpdate(rs []db.Record, refresh string) error {
+func (cli *ESClientV7) bulkUpdate(rs []schema.Record, refresh string) error {
 	beg := types.Now()
 	defer func() {
 		log15.Info("BulkUpdate", "cost", types.Since(beg), "refresh", refresh)
@@ -175,13 +175,13 @@ func (cli *ESClientV7) bulkUpdate(rs []db.Record, refresh string) error {
 		b = b.Refresh(refresh)
 	}
 	for _, r := range rs {
-		if r.OpType() == db.OpAdd {
+		if r.OpType() == schema.OpAdd {
 			req := elasticV7.NewBulkIndexRequest().Index(cli.index(r.Index())).Id(r.ID()).Doc(json.RawMessage(r.Value()))
 			b.Add(req)
-		} else if r.OpType() == db.OpDel {
+		} else if r.OpType() == schema.OpDel {
 			req := elasticV7.NewBulkDeleteRequest().Index(cli.index(r.Index())).Id(r.ID())
 			b.Add(req)
-		} else if r.OpType() == db.OpUpdate {
+		} else if r.OpType() == schema.OpUpdate {
 			req := elasticV7.NewBulkUpdateRequest().Index(cli.index(r.Index())).Id(r.ID()).Doc(json.RawMessage(r.Value()))
 			b.Add(req)
 		}
@@ -280,7 +280,7 @@ func bulkFailureError(responses *elasticV7.BulkResponse, fails []ItemFailure) er
 // FilterFailed 从原记录里挑出 bulkErr 中失败的记录（按物理索引 + doc id 匹配）。
 // 只重写失败项是幂等的（Record.Value 是绝对值）；整批重跑转换器不是
 // （db/address 的 TxCount、block_stat 是读改写累计，会重复计数）。
-func (cli *ESClientV7) FilterFailed(rs []db.Record, bulkErr error) []db.Record {
+func (cli *ESClientV7) FilterFailed(rs []schema.Record, bulkErr error) []schema.Record {
 	be, ok := bulkErr.(*BulkError)
 	if !ok || be == nil || len(be.Failures) == 0 {
 		return nil
@@ -289,7 +289,7 @@ func (cli *ESClientV7) FilterFailed(rs []db.Record, bulkErr error) []db.Record {
 	for _, f := range be.Failures {
 		failed[f.Index+"/"+f.ID] = struct{}{}
 	}
-	var out []db.Record
+	var out []schema.Record
 	for _, r := range rs {
 		if _, hit := failed[cli.index(r.Index())+"/"+r.ID()]; hit {
 			out = append(out, r)

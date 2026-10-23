@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/33cn/externaldb/db"
 	"github.com/33cn/externaldb/cmd/rpc/service/evm"
 	"github.com/33cn/externaldb/cmd/rpc/service/file"
 
@@ -18,7 +17,6 @@ import (
 	tml "github.com/BurntSushi/toml"
 	"github.com/gin-gonic/gin"
 
-	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/cmd/rpc/docs"
 	"github.com/33cn/externaldb/cmd/rpc/middleware/protocol"
 	"github.com/33cn/externaldb/cmd/rpc/middleware/sentinel"
@@ -27,8 +25,10 @@ import (
 	"github.com/33cn/externaldb/cmd/rpc/service/proof"
 	"github.com/33cn/externaldb/cmd/rpc/service/proofmember"
 	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/proto"
+	"github.com/33cn/externaldb/lib/schema"
 	"github.com/33cn/externaldb/lib/version"
+	"github.com/33cn/externaldb/util"
 	cors "github.com/rs/cors/wrapper/gin"
 )
 
@@ -126,7 +126,7 @@ func InitCfgNew(path string) *proto.ConfigNew {
 		fmt.Println(err)
 		os.Exit(0)
 	}
-	db.SetVersion(cfg.EsVersion)
+	schema.SetVersion(cfg.EsVersion)
 	fmt.Println(&cfg)
 	return &cfg
 }

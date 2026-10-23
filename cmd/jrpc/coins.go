@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 
+	"github.com/33cn/externaldb/convert/stat/block"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
-	"github.com/33cn/externaldb/stat/block"
 	"github.com/pkg/errors"
 )
 

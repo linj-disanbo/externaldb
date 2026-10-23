@@ -13,8 +13,8 @@ import (
 	"github.com/33cn/externaldb/lib/proto"
 	"google.golang.org/grpc"
 
-	dbevm "github.com/33cn/externaldb/db/evm"
-	"github.com/33cn/externaldb/db/transaction"
+	dbevm "github.com/33cn/externaldb/convert/evm"
+	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	pabi "github.com/33cn/plugin/plugin/dapp/evm/executor/abi"
 	pcom "github.com/33cn/plugin/plugin/dapp/evm/executor/vm/common"
 	logtype "github.com/33cn/plugin/plugin/dapp/evm/types"

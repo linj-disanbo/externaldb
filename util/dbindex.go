@@ -1,12 +1,12 @@
 package util
 
 import (
-	"github.com/33cn/externaldb/db"
+	"github.com/33cn/externaldb/lib/schema"
 	"github.com/pkg/errors"
 )
 
 // InitIndex create index/type mapping if not exist
-func InitIndex(cli db.DBCreator, index, typ, mapping string) error {
+func InitIndex(cli schema.DBCreator, index, typ, mapping string) error {
 	exist, err := cli.Exists(index)
 	if err != nil {
 		log.Error("IndexExists failed", "err", err, "index", index)

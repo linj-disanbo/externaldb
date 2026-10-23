@@ -23,10 +23,11 @@ import (
 	chain33types "github.com/33cn/chain33/types"
 	"github.com/pkg/errors"
 
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/account"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/chaincfg"
+	"github.com/33cn/externaldb/lib/esdoc/account"
+	"github.com/33cn/externaldb/lib/schema"
 )
 
 // AccountBalance 链上查到一个地址的余额
@@ -96,7 +97,7 @@ type Options struct {
 	FullInterval   time.Duration
 	ActiveWindow   time.Duration
 
-	TicketExec string // ticket 执行器地址；空则用 db.ExecAddress(title+"ticket")
+	TicketExec string // ticket 执行器地址；空则用 chaincfg.ExecAddress(title+"ticket")
 
 	DryRun bool
 	Now    func() time.Time
@@ -150,7 +151,7 @@ func New(opt Options) *Refresher {
 	}
 	r.ticketExec = opt.TicketExec
 	if r.ticketExec == "" {
-		r.ticketExec = db.ExecAddress(r.execTicket)
+		r.ticketExec = chaincfg.ExecAddress(r.execTicket)
 	}
 	if r.ticketExec == "" {
 		r.opt.Log("ticket 执行器地址为空，ticket 档将被跳过（可用 TicketExec 指定）")
@@ -375,7 +376,7 @@ func (r *Refresher) refreshAddrs(ctx context.Context, addrs []string) (docs, cha
 			}
 		}
 
-		var records []db.Record
+		var records []schema.Record
 		for _, d := range existing {
 			docs++
 			var bal AccountBalance
@@ -395,8 +396,8 @@ func (r *Refresher) refreshAddrs(ctx context.Context, addrs []string) (docs, cha
 			}
 			// 每次都写 refresh_at/height：full 档靠它自推进；余额没变时写同样的值也无副作用
 			rec := &patchRecord{
-				IKey: db.NewIKey(account.DBX, account.DBX, d.id),
-				Op:   db.NewOp(db.OpUpdate),
+				IKey: schema.NewIKey(account.DBX, account.DBX, d.id),
+				Op:   schema.NewOp(schema.OpUpdate),
 				value: map[string]interface{}{
 					"balance":                bal.Balance,
 					"frozen":                 bal.Frozen,
@@ -476,8 +477,8 @@ func (r *Refresher) loadDocs(addrs []string) ([]*docRef, error) {
 
 // patchRecord OpUpdate 部分更新记录
 type patchRecord struct {
-	*db.IKey
-	*db.Op
+	*schema.IKey
+	*schema.Op
 	value interface{}
 }
 

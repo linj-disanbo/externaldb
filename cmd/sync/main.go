@@ -15,13 +15,13 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	tml "github.com/BurntSushi/toml"
 
-	"github.com/33cn/externaldb/db"
+	receiver "github.com/33cn/externaldb/convert/receiver"
 	"github.com/33cn/externaldb/lib/proto"
+	"github.com/33cn/externaldb/lib/schema"
+	"github.com/33cn/externaldb/lib/version"
 	"github.com/33cn/externaldb/store"
 	"github.com/33cn/externaldb/store/syncseq"
 	"github.com/33cn/externaldb/util"
-	"github.com/33cn/externaldb/util/cli/sync"
-	"github.com/33cn/externaldb/lib/version"
 )
 
 var (
@@ -43,7 +43,7 @@ func main() {
 	util.InitMapSet(cfg.EsVersion, cfg.EsIndex)
 	log.Info("init config", "config", cfg)
 	log.Info("load config", "cfgPath", *configPath, "h1", cfg.Chain.Host, "h2", cfg.SyncEs.Host, "me", cfg.Sync.PushHost, "me-bind", cfg.Sync.PushBind)
-	db.SetVersion(cfg.EsVersion)
+	schema.SetVersion(cfg.EsVersion)
 
 	log.Debug("started ")
 
@@ -60,7 +60,7 @@ func main() {
 		return
 	}
 
-	proc1, err := sync.NewSeqsProc(seqNumStore, seqStore, cfg.Chain)
+	proc1, err := receiver.NewSeqsProc(seqNumStore, seqStore, cfg.Chain)
 	if err != nil {
 		log.Error("NewSeqsProc failed", "err", err.Error())
 		return
@@ -68,7 +68,7 @@ func main() {
 
 	go proc1.Proc(cfg.Sync.StartSeq)
 
-	receiver, err := sync.CreateReceiver(cfg, proc1)
+	receiver, err := receiver.CreateReceiver(cfg, proc1)
 	if err != nil {
 		log.Error("Register failed", "err", err.Error())
 		return
@@ -76,7 +76,7 @@ func main() {
 	receiver.ReceiveLoop(proc1)
 }
 
-//InitCfgNew 初始化cfg
+// InitCfgNew 初始化cfg
 func InitCfgNew(path string) *proto.ConfigNew {
 	var cfg proto.ConfigNew
 	if _, err := tml.DecodeFile(path, &cfg); err != nil {

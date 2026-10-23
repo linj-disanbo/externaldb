@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/33cn/externaldb/db/blockinfo"
 	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/esdoc/blockinfo"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +18,7 @@ func decodeBlock(x *json.RawMessage) (interface{}, error) {
 	return &b, err
 }
 
-//BlockList block list
+// BlockList block list
 func (t *Block) BlockList(q *querypara.Query, out *interface{}) error {
 	if q == nil {
 		return errors.New(ErrBadParm)

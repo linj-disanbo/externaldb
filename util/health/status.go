@@ -3,12 +3,12 @@ package health
 import (
 	"github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/rpc/jsonclient"
-	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/status"
+	"github.com/33cn/externaldb/lib/esdoc/block"
 	"github.com/33cn/externaldb/lib/proto"
-	"github.com/33cn/externaldb/util"
 	"github.com/33cn/externaldb/lib/version"
+	"github.com/33cn/externaldb/util"
 )
 
 var log = log15.New("module", "health")

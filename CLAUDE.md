@@ -52,12 +52,12 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
 直连链路（当前生产）: chain33 node (gRPC pull + seq) → pull_convert → ES → jrpc (query)
 ```
 
-- **pull_convert**（`cmd/pull_convert`, `util/cli/convert/{seq_source,pull_loop,seq_writer,seq_cursor}.go`）：直连节点，
+- **pull_convert**（`cmd/pull_convert`, `convert/pipeline/{seq_source,pull_loop,seq_writer,seq_cursor}.go`）：直连节点，
   按 seq 拉块（`GetBlockSequences` + `GetBlockByHashes`）→ `ModuleConvert.DealBlockDetail` 展开 → 写 ES；
   进度是 append-only 的 `seq_marker` 索引（游标 = max(seq)，普通 bulk 写 + 启动时 refresh 一次）。
   `-mode fix -from -to` 可只修复一段 seq（不写 marker、不做统计累计）；切换/运维要点：停旧写方 → 起 convert（自动自举游标）→ `convert_check` 对账 → 观察 `seq_marker` 是否单调；
   ES 侧看 `seq_marker` 的 docs.count 与 translog，写放大时先调 `translog.flush_threshold_size`。
-- **sync / convert**（`cmd/sync`, `cmd/sync_convert`, `cmd/convert`, `store/syncseq/`, `util/cli/convert`）：老链路，
+- **sync / convert**（`cmd/sync`, `cmd/sync_convert`, `cmd/convert`, `store/syncseq/`, `convert/receiver`、`convert/pipeline`）：老链路，
   推送式 sync 把整块 seq 存 ES，convert 读 ES 再展开。**保留但不再作为新部署路径**（同一批索引只能有一个写方）。
 - **jrpc**（`cmd/jrpc/`）：JSON-RPC 2.0 查询端点。每链一个 `rpc.Server`，注册 Account/Trade/Block/EVM 等服务；
   EVM 交易解析按合约地址从 ES `contractabi` 索引取 ABI（`jrpc/evmabi.go`，**只读**）；
@@ -75,15 +75,17 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
 
 ## Key Abstractions
 
-- `db.Convert` interface (`db/convert.go`): `ConvertTx(env *TxEnv, op int) ([]Record, error)` — every contract converter implements it.
-- `db.Record` interface (`db/record.go`): ES record combining `Key` (Index/Type/ID) + `Operator` (Add/Del/Update) + `Value()`.
-- `db.TxEnv`: Wraps a `types.BlockDetail` with transaction index and block hash, passed to every converter.
+- `convert.ExecConvert` interface (`convert/framework.go`): `ConvertTx(env *schema.TxEnv, op int) ([]schema.Record, error)` + `InitDB(schema.DBCreator)` — every contract converter implements it.
+- `schema.Record` interface (`lib/schema/record.go`): ES 文档，组合 `Key`(Index/Type/ID) + `Operator`(Add/Del/Update) + `Value()`；契约（`IKey`/`Op`/`SeqType`/`Block`/`DBCreator`/`WrapDB`）都在 `lib/schema`。
+- `schema.TxEnv`: 包住 `types.BlockDetail` + 交易下标 + 区块哈希，作为转换器输入。
 - `util.AppConvert` interface (`util/process.go`): Block-level convert with `ConvertBlock()` / `RecoverStats()`
   （直连链路另用 `RecoverStatsAt(height)` 让累计统计与游标高度对齐）; `DealBlockDetail` 是两条链路共用的块处理入口（del seq → 反做）。
 - `store.SeqStore` / `store.SeqNumStore`（`store/`）：**老链路**的 seq 存储抽象（ES/Kafka）。
-- `db/seqmark`：直连链路的进度索引（doc id = seq，字段 seq/height/hash/type）。
+- `convert/` 目录：转换器框架（`framework.go`/`plugin.go`/`registry.go`）+ 16 个合约转换器子包 + `pipeline`（运行驱动：装配与 pull 循环）+ `receiver`（推送接收）+ `stat`（累积型转换）+ `fixamount`。
+- `lib/` 目录：`schema`（契约）、`esdoc`（文档类型，原 db 下 account/transaction/address/block/blockinfo/seqmark/contract/contractverify）、`escli`、`store`、`proto`、`version` 等底层。
+- `lib/esdoc/seqmark`：直连链路的进度索引（doc id = seq，字段 seq/height/hash/type）。
 
-Converter plugins are registered in `db/` subdirectories (coins, trade, token, ticket, evm, evm/erc721, evm/erc1155, evm/nft, evmxgo, proof, pos33, coinsx, etc.) and imported via blank imports in `cmd/pull_convert/main.go`（老链路是 `cmd/convert/main.go`）。Each plugin registers itself in its `init()` function；新增 converter 记得同步两处 blank import。
+Converter plugins live in `convert/` subdirectories (coins, trade, token, ticket, evm, evm/erc721, evm/erc1155, evm/nft, evmxgo, proof, pos33, coinsx, etc.) and are imported via blank imports in `cmd/pull_convert/main.go`（老链路是 `cmd/convert/main.go`）。Each plugin registers itself with `convert.RegisterConvert` in `init()`；新增 converter 记住同步两处 blank import。
 
 ## Configuration
 
@@ -105,7 +107,7 @@ erc20 程序读同一份 toml：`erc20/config/toml.go` 的 `FromProto` 做映射
 
 ## ES Version Handling
 
-只支持 ES 7.x：`escli/v6/` 已删除，客户端实现在 `escli/v7/`，`db.SetVersion()` 在启动时设置版本。
+只支持 ES 7.x：`escli/v6/` 已删除，客户端实现在 `escli/v7/`，`schema.SetVersion()` 在启动时设置版本。
 部署包也只有 ES7 模板（`deploy/env/es7` = 7.17 默认，`deploy/env/es7.4` = 7.4 备用），`.env` 里 `ES_VERSION` 填 6 会被 `make` 拦下。
 
 ## Dependencies

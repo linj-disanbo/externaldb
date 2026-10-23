@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/33cn/externaldb/db/blockinfo"
-	"github.com/33cn/externaldb/db/seqmark"
+	"github.com/33cn/externaldb/lib/esdoc/blockinfo"
+	"github.com/33cn/externaldb/lib/esdoc/seqmark"
 )
 
 // seqRange 缺号区间（闭区间）

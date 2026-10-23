@@ -11,12 +11,12 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/rpc/grpcclient"
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/db"
-	fdb "github.com/33cn/externaldb/db/file/db"
-	fpdb "github.com/33cn/externaldb/db/filepart/db"
+	fdb "github.com/33cn/externaldb/cmd/rpc/service/filedb"
+	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
+	converter "github.com/33cn/externaldb/convert"
+	fpdb "github.com/33cn/externaldb/convert/filepart/db"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/lib/proto"
-	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -81,7 +81,7 @@ func (f *File) GetFile(c *gin.Context) {
 	hash = filepath.Base(hash)
 	file, err := cli.Get(hash)
 	if err != nil {
-		if err == db.ErrDBNotFound {
+		if err == converter.ErrDBNotFound {
 			err = ErrFileNotBlock
 		}
 		log.Error("GetFileFromDB:fcli.Get(hash)", "err", err)

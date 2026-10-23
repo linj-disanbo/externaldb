@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/blockinfo"
-	"github.com/33cn/externaldb/db/seqmark"
+	"github.com/33cn/externaldb/lib/esdoc/blockinfo"
+	"github.com/33cn/externaldb/lib/esdoc/seqmark"
+	"github.com/33cn/externaldb/lib/schema"
 )
 
 func TestCheckContinuity(t *testing.T) {
@@ -27,7 +27,7 @@ func TestCheckContinuity(t *testing.T) {
 
 func TestDiffBlockInfo(t *testing.T) {
 	m := func(seq, height int64, hash string) *seqmark.Marker {
-		return &seqmark.Marker{Seq: seq, Height: height, Hash: hash, Type: db.SeqTypeAdd}
+		return &seqmark.Marker{Seq: seq, Height: height, Hash: hash, Type: schema.SeqTypeAdd}
 	}
 	ms := []*seqmark.Marker{
 		m(1, 101, "h1"),

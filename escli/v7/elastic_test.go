@@ -3,10 +3,9 @@ package v7
 import (
 	"testing"
 
+	"github.com/33cn/externaldb/lib/schema"
 	elasticV7 "github.com/olivere/elastic/v7"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/33cn/externaldb/db"
 )
 
 func item(action string, v *elasticV7.BulkResponseItem) map[string]*elasticV7.BulkResponseItem {
@@ -79,19 +78,19 @@ func TestBulkFailureErrorTruncates(t *testing.T) {
 }
 
 type fakeRecord struct {
-	*db.IKey
-	*db.Op
+	*schema.IKey
+	*schema.Op
 }
 
 func (r *fakeRecord) Value() []byte { return []byte(`{}`) }
 
 func newFakeRecord(index, id string) *fakeRecord {
-	return &fakeRecord{IKey: db.NewIKey(index, index, id), Op: db.NewOp(db.OpAdd)}
+	return &fakeRecord{IKey: schema.NewIKey(index, index, id), Op: schema.NewOp(schema.OpAdd)}
 }
 
 func TestFilterFailed(t *testing.T) {
 	cli := &ESClientV7{Prefix: "seq05_"}
-	rs := []db.Record{
+	rs := []schema.Record{
 		newFakeRecord("account", "a"),
 		newFakeRecord("account", "b"),
 		newFakeRecord("block_info", "c"),

@@ -12,12 +12,12 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/gin-gonic/gin"
 
-	"github.com/33cn/externaldb/db/proof/proofdb"
-	"github.com/33cn/externaldb/db/proof/service"
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/querypara"
 	"github.com/33cn/externaldb/cmd/rpc/middleware/protocol"
 	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
+	"github.com/33cn/externaldb/convert/proof/proofdb"
+	"github.com/33cn/externaldb/convert/proof/service"
+	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/escli/querypara"
 )
 
 var (
@@ -807,7 +807,7 @@ func (p *Proof) QueryStatsInfo(c *gin.Context) {
 	protocol.SetResult(c, stats, nil)
 }
 
-//refreshStat 定时刷新对应项的统计信息
+// refreshStat 定时刷新对应项的统计信息
 func (p *Proof) refreshStat(stats rpcutils.StatsItem) {
 
 	if stats.GetTimeout() != nil {
@@ -836,7 +836,7 @@ func (p *Proof) refreshStat(stats rpcutils.StatsItem) {
 	stats.SetTimeout(timeout)
 }
 
-//donationStats 慈善捐款统计接口
+// donationStats 慈善捐款统计接口
 func (p *Proof) donationStats(reqinfo interface{}) (interface{}, error) {
 	req := reqinfo.(rpcutils.DonationStats)
 

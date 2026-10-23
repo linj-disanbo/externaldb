@@ -14,14 +14,14 @@ import (
 	"strings"
 
 	l "github.com/33cn/chain33/common/log/log15"
-	"github.com/33cn/externaldb/db"
+	receiver "github.com/33cn/externaldb/convert/receiver"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/lib/proto"
+	"github.com/33cn/externaldb/lib/schema"
+	"github.com/33cn/externaldb/lib/version"
 	"github.com/33cn/externaldb/store/syncseq"
 	"github.com/33cn/externaldb/util"
-	"github.com/33cn/externaldb/util/cli/sync"
 	"github.com/33cn/externaldb/util/localfile"
-	"github.com/33cn/externaldb/lib/version"
 	tml "github.com/BurntSushi/toml"
 )
 
@@ -47,7 +47,7 @@ func main() {
 	util.InitMapSet(cfg.EsVersion, cfg.EsIndex)
 	log.Info("init config", "config", cfg)
 	log.Info("load config", "cfgPath", *configPath, "h1", cfg.Chain.Host, "h2", "me", cfg.Sync.PushHost, "me-bind", cfg.Sync.PushBind)
-	db.SetVersion(cfg.EsVersion)
+	schema.SetVersion(cfg.EsVersion)
 
 	log.Debug("started ")
 
@@ -69,7 +69,7 @@ func main() {
 		return
 	}
 
-	// TODO db.LastSeqDB 待确定
+	// TODO schema.LastSeqDB 待确定
 	var progressFP *localfile.FileProgress
 	if cfg.Dbtype == "file" {
 		progressPath := syncseq.ProgressFilePath(d, syncseq.DefaultConvertProgressFile)
@@ -90,7 +90,7 @@ func main() {
 		util.LastSyncSeqCache.SetNumber(lastSeq)
 		log.Info("file progress init", "path", progressPath, "lastSeq", lastSeq)
 	} else {
-		err = util.InitLastSyncSeqCache(EsWrite, db.LastSeqDB, cfg.Sync.StartSeq)
+		err = util.InitLastSyncSeqCache(EsWrite, schema.LastSeqDB, cfg.Sync.StartSeq)
 		if err != nil {
 			log.Error("InitLastSyncSeqCache failed", "err", err.Error())
 			log.Error("初始化 区块解析进度参数 last_seq 失败，请确保ES服务正常且 配置文件参数sync.startSeq 参数大于或等于0")
@@ -101,7 +101,7 @@ func main() {
 	util.InitConvertEsBulk(cfg.ConvertEs.Bulk)
 
 	// 创建服务实例
-	receiver, err := sync.CreateReceiverConvert(cfg, EsWrite, progressFP)
+	receiver, err := receiver.CreateReceiverConvert(cfg, EsWrite, progressFP)
 	if err != nil {
 		log.Error("CreateReceiver failed", "err", err.Error())
 		log.Error("创建sync服务失败，请检查配置文件各项参数")
@@ -131,7 +131,7 @@ func main() {
 	receiver.ReceiveLoop()
 }
 
-//InitCfgNew 初始化cfg
+// InitCfgNew 初始化cfg
 func InitCfgNew(path string) *proto.ConfigNew {
 	var cfg proto.ConfigNew
 	if _, err := tml.DecodeFile(path, &cfg); err != nil {

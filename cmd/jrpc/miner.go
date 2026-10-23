@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/db/account"
-	"github.com/33cn/externaldb/db/ticket"
+	"github.com/33cn/externaldb/convert/ticket"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/esdoc/account"
 	//"encoding/json"
 	//"io/ioutil"
 )
@@ -49,12 +49,12 @@ var defaultAddresses = []string{
 	"1E4UF3HW8LEwdbJjF9FzKhNFeqhp5zNm8",
 }
 
-//MinerAccount 挖矿账户
+// MinerAccount 挖矿账户
 type MinerAccount struct {
 	*DBRead
 }
 
-//Echo 打印
+// Echo 打印
 func (*MinerAccount) Echo(in *string, out *interface{}) error {
 	if in == nil {
 		return types.ErrInvalidParam

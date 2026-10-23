@@ -2,8 +2,8 @@ package store
 
 import (
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/block"
+	"github.com/33cn/externaldb/lib/esdoc/block"
+	"github.com/33cn/externaldb/lib/schema"
 )
 
 // SeqNum ...
@@ -19,15 +19,14 @@ type SeqNum struct {
 // Seq ...
 type Seq types.BlockSeqs
 
-//
 type SeqNumStore interface {
 	LastSeq() (*SeqNum, error)
-	UpdateLastSeq(s db.Record) error
+	UpdateLastSeq(s schema.Record) error
 }
 
 // SeqStore SeqStore
 type SeqStore interface {
-	SaveSeqs(blockItems []db.Record) error
+	SaveSeqs(blockItems []schema.Record) error
 	GetSeq(num int64) (*block.Seq, error)
 	CommitSeqAck(num int64) int64
 }

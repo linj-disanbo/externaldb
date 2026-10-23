@@ -17,12 +17,12 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	tml "github.com/BurntSushi/toml"
 
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/blockinfo"
-	"github.com/33cn/externaldb/db/seqmark"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/esdoc/blockinfo"
+	"github.com/33cn/externaldb/lib/esdoc/seqmark"
 	"github.com/33cn/externaldb/lib/proto"
+	"github.com/33cn/externaldb/lib/schema"
 	"github.com/33cn/externaldb/util"
 )
 
@@ -38,7 +38,7 @@ var (
 func main() {
 	flag.Parse()
 	cfg := initCfg(*configPath)
-	db.SetVersion(cfg.EsVersion)
+	schema.SetVersion(cfg.EsVersion)
 
 	client, err := escli.NewESLongConnect(cfg.ConvertEs.Host, cfg.ConvertEs.Prefix, cfg.EsVersion,
 		cfg.ConvertEs.User, cfg.ConvertEs.Pwd)

@@ -19,13 +19,13 @@ import (
 	"time"
 
 	chain33types "github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/erc20/blockalign"
 	"github.com/33cn/externaldb/erc20/config"
 	"github.com/33cn/externaldb/erc20/database"
 	"github.com/33cn/externaldb/erc20/erc20abi/generated"
 	"github.com/33cn/externaldb/erc20/txparser"
+	"github.com/33cn/externaldb/lib/esdoc/block"
+	"github.com/33cn/externaldb/lib/schema"
 	"google.golang.org/grpc"
 )
 
@@ -212,7 +212,7 @@ func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcCo
 
 		// del seq（回滚）：不解析块体，只记录进度；被回滚块的旧行由后续 add seq 的
 		// 按块替换清掉（同一高度重新写入时先删后插）。
-		if blockSeq.Type != db.SeqTypeAdd {
+		if blockSeq.Type != schema.SeqTypeAdd {
 			log.Info("[Reorg] del seq, advance cursor only",
 				"seq", blockSeq.SyncSeq, "hash", blockSeq.Hash, "type", blockSeq.Type)
 			if !p.NoProgress && p.EnableDB && p.db != nil {

@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/33cn/externaldb/db/trade"
+	"github.com/33cn/externaldb/convert/trade"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
 	"github.com/pkg/errors"

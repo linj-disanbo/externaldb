@@ -3,10 +3,10 @@ package proof
 import (
 	"testing"
 
-	"github.com/33cn/externaldb/db/proof/proofdb"
+	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
+	"github.com/33cn/externaldb/convert/proof/proofdb"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
-	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/stretchr/testify/assert"
 )
 

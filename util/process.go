@@ -10,9 +10,9 @@ import (
 	"github.com/33cn/chain33/types"
 	"github.com/pkg/errors"
 
-	"github.com/33cn/externaldb/db"
-	"github.com/33cn/externaldb/db/block"
 	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/esdoc/block"
+	"github.com/33cn/externaldb/lib/schema"
 	"github.com/33cn/externaldb/store"
 )
 
@@ -37,7 +37,7 @@ type ModuleConvert struct {
 // AppConvert for application
 // 随着需求增加，需要各种各样的解析。由app 提供， 可以更灵活的实现
 type AppConvert interface {
-	ConvertBlock(blockSeq *block.Seq, detail *types.BlockDetail) ([]db.Record, error)
+	ConvertBlock(blockSeq *block.Seq, detail *types.BlockDetail) ([]schema.Record, error)
 	RecoverStats(client escli.ESClient, lastSeq int64) error
 }
 
@@ -85,7 +85,7 @@ func (mod *ModuleConvert) BlockProc() {
 		if err != nil {
 			// 在已经同步到的高度, 却没有找到对应的seq-block,
 			// es中没有事务, 可能是 seq先更新, seq-block后完成索引导致
-			if err == db.ErrDBNotFound {
+			if err == schema.ErrDBNotFound {
 				if currentSeqNum < syncSeqNum {
 					currentSeqNum++
 					continue
@@ -144,7 +144,7 @@ func (mod *ModuleConvert) BlockProcFixTool() {
 		if err != nil {
 			// 在已经同步到的高度, 却没有找到对应的seq-block,
 			// es中没有事务, 可能是 seq先更新, seq-block后完成索引导致
-			if err == db.ErrDBNotFound {
+			if err == schema.ErrDBNotFound {
 				if currentSeqNum < syncSeqNum {
 					currentSeqNum++
 					continue
@@ -179,7 +179,7 @@ func (mod *ModuleConvert) BlockProcFixTool() {
 	}
 }
 
-func (mod *ModuleConvert) dealBlock(blockSeq *block.Seq) ([]db.Record, error) {
+func (mod *ModuleConvert) dealBlock(blockSeq *block.Seq) ([]schema.Record, error) {
 	var detail types.BlockDetail
 	err := types.Decode(blockSeq.BlockDetail, &detail)
 	if err != nil {
@@ -199,14 +199,14 @@ func (mod *ModuleConvert) dealBlock(blockSeq *block.Seq) ([]db.Record, error) {
 	records = append(records, lastRecord)
 
 	// 如果是回滚操作的话， 所有的状态都需要逆序处理
-	if blockSeq.Type == db.SeqTypeDel {
+	if blockSeq.Type == schema.SeqTypeDel {
 		records = reverse(records)
 	}
 	return records, err
 }
 
 // SingleDealBlock 处理区块时只处理当前区块，不添加lastRecord
-func (mod *ModuleConvert) SingleDealBlock(blockSeq *block.Seq) ([]db.Record, error) {
+func (mod *ModuleConvert) SingleDealBlock(blockSeq *block.Seq) ([]schema.Record, error) {
 	var detail types.BlockDetail
 	err := types.Decode(blockSeq.BlockDetail, &detail)
 	if err != nil {
@@ -217,7 +217,7 @@ func (mod *ModuleConvert) SingleDealBlock(blockSeq *block.Seq) ([]db.Record, err
 
 // DealBlockDetail 处理单个区块（含 del 的逆序反做），不写 lastRecord。
 // 直连（pull + seq）路径用：detail 已由来源层拿到，避免 BlockDetail 的二次编解码。
-func (mod *ModuleConvert) DealBlockDetail(blockSeq *block.Seq, detail *types.BlockDetail) ([]db.Record, error) {
+func (mod *ModuleConvert) DealBlockDetail(blockSeq *block.Seq, detail *types.BlockDetail) ([]schema.Record, error) {
 	if blockSeq == nil {
 		return nil, errors.New("DealBlockDetail: nil blockSeq")
 	}
@@ -232,7 +232,7 @@ func (mod *ModuleConvert) DealBlockDetail(blockSeq *block.Seq, detail *types.Blo
 	}
 	records, err := mod.ConvertBlock(blockSeq, detail)
 	// 如果是回滚操作的话， 所有的状态都需要逆序处理
-	if blockSeq.Type == db.SeqTypeDel {
+	if blockSeq.Type == schema.SeqTypeDel {
 		records = reverse(records)
 	}
 	return records, err
@@ -240,7 +240,7 @@ func (mod *ModuleConvert) DealBlockDetail(blockSeq *block.Seq, detail *types.Blo
 
 // Reverse reverse records
 // https://github.com/golang/go/wiki/SliceTricks#reversing
-func reverse(a []db.Record) []db.Record {
+func reverse(a []schema.Record) []schema.Record {
 	for i := len(a)/2 - 1; i >= 0; i-- {
 		opp := len(a) - 1 - i
 		a[i], a[opp] = a[opp], a[i]

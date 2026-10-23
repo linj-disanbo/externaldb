@@ -6,16 +6,16 @@ import (
 
 	"github.com/33cn/chain33/common"
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/db"
+	"github.com/33cn/externaldb/lib/schema"
 )
 
 // GenEnv gen env for test
-func GenEnv(hexBlock string, index int64) (*db.TxEnv, error) {
+func GenEnv(hexBlock string, index int64) (*schema.TxEnv, error) {
 	bs, err := hex.DecodeString(hexBlock)
 	if err != nil {
 		return nil, err
 	}
-	env := db.TxEnv{
+	env := schema.TxEnv{
 		TxIndex: index,
 		Block:   &types.BlockDetail{},
 	}
@@ -26,7 +26,7 @@ func GenEnv(hexBlock string, index int64) (*db.TxEnv, error) {
 }
 
 // DumpEnv dump txs for unit test
-func DumpEnv(env *db.TxEnv, check bool) (string, int64) {
+func DumpEnv(env *schema.TxEnv, check bool) (string, int64) {
 	blockByte := types.Encode(env.Block)
 	s := hex.EncodeToString(blockByte)
 
