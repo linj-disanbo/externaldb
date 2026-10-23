@@ -6,7 +6,7 @@ import (
 	"github.com/33cn/externaldb/db/proof/proofdb"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/escli/querypara"
-	rpcutils "github.com/33cn/externaldb/rpc/utils"
+	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/stretchr/testify/assert"
 )
 

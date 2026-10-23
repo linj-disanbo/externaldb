@@ -12,8 +12,8 @@ import (
 	"github.com/33cn/externaldb/escli/querypara"
 
 	proofconfig "github.com/33cn/externaldb/db/proof_config"
-	"github.com/33cn/externaldb/rpc/middleware/protocol"
-	rpcutils "github.com/33cn/externaldb/rpc/utils"
+	"github.com/33cn/externaldb/cmd/rpc/middleware/protocol"
+	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	log "github.com/xuperchain/log15"

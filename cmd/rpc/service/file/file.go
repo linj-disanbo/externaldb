@@ -16,7 +16,7 @@ import (
 	fpdb "github.com/33cn/externaldb/db/filepart/db"
 	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/proto"
-	rpcutils "github.com/33cn/externaldb/rpc/utils"
+	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/gin-gonic/gin"
 )
 

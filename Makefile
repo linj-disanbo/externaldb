@@ -5,7 +5,7 @@
 # ...
 SRC := github.com/33cn/externaldb
 SRC_CLI := ${SRC}/cmd/
-SRC_RPC := ${SRC}/jrpc
+SRC_RPC := ${SRC_CLI}jrpc
 PRC := build/jrpc
 CLI_SYNC := build/sync
 CLI_CONVERT := build/convert
@@ -53,7 +53,7 @@ proto: ## Generate protbuf file of types package
 
 .PHONY: swag
 swag: ## gen rpc doc with swag
-	@cd ./rpc && swag init && cd ..
+	@cd ./cmd/rpc && swag init && cd ../..
 
 help: ## Display this help screen
 	@printf "Help doc:\nUsage: make [command]\n"
@@ -102,7 +102,7 @@ build: code_gen ## Build all binaries (static, CGO_ENABLED=0)
 	@$(STATIC_BUILD) -o  $(CLI_SYNC) $(SRC_CLI)/sync
 	@$(STATIC_BUILD) -o  $(CLI_CONVERT) $(SRC_CLI)/convert
 	@$(STATIC_BUILD) -o  build/convertfix $(SRC_CLI)/convert-fix-tool/
-	@$(STATIC_BUILD) -o  build/rpc $(SRC)/rpc/
+	@$(STATIC_BUILD) -o  build/rpc ${SRC_CLI}rpc/
 	@$(STATIC_BUILD) -o  build/dummy_node $(SRC_CLI)/dummy_node/
 	@$(STATIC_BUILD) -o  build/sync_convert $(SRC_CLI)/sync_convert
 	@$(STATIC_BUILD) -o  build/pull_convert $(SRC_CLI)/pull_convert
@@ -118,13 +118,13 @@ build_convert: proto ## Build convert binary (static)
 
 .PHONY: build_rpc
 build_rpc: code_gen ## Build rpc binary (static)
-	@$(STATIC_BUILD) -o  build/rpc $(SRC)/rpc/
+	@$(STATIC_BUILD) -o  build/rpc ${SRC_CLI}rpc/
 
 release: code_gen ## Build core binaries (static, CGO_ENABLED=0)
 	@$(STATIC_BUILD) -o  $(PRC) $(SRC_RPC)
 	@$(STATIC_BUILD) -o  $(CLI_SYNC) $(SRC_CLI)/sync
 	@$(STATIC_BUILD) -o  $(CLI_CONVERT) $(SRC_CLI)/convert
-	@$(STATIC_BUILD) -o  build/rpc $(SRC)/rpc/
+	@$(STATIC_BUILD) -o  build/rpc ${SRC_CLI}rpc/
 	@cp config/externaldb.toml build/externaldb.toml
 
 clean: ## Remove previous build

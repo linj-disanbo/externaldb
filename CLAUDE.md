@@ -41,7 +41,7 @@ make pkg-pull
 The `Makefile` expects a `.env` file at the project root (included via `include .env`).
 
 `make build` 产出：`build/{sync,convert,jrpc,rpc,sync_convert,pull_convert,convert_check,erc20scan,erc20api,account_refresh}`。
-部分包测试依赖真实 ES/外网（如 `rpc/service/proof`、`jrpc` 的部分用例），本机跑会失败，用 `-run` 过滤。
+部分包测试依赖真实 ES/外网（如 `cmd/rpc/service/proof`、`cmd/jrpc` 的部分用例），本机跑会失败，用 `-run` 过滤。
 
 ## Architecture
 
@@ -59,10 +59,10 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
   ES 侧看 `seq_marker` 的 docs.count 与 translog，写放大时先调 `translog.flush_threshold_size`。
 - **sync / convert**（`cmd/sync`, `cmd/sync_convert`, `cmd/convert`, `store/syncseq/`, `util/cli/convert`）：老链路，
   推送式 sync 把整块 seq 存 ES，convert 读 ES 再展开。**保留但不再作为新部署路径**（同一批索引只能有一个写方）。
-- **jrpc**（`jrpc/`）：JSON-RPC 2.0 查询端点。每链一个 `rpc.Server`，注册 Account/Trade/Block/EVM 等服务；
+- **jrpc**（`cmd/jrpc/`）：JSON-RPC 2.0 查询端点。每链一个 `rpc.Server`，注册 Account/Trade/Block/EVM 等服务；
   EVM 交易解析按合约地址从 ES `contractabi` 索引取 ABI（`jrpc/evmabi.go`，**只读**）；
   ABI 注册已从 jrpc 移除，改由仓库外私有工具（`local/tools/saveabi`，不随开源仓库发布）离线写入。
-- **rpc**（`rpc/`）：Gin REST，proof 相关；与 jrpc 独立，含白名单与 Sentinel 限流中间件。
+- **rpc**（`cmd/rpc/`）：Gin REST，proof 相关；与 jrpc 独立，含白名单与 Sentinel 限流中间件。
 - **erc20 扫块/查询**：已并入主 module（不再是独立工程）。程序 `cmd/erc20scan`（扫 ERC20 转账写 MySQL）、
   `cmd/erc20api`（`/evmapi/*` 读 MySQL，原 `erc20Scaner/rpc`）；库在 `erc20scaner/`（`scanner/engine`、`txparser`、
   `database`、`config`、`erc20abi`、`blockalign`、`logger`、`txinspect`），文档在 `erc20scaner/docs/`；

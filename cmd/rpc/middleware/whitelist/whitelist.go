@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	l "github.com/33cn/chain33/common/log/log15"
-	rpcutils "github.com/33cn/externaldb/rpc/utils"
+	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/gin-gonic/gin"
 )
 

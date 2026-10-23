@@ -2,8 +2,8 @@ package evm
 
 import (
 	"github.com/33cn/externaldb/db/evm/nft/db"
-	"github.com/33cn/externaldb/rpc/middleware/protocol"
-	rpcutils "github.com/33cn/externaldb/rpc/utils"
+	"github.com/33cn/externaldb/cmd/rpc/middleware/protocol"
+	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/gin-gonic/gin"
 )
 
