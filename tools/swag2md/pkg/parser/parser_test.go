@@ -8,7 +8,13 @@ import (
 )
 
 func TestParser(t *testing.T) {
+	// 依赖 swag 生成的输入（make swag 会把 swagger.json 放到 rpc/docs 下），
+	// 仓库里没有这份 fixture 时跳过，而不是 panic。
 	filePath := "../../testdata/swagger.json"
+	if _, err := os.Stat(filePath); err != nil {
+		t.Skipf("跳过：缺少输入文件 %s（先跑 make swag 生成）", filePath)
+	}
+
 	p, err := NewParser(filePath)
 	assert.NoError(t, err)
 	t.Logf("%+v", p)

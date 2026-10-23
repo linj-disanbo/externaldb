@@ -1,8 +1,6 @@
 package esmaint
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/33cn/externaldb/lib/escli"
@@ -10,43 +8,36 @@ import (
 	tml "github.com/BurntSushi/toml"
 )
 
-func Test_es6CheckAndRepair(t *testing.T) {
+// esClientForTest 读仓库根的配置连 ES；连不上就跳过（这两个用例依赖真实 ES）。
+//
+// 注意：不要用 os.Exit —— 在 go test 里会变成 "unexpected call to os.Exit" panic，
+// 让整个包的测试看起来是崩了，而不是跳过。
+func esClientForTest(t *testing.T) (*proto.ConfigNew, escli.ESClient) {
+	t.Helper()
 	var cfg proto.ConfigNew
-	if _, err := tml.DecodeFile("../config/externaldb.toml", &cfg); err != nil {
-		log.Info("init config failed", "err", err)
-		os.Exit(0)
+	if _, err := tml.DecodeFile("../../config/externaldb.toml", &cfg); err != nil {
+		t.Skipf("跳过：读不到 config/externaldb.toml（%v）", err)
 	}
 
-	EsWrite, err := escli.NewESLongConnect(cfg.ConvertEs.Host, cfg.ConvertEs.Prefix, cfg.EsVersion, cfg.ConvertEs.User, cfg.ConvertEs.Pwd)
+	cli, err := escli.NewESLongConnect(cfg.ConvertEs.Host, cfg.ConvertEs.Prefix, cfg.EsVersion, cfg.ConvertEs.User, cfg.ConvertEs.Pwd)
 	if err != nil {
-		fmt.Println("esCheck failed", "err", err.Error())
-		return
+		t.Skipf("跳过：ES 连不上（%v）", err)
 	}
+	return &cfg, cli
+}
 
-	if err := es6CheckAndRepair(&cfg, EsWrite); err != nil {
+func Test_es6CheckAndRepair(t *testing.T) {
+	cfg, EsWrite := esClientForTest(t)
+
+	if err := es6CheckAndRepair(cfg, EsWrite); err != nil {
 		t.Errorf("es6CheckAndRepair() error = %v", err)
 	}
-
 }
 
 func Test_es7CheckAndRepair(t *testing.T) {
-	var cfg proto.ConfigNew
-	if _, err := tml.DecodeFile("../config/externaldb.toml", &cfg); err != nil {
-		log.Info("init config failed", "err", err)
-		os.Exit(0)
-	}
+	cfg, EsWrite := esClientForTest(t)
 
-	EsWrite, err := escli.NewESLongConnect(cfg.ConvertEs.Host, cfg.ConvertEs.Prefix, cfg.EsVersion, cfg.ConvertEs.User, cfg.ConvertEs.Pwd)
-	if err != nil {
-		fmt.Println("esCheck failed", "err", err.Error())
-		log.Error("ES 连接失败，请确保ES服务正常开启，ES配置正确，网络通常",
-			" host ", cfg.ConvertEs.Host, " Prefix ", cfg.ConvertEs.Prefix, " EsVersion ", cfg.EsVersion,
-			" User ", cfg.ConvertEs.User, " Pwd ", cfg.ConvertEs.Pwd)
-		return
-	}
-
-	if err := es7CheckAndRepair(&cfg, EsWrite); err != nil {
+	if err := es7CheckAndRepair(cfg, EsWrite); err != nil {
 		t.Errorf("es7CheckAndRepair() error = %v", err)
 	}
-
 }

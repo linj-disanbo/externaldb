@@ -1,3 +1,8 @@
+//go:build integration
+
+// 这些用例连外部测试链（183.134.99.140），默认 go test 不跑；
+// 需要时：go test -tags integration ./lib/esdoc/contract -run TestDetectClient
+
 package contract
 
 import (
