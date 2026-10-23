@@ -12,7 +12,7 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
 	"github.com/33cn/externaldb/lib/esdoc/block"
-	"github.com/33cn/externaldb/store"
+	"github.com/33cn/externaldb/lib/store"
 )
 
 var (

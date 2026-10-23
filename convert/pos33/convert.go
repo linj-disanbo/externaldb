@@ -11,10 +11,11 @@ import (
 	rpctypes "github.com/33cn/chain33/rpc/types"
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	"github.com/pkg/errors"
 	pty "github.com/yccproject/ycc/plugin/dapp/pos33/types"
 )
@@ -101,12 +102,12 @@ func (t *pos33TicketConvert) InitDB(cli schema.DBCreator) error {
 		return err
 	}
 
-	err = util.InitIndex(cli, Pos33TicketDBX, Pos33TicketTableX, Pos33TicketMapping)
+	err = esmaint.InitIndex(cli, Pos33TicketDBX, Pos33TicketTableX, Pos33TicketMapping)
 	if err != nil {
 		return err
 	}
 
-	err = util.InitIndex(cli, Pos33TicketBindDBX, Pos33TicketBindTableX, BindMapping)
+	err = esmaint.InitIndex(cli, Pos33TicketBindDBX, Pos33TicketBindTableX, BindMapping)
 	if err != nil {
 		return err
 	}
@@ -139,7 +140,7 @@ func (t *pos33TicketConvert) ConvertTx(env *converter.TxEnv, op int) ([]schema.R
 	receipt := env.Block.Receipts[env.TxIndex]
 	t.tx = tx
 	t.receipt = receipt
-	t.block = converter.SetupBlock(env, util.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
+	t.block = converter.SetupBlock(env, chaincfg.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
 
 	t.accountIDYcc = account.Account{
 		AssetSymbol: t.symbol,
@@ -461,7 +462,7 @@ func (t *pos33TicketConvert) GetMinerAddr() (*transaction.AddrRecord, error) {
 		addrRecord.VoterAddr = append(addrRecord.VoterAddr, res.Data)
 	}
 	// 获得打包地址
-	addrRecord.MakerAddr = []string{util.AddressConvert(t.tx.From())}
+	addrRecord.MakerAddr = []string{chaincfg.AddressConvert(t.tx.From())}
 
 	return &addrRecord, nil
 }

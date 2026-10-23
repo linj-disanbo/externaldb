@@ -3,12 +3,13 @@ package receiver
 import (
 	"github.com/33cn/chain33/common"
 	"github.com/33cn/chain33/types"
-	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/escli"
 	"github.com/33cn/externaldb/lib/esdoc/block"
+	"github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
-	"github.com/33cn/externaldb/util/localfile"
+	"github.com/33cn/externaldb/lib/util"
+	"github.com/33cn/externaldb/lib/util/localfile"
 	"github.com/pkg/errors"
 
 	// 以下包导入不显示使用，主要使用里面的init函数，初始化一些配置，复制来源 cmd/convert/main.go 里面的导入逻辑
@@ -102,9 +103,9 @@ type receiverConvert struct {
 }
 
 func (r *receiverConvert) RecoverStats() error {
-	err := r.mod.RecoverStats(r.mod.WriteDB, util.LastSyncSeqCache.GetNumber())
+	err := r.mod.RecoverStats(r.mod.WriteDB, esmaint.LastSyncSeqCache.GetNumber())
 	if err != nil {
-		log.Error("BlockProc RecoverStats", "err", err, "seq", util.LastSyncSeqCache.GetNumber(), "module", r.mod.Name)
+		log.Error("BlockProc RecoverStats", "err", err, "seq", esmaint.LastSyncSeqCache.GetNumber(), "module", r.mod.Name)
 	}
 	return err
 }
@@ -149,7 +150,7 @@ func handleConvertRequest(body []byte, format string, mod *util.ModuleConvert, c
 	log.Info("parseSeqs", "seqsMap", seqsMap)
 	log.Info("parseSeqs", "cost", types.Since(beg), "count", count, "start", start)
 
-	currentSeqNum := util.LastSyncSeqCache.GetNumber()
+	currentSeqNum := esmaint.LastSyncSeqCache.GetNumber()
 	// 在app 端保存成功， 但回复ok时，程序挂掉, 记录日志
 	log.Info("GetNumber", "current_seq", currentSeqNum)
 	if start+int64(count) <= currentSeqNum {
@@ -202,13 +203,13 @@ func handleConvertRequest(body []byte, format string, mod *util.ModuleConvert, c
 		// 进度使用本地文件，不再写入 ES
 	} else {
 		// 兼容旧方式：进度写入 ES
-		lastSeq := util.NewLastRecord(schema.LastSeqDB, number)
+		lastSeq := esmaint.NewLastRecord(schema.LastSeqDB, number)
 		bulkRecords = append(bulkRecords, lastSeq)
 	}
 	log.Info("deal request over", "cost", types.Since(beg), "number", number, "bulkRecords", bulkRecords)
 
 	// 存入ES
-	err = util.SaveToESSelectBulk(mod.WriteDB, bulkRecords, util.ConvertEsBulk)
+	err = esmaint.SaveToESSelectBulk(mod.WriteDB, bulkRecords, esmaint.ConvertEsBulk)
 	if err != nil {
 		log.Error("SaveToESSelectBulk", "err", err, "bulkRecords", bulkRecords, "module", mod.Name, "op", "save")
 		return err
@@ -221,7 +222,7 @@ func handleConvertRequest(body []byte, format string, mod *util.ModuleConvert, c
 			return saveErr
 		}
 	}
-	err = util.LastSyncSeqCache.SetNumber(number)
+	err = esmaint.LastSyncSeqCache.SetNumber(number)
 
 	log.Info("response", "err", err)
 	return err

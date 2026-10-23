@@ -6,9 +6,9 @@ import (
 	"github.com/33cn/chain33/common"
 	"github.com/33cn/chain33/types"
 
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 // GetTransactionRecord get tx record
@@ -41,8 +41,8 @@ func ConvertTransaction(env *TxEnv) *transaction.Transaction {
 		Success:    receipt.Ty == types.ExecOk,
 		Index:      env.TxIndex,
 		Hash:       common.ToHex(tx.Hash()),
-		From:       util.AddressConvert(tx.From()),
-		To:         util.AddressConvert(tx.GetRealToAddr()),
+		From:       chaincfg.AddressConvert(tx.From()),
+		To:         chaincfg.AddressConvert(tx.GetRealToAddr()),
 		Amount:     amount,
 		Fee:        tx.Fee,
 		Execer:     string(tx.Execer),

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/33cn/externaldb/convert/proof/proofdb"
-	proofUtil "github.com/33cn/externaldb/util/proof"
+	proofUtil "github.com/33cn/externaldb/lib/util/proof"
 
 	dbcom "github.com/33cn/externaldb/convert/common"
 	"github.com/33cn/externaldb/convert/proof/api"

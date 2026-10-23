@@ -2,13 +2,13 @@ package transaction
 
 import (
 	"github.com/33cn/chain33/types"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 // InitDB init db
 func InitDB(cli schema.DBCreator) error {
-	return util.InitIndex(cli, TransactionX, TransactionX, TxRecordMapping)
+	return esmaint.InitIndex(cli, TransactionX, TransactionX, TxRecordMapping)
 }
 
 // GenAssets 交易资产列表

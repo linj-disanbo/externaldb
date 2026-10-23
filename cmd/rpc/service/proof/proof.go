@@ -16,8 +16,8 @@ import (
 	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/33cn/externaldb/convert/proof/proofdb"
 	"github.com/33cn/externaldb/convert/proof/service"
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 )
 
 var (

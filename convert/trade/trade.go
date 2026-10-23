@@ -5,10 +5,12 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/util"
 	pty "github.com/33cn/plugin/plugin/dapp/trade/types"
 	"github.com/pkg/errors"
 )
@@ -127,12 +129,12 @@ func (t *tradeConvert) InitDB(cli schema.DBCreator) error {
 		return err
 	}
 
-	err = util.InitIndex(cli, TradeDBX, TradeDBX, OrderMapping)
+	err = esmaint.InitIndex(cli, TradeDBX, TradeDBX, OrderMapping)
 	if err != nil {
 		return err
 	}
 
-	err = util.InitIndex(cli, TradeAssetDBX, TradeAssetDBX, AssetMapping)
+	err = esmaint.InitIndex(cli, TradeAssetDBX, TradeAssetDBX, AssetMapping)
 	if err != nil {
 		return err
 	}
@@ -150,7 +152,7 @@ func (t *tradeConvert) setupEnv(env *converter.TxEnv) {
 	receipt := env.Block.Receipts[env.TxIndex]
 	t.tx = tx
 	t.receipt = receipt
-	t.block = converter.SetupBlock(env, util.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
+	t.block = converter.SetupBlock(env, chaincfg.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
 
 	t.accountIDBty = account.Account{
 		AssetSymbol: t.symbol,

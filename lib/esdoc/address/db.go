@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 
 	l "github.com/33cn/chain33/common/log/log15"
-	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/escli"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	lru "github.com/hashicorp/golang-lru"
 )
 
@@ -58,7 +58,7 @@ func AddKeyPrefix(hash string) string {
 
 // InitESDB 创建db (插件满足接口 converter.ExecConvert)
 func InitESDB(cli schema.DBCreator) error {
-	return util.InitIndex(cli, TableName, TableName, Mapping)
+	return esmaint.InitIndex(cli, TableName, TableName, Mapping)
 }
 
 // NewEsDB new es DB

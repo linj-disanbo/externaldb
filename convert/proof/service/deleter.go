@@ -6,8 +6,8 @@ import (
 	"github.com/33cn/externaldb/convert/proof/api"
 	"github.com/33cn/externaldb/convert/proof/model"
 	"github.com/33cn/externaldb/convert/proof/proofdb"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 type deleter struct {
@@ -22,7 +22,7 @@ func newDeleter(env *converter.TxEnv, hash string, arg *api.DeleteProof) *delete
 
 func (d *deleter) del(p *model.Proof, ps []*model.Proof, op int, gen proofdb.IProofRecord) ([]schema.Record, error) {
 	tx := d.env.Block.Block.Txs[d.env.TxIndex]
-	from := util.AddressConvert(tx.From())
+	from := chaincfg.AddressConvert(tx.From())
 	hash := common.ToHex(tx.Hash())
 
 	var records []schema.Record

@@ -7,10 +7,10 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
 	"github.com/33cn/externaldb/convert/stat"
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/querypara"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	"github.com/pkg/errors"
 )
 
@@ -71,7 +71,7 @@ type blockStat struct {
 
 // InitDB init db
 func (s *blockStat) InitDB(cli schema.DBCreator) error {
-	err := util.InitIndex(cli, DBStatX, DBStatX, StatMapping)
+	err := esmaint.InitIndex(cli, DBStatX, DBStatX, StatMapping)
 	return err
 }
 

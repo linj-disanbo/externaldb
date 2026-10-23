@@ -29,13 +29,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/lib/chaincfg"
+	"github.com/33cn/externaldb/lib/escli"
 	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/lib/schema"
+	"github.com/33cn/externaldb/lib/util"
+	"github.com/33cn/externaldb/lib/util/accountrefresh"
 	"github.com/33cn/externaldb/lib/version"
-	"github.com/33cn/externaldb/util"
-	"github.com/33cn/externaldb/util/accountrefresh"
 )
 
 var log = l.New("module", "account_refresh")

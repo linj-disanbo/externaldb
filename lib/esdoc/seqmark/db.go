@@ -12,10 +12,10 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/querypara"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	"github.com/pkg/errors"
 )
 
@@ -61,7 +61,7 @@ func NewMarkerRecord(m *Marker) *MarkerRecord {
 
 // InitDB 建索引（mapping：seq 用 long 才能 sort/range）
 func InitDB(cli schema.DBCreator) error {
-	return util.InitIndex(cli, TableName, TableName, Mapping)
+	return esmaint.InitIndex(cli, TableName, TableName, Mapping)
 }
 
 // Save 追加 marker，用普通 bulk（**不** 逐次 refresh=wait_for）。

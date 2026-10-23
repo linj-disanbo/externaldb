@@ -27,13 +27,13 @@ import (
 	tml "github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/lib/chaincfg"
+	"github.com/33cn/externaldb/lib/escli"
 	"github.com/33cn/externaldb/lib/esdoc/seqmark"
 	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/lib/schema"
+	"github.com/33cn/externaldb/lib/util"
 	"github.com/33cn/externaldb/lib/version"
-	"github.com/33cn/externaldb/util"
 
 	// 注册所有 converter（同 cmd/convert/main.go）
 	_ "github.com/33cn/externaldb/convert/coins"
@@ -56,6 +56,7 @@ import (
 	_ "github.com/33cn/externaldb/convert/trade"
 	_ "github.com/33cn/externaldb/convert/unfreeze"
 	_ "github.com/33cn/externaldb/lib/esdoc/account"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 )
 
 var (
@@ -94,7 +95,7 @@ func main() {
 	if symbol == "" {
 		symbol = "bty"
 	}
-	util.InitChain33(title, symbol, *chainPath)
+	chaincfg.InitChain33(title, symbol, *chainPath)
 	util.SetupLog(cfg.Convert.GetAppName(), "debug")
 	// SetupLog 之后 log15 只写文件（logs/<appName>.log 与 .error.log），控制台不再有日志；
 	// 这里显式提示一次目录与 appName，并让后续启动期致命错误同时打 stderr（见 fatal）。
@@ -102,7 +103,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "pull_convert: 日志目录 %s（appName=%s，之后日志只写文件）\n",
 			abs, cfg.Convert.GetAppName())
 	}
-	util.InitMapSet(cfg.EsVersion, cfg.EsIndex)
+	esmaint.InitMapSet(cfg.EsVersion, cfg.EsIndex)
 	schema.SetVersion(cfg.EsVersion)
 
 	workDir := pwd()
@@ -224,7 +225,7 @@ func resolveCursor(src pipeline.SeqSource, esClient escli.ESClient, cfg *proto.C
 		return 0, 0, err
 	}
 	// 兼容切换：读旧 convert 的进度（doc id = [convert].appName），没有则 -1
-	oldSeq, err := util.LastSyncSeq(esClient, cfg.Convert.AppName)
+	oldSeq, err := esmaint.LastSyncSeq(esClient, cfg.Convert.AppName)
 	if err != nil {
 		log.Warn("读取旧 db05_last_seq 失败，忽略", "appName", cfg.Convert.AppName, "err", err)
 		oldSeq = -1

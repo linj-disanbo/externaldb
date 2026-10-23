@@ -8,8 +8,8 @@ import (
 
 	converter "github.com/33cn/externaldb/convert"
 	proofconfig "github.com/33cn/externaldb/convert/proof_config"
-	"github.com/33cn/externaldb/escli/querypara"
 	"github.com/33cn/externaldb/lib/chaincfg"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	"github.com/33cn/externaldb/lib/schema"
 
 	"github.com/33cn/chain33/common"
@@ -18,7 +18,7 @@ import (
 	dbcom "github.com/33cn/externaldb/convert/common"
 	"github.com/33cn/externaldb/convert/proof/api"
 	"github.com/33cn/externaldb/convert/proof/model"
-	proofUtil "github.com/33cn/externaldb/util/proof"
+	proofUtil "github.com/33cn/externaldb/lib/util/proof"
 	"github.com/stretchr/testify/assert"
 )
 

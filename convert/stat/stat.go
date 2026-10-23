@@ -3,7 +3,7 @@ package stat
 import (
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
-	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/escli"
 	"github.com/33cn/externaldb/lib/schema"
 )
 

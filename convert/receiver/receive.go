@@ -18,7 +18,7 @@ import (
 	rpcTypes "github.com/33cn/chain33/rpc/types"
 	"github.com/33cn/chain33/types"
 	"github.com/33cn/externaldb/lib/proto"
-	"github.com/33cn/externaldb/util/health"
+	"github.com/33cn/externaldb/lib/util/health"
 	"github.com/rs/cors"
 	"google.golang.org/grpc"
 )

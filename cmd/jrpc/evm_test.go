@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	"github.com/stretchr/testify/assert"
 )
 

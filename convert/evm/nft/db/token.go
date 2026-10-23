@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/33cn/externaldb/lib/chaincfg"
-	"github.com/33cn/externaldb/util"
 	"github.com/33cn/go-kit/convert"
 	pcom "github.com/33cn/plugin/plugin/dapp/evm/executor/vm/common"
 )
@@ -73,7 +72,7 @@ type EvmState struct {
 }
 
 func (e *EvmState) GetEvmState(m map[string]interface{}) {
-	e.ContractAddr = util.AddressConvert(convert.ToString(m["contract_addr"]))
+	e.ContractAddr = chaincfg.AddressConvert(convert.ToString(m["contract_addr"]))
 	e.TxHash = convert.ToString(m["evm_tx_hash"])
 	e.HeightIndex = convert.ToInt64(m["evm_height_index"])
 	e.Height = convert.ToInt64(m["evm_height"])

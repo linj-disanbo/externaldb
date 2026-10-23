@@ -8,11 +8,11 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/externaldb/cmd/rpc/middleware/protocol"
 	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
-	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/escli"
 	"github.com/33cn/externaldb/lib/esdoc/block"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/proto"
-	"github.com/33cn/externaldb/util"
-	"github.com/33cn/externaldb/util/health"
+	"github.com/33cn/externaldb/lib/util/health"
 	"github.com/gin-gonic/gin"
 )
 
@@ -75,7 +75,7 @@ func lastSeq(host, prefix, id string, version int32, username, password string) 
 		return -1
 	}
 
-	num, err := util.LastSyncSeq(client, id)
+	num, err := esmaint.LastSyncSeq(client, id)
 	if err != nil {
 		log.Error("lastSeq:LastSyncSeq ", "err", err)
 		return -1

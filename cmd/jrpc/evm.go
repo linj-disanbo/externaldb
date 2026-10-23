@@ -6,8 +6,8 @@ import (
 
 	converter "github.com/33cn/externaldb/convert"
 	"github.com/33cn/externaldb/convert/evm"
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	"github.com/33cn/externaldb/lib/esdoc/address"
 	"github.com/33cn/externaldb/lib/esdoc/contract"
 	"github.com/pkg/errors"

@@ -3,9 +3,9 @@ package rpcutils
 import (
 	"encoding/json"
 
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/querypara"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/querypara"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 )
 
 // DBRead DBRead
@@ -112,7 +112,7 @@ func (b *DBRead) List(db, table string, q *querypara.Query, decoder func(x *json
 	return r, nil
 }
 
-//LastConvertSeq 获取已经解析的最新seq值
+// LastConvertSeq 获取已经解析的最新seq值
 func (b *DBRead) LastConvertSeq() int64 {
 
 	client, err := escli.NewESShortConnect(b.Host, b.Prefix, b.Version, b.Username, b.Password)
@@ -120,7 +120,7 @@ func (b *DBRead) LastConvertSeq() int64 {
 		return -1
 	}
 
-	num, err := util.LastSyncSeq(client, b.ID)
+	num, err := esmaint.LastSyncSeq(client, b.ID)
 	if err != nil {
 		return -1
 	}

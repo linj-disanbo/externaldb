@@ -6,8 +6,8 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	converter "github.com/33cn/externaldb/convert"
 	"github.com/33cn/externaldb/convert/evm"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	"github.com/33cn/go-kit/convert"
 )
 
@@ -36,9 +36,9 @@ func TransferSingle(c *evm.Convert, op int, data evm.EVM) ([]schema.Record, erro
 	trans := &evm.Transfer{}
 	trans.TokenID = convert.ToString(event["id"])
 	trans.Amount = convert.ToInt64(event["value"])
-	trans.To = util.AddressConvert(convert.ToString(event["to"]))
-	trans.From = util.AddressConvert(convert.ToString(event["from"]))
-	trans.Operator = util.AddressConvert(convert.ToString(event["operator"]))
+	trans.To = chaincfg.AddressConvert(convert.ToString(event["to"]))
+	trans.From = chaincfg.AddressConvert(convert.ToString(event["from"]))
+	trans.Operator = chaincfg.AddressConvert(convert.ToString(event["operator"]))
 	trans.TokenType = convert.ToString(ERC1155)
 	trans.LoadBlockData(data)
 
@@ -102,7 +102,7 @@ func getFromToken(c *evm.Convert, trans *evm.Transfer, dbTokens ...*evm.Token) (
 			err = converter.ErrDBNotFound
 		}
 	} else {
-		oldT, err = c.EvmTokenDb.GetToken(trans.ContractAddr, util.AddressConvert(trans.From), trans.TokenID)
+		oldT, err = c.EvmTokenDb.GetToken(trans.ContractAddr, chaincfg.AddressConvert(trans.From), trans.TokenID)
 	}
 	return oldT, err
 }
@@ -116,7 +116,7 @@ func getToToken(c *evm.Convert, trans *evm.Transfer, dbTokens ...*evm.Token) (*e
 			err = converter.ErrDBNotFound
 		}
 	} else {
-		newT, err = c.EvmTokenDb.GetToken(trans.ContractAddr, util.AddressConvert(trans.From), trans.TokenID)
+		newT, err = c.EvmTokenDb.GetToken(trans.ContractAddr, chaincfg.AddressConvert(trans.From), trans.TokenID)
 	}
 	return newT, err
 }
@@ -156,9 +156,9 @@ func TransferBatch(c *evm.Convert, op int, data evm.EVM) ([]schema.Record, error
 				trans := &evm.Transfer{}
 				trans.TokenID = idsStr[i]
 				trans.Amount = convert.ToInt64(vals[i])
-				trans.To = util.AddressConvert(to)
-				trans.From = util.AddressConvert(from)
-				trans.Operator = util.AddressConvert(operator)
+				trans.To = chaincfg.AddressConvert(to)
+				trans.From = chaincfg.AddressConvert(from)
+				trans.Operator = chaincfg.AddressConvert(operator)
 				trans.TokenType = convert.ToString(ERC1155)
 
 				trans.LoadBlockData(data)

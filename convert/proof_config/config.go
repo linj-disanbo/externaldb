@@ -7,9 +7,10 @@ import (
 	"github.com/33cn/chain33/common"
 	l "github.com/33cn/chain33/common/log/log15"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 var log = l.New("module", "db.proof_config")
@@ -31,16 +32,16 @@ func (c *Convert) setDB(db converter.WrapDB) error {
 
 // InitDB 创建db
 func (c *Convert) initDB(cli schema.DBCreator) error {
-	err := util.InitIndex(cli, OrgDBX, OrgTableX, OrgMapping)
+	err := esmaint.InitIndex(cli, OrgDBX, OrgTableX, OrgMapping)
 	if err != nil {
 		return err
 	}
-	err = util.InitIndex(cli, DBX, TableX, MemberMapping)
+	err = esmaint.InitIndex(cli, DBX, TableX, MemberMapping)
 	if err != nil {
 		return err
 	}
 
-	return util.InitIndex(cli, DeleteDBX, DeleteTableX, DelMembleMapping)
+	return esmaint.InitIndex(cli, DeleteDBX, DeleteTableX, DelMembleMapping)
 }
 
 // errors
@@ -92,7 +93,7 @@ func (c *Convert) convertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 	myDB := NewConfigDB(c.db)
 
 	if OpenAccessControl {
-		from := util.AddressConvert(tx.From())
+		from := chaincfg.AddressConvert(tx.From())
 		m, err := myDB.GetMember(from)
 		if err != nil {
 			if err == converter.ErrDBNotFound {
@@ -112,7 +113,7 @@ func (c *Convert) convertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 	// 记录: role, org, tx
 	rs := make([]schema.Record, 0)
 	c.env = env
-	c.block = converter.SetupBlock(env, util.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
+	c.block = converter.SetupBlock(env, chaincfg.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
 
 	if cfg.Op == AddOpX {
 		rs2, err := c.AddMember(myDB, op, &cfg)
@@ -154,7 +155,7 @@ func (c *Convert) convertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 func (c *Convert) DelMember(myDB ConfigDB, blockOp int, cfg *payload) ([]schema.Record, error) {
 	rs := make([]schema.Record, 0)
 	tx := c.env.Block.Block.Txs[c.env.TxIndex]
-	block := converter.SetupBlock(c.env, util.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
+	block := converter.SetupBlock(c.env, chaincfg.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
 
 	if schema.SeqTypeDel == blockOp {
 		// r2 member
@@ -251,7 +252,7 @@ func (c *Convert) DelMember(myDB ConfigDB, blockOp int, cfg *payload) ([]schema.
 func (c *Convert) AddMember(myDB ConfigDB, blockOp int, cfg *payload) ([]schema.Record, error) {
 	rs := make([]schema.Record, 0)
 	tx := c.env.Block.Block.Txs[c.env.TxIndex]
-	from := util.AddressConvert(tx.From())
+	from := chaincfg.AddressConvert(tx.From())
 	block := converter.SetupBlock(c.env, from, common.ToHex(tx.Hash()))
 
 	if schema.SeqTypeDel == blockOp {
@@ -327,7 +328,7 @@ func (c *Convert) AddMember(myDB ConfigDB, blockOp int, cfg *payload) ([]schema.
 func (c *Convert) SetMember(myDB ConfigDB, blockOp int, cfg *payload) ([]schema.Record, error) {
 	rs := make([]schema.Record, 0)
 	tx := c.env.Block.Block.Txs[c.env.TxIndex]
-	from := util.AddressConvert(tx.From())
+	from := chaincfg.AddressConvert(tx.From())
 	block := converter.SetupBlock(c.env, from, common.ToHex(tx.Hash()))
 
 	// 回滚新增：执行删除
@@ -392,7 +393,7 @@ func (c *Convert) DelOrganizationMember(myDB ConfigDB, cfg *payload) (schema.Rec
 // 2. op = 2， 数量减一， 减一为0时改为删除操作
 func (c *Convert) processOrganization(myDB ConfigDB, op int, cfg *payload) (schema.Record, error) {
 	tx := c.env.Block.Block.Txs[c.env.TxIndex]
-	from := util.AddressConvert(tx.From())
+	from := chaincfg.AddressConvert(tx.From())
 	block := converter.SetupBlock(c.env, from, common.ToHex(tx.Hash()))
 
 	o2, err := myDB.GetOrganization(cfg.Organization)
@@ -435,7 +436,7 @@ func checkInput(cfg payload) error {
 
 func (c *Convert) delProof(env *converter.TxEnv, op int) ([]schema.Record, error) {
 	tx := env.Block.Block.Txs[env.TxIndex]
-	from := util.AddressConvert(tx.From())
+	from := chaincfg.AddressConvert(tx.From())
 	if !isManager(from) {
 		return nil, errors.New(ErrNoPrivilege)
 	}

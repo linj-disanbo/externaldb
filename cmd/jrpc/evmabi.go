@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/33cn/chain33/common"
-	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/escli"
 
 	"github.com/pkg/errors"
 )

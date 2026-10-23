@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/escli"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 )
 
 // 集成测试（需要真实 ES）：验证"普通 bulk 写入 + Refresh 后即可被 Max 读到"。
@@ -22,7 +22,7 @@ func TestRefreshVisibility(t *testing.T) {
 		t.Fatalf("连接 ES 失败: %v", err)
 	}
 	_, _ = cli.Delete(TableName)
-	if err := util.InitIndex(cli, TableName, TableName, Mapping); err != nil {
+	if err := esmaint.InitIndex(cli, TableName, TableName, Mapping); err != nil {
 		t.Fatalf("建索引失败: %v", err)
 	}
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/escli"
 	"github.com/33cn/externaldb/lib/esdoc/seqmark"
 	"github.com/33cn/externaldb/lib/schema"
 )

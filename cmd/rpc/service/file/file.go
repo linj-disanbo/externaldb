@@ -15,7 +15,7 @@ import (
 	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	converter "github.com/33cn/externaldb/convert"
 	fpdb "github.com/33cn/externaldb/convert/filepart/db"
-	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/escli"
 	"github.com/33cn/externaldb/lib/proto"
 	"github.com/gin-gonic/gin"
 )

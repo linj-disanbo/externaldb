@@ -5,10 +5,11 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	pty "github.com/33cn/plugin/plugin/dapp/unfreeze/types"
 	"github.com/pkg/errors"
 )
@@ -49,7 +50,7 @@ func (e *Convert) InitDB(cli schema.DBCreator) error {
 		return err
 	}
 
-	err = util.InitIndex(cli, UnfreezeTxDBX, UnfreezeTxTableX, TxRecordMapping)
+	err = esmaint.InitIndex(cli, UnfreezeTxDBX, UnfreezeTxTableX, TxRecordMapping)
 	if err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func (e *Convert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 	if err != nil {
 		return nil, errors.Wrap(err, "decode to unfreeze action")
 	}
-	block := converter.SetupBlock(env, util.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
+	block := converter.SetupBlock(env, chaincfg.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
 	receipt := e.env.Block.Receipts[e.env.TxIndex]
 	e.block = block
 	e.tx = tx

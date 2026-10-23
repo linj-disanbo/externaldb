@@ -6,10 +6,11 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	pty "github.com/33cn/plugin/plugin/dapp/evmxgo/types"
 )
 
@@ -50,7 +51,7 @@ func (e *Convert) InitDB(cli schema.DBCreator) error {
 		return err
 	}
 
-	err = util.InitIndex(cli, EvmxgoInfoDB, EvmxgoInfoDB, InfoRecordMapping)
+	err = esmaint.InitIndex(cli, EvmxgoInfoDB, EvmxgoInfoDB, InfoRecordMapping)
 	if err != nil {
 		return err
 	}
@@ -116,7 +117,7 @@ func (e *Convert) convertTransfer(action *pty.EvmxgoAction, op int) []schema.Rec
 	evmxgoTx := converter.ConvertTransaction(e.env)
 	options := TxOption{
 		Symbol: v.Cointoken,
-		To:     util.AddressConvert(v.To),
+		To:     chaincfg.AddressConvert(v.To),
 		Note:   string(v.Note),
 	}
 	evmxgoTx.Options = &options
@@ -162,7 +163,7 @@ func (e *Convert) convertTransferToExec(action *pty.EvmxgoAction, op int) []sche
 	evmxgoTx := converter.ConvertTransaction(e.env)
 	options := TxOption{
 		Symbol:   v.Cointoken,
-		To:       util.AddressConvert(v.To),
+		To:       chaincfg.AddressConvert(v.To),
 		ExecName: v.ExecName,
 		Note:     string(v.Note),
 	}
@@ -210,7 +211,7 @@ func (e *Convert) convertWithdraw(action *pty.EvmxgoAction, op int) []schema.Rec
 	evmxgoTx := converter.ConvertTransaction(e.env)
 	options := TxOption{
 		Symbol:   v.Cointoken,
-		To:       util.AddressConvert(v.To),
+		To:       chaincfg.AddressConvert(v.To),
 		ExecName: v.ExecName,
 		Note:     string(v.Note),
 	}

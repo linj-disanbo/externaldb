@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/33cn/externaldb/convert/multisig"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	"github.com/pkg/errors"
 )
 

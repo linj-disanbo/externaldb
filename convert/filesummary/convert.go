@@ -9,8 +9,8 @@ import (
 	converter "github.com/33cn/externaldb/convert"
 	fsdb "github.com/33cn/externaldb/convert/filesummary/db"
 	proofconfig "github.com/33cn/externaldb/convert/proof_config"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 var log = l.New("module", "db.file")
@@ -39,7 +39,7 @@ func (c *Convert) convertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 	records = append(records, converter.GetTransactionRecord(env, op))
 
 	// 签名地址是否有权限,没有直接返回
-	fromAddr := util.AddressConvert(tx.From())
+	fromAddr := chaincfg.AddressConvert(tx.From())
 	if !c.ConfigDB.IsHaveProofPermission(fromAddr) {
 		log.Error("IsHaveProofPermission", "err", errors.New("ErrNoPermission"))
 		return records, nil

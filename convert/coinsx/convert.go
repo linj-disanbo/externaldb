@@ -5,10 +5,12 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/util"
 	coinTy "github.com/33cn/plugin/plugin/dapp/coinsx/types"
 	"github.com/pkg/errors"
 )
@@ -53,7 +55,7 @@ func (t *coinsxConvert) InitDB(cli schema.DBCreator) error {
 		return err
 	}
 
-	return util.InitIndex(cli, CoinsxManagerDBX, CoinsxManagerTableX, CoinsxManagerMapping)
+	return esmaint.InitIndex(cli, CoinsxManagerDBX, CoinsxManagerTableX, CoinsxManagerMapping)
 }
 
 // Convert Convert
@@ -64,7 +66,7 @@ func (t *coinsxConvert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record
 	receipt := env.Block.Receipts[env.TxIndex]
 	t.tx = env.Block.Block.Txs[env.TxIndex]
 	t.receipt = receipt
-	t.block = converter.SetupBlock(env, util.AddressConvert(t.tx.From()), common.ToHex(t.tx.Hash()))
+	t.block = converter.SetupBlock(env, chaincfg.AddressConvert(t.tx.From()), common.ToHex(t.tx.Hash()))
 
 	var records []schema.Record
 

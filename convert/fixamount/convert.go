@@ -9,18 +9,19 @@ import (
 	converter "github.com/33cn/externaldb/convert"
 	"github.com/33cn/externaldb/convert/pos33"
 	proofconfig "github.com/33cn/externaldb/convert/proof_config"
-	"github.com/33cn/externaldb/escli"
 	"github.com/33cn/externaldb/lib/chaincfg"
+	"github.com/33cn/externaldb/lib/escli"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/address"
 	"github.com/33cn/externaldb/lib/esdoc/block"
 	"github.com/33cn/externaldb/lib/esdoc/contract"
 	"github.com/33cn/externaldb/lib/esdoc/contractverify"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/store"
-	"github.com/33cn/externaldb/store/syncseq"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/store"
+	"github.com/33cn/externaldb/lib/store/syncseq"
+	"github.com/33cn/externaldb/lib/util"
 )
 
 const (
@@ -114,14 +115,14 @@ func InitSeqStore(cfg *proto.ConfigNew) {
 
 func InitSeqNum(cfg *proto.ConfigNew, startSeqOverride, endSeqOverride int64) {
 	if startSeqOverride > 0 {
-		util.FirstOne = startSeqOverride
-		log.Info("InitSeqNum", "FirstOne overridden", util.FirstOne)
+		esmaint.FirstOne = startSeqOverride
+		log.Info("InitSeqNum", "FirstOne overridden", esmaint.FirstOne)
 	}
 	if endSeqOverride > 0 {
-		util.LastOne = endSeqOverride
-		log.Info("InitSeqNum", "LastOne overridden", util.LastOne)
+		esmaint.LastOne = endSeqOverride
+		log.Info("InitSeqNum", "LastOne overridden", esmaint.LastOne)
 	}
-	err := util.InitLastSyncSeqCacheFixTool(EsWrite, "convertfix", cfg.Sync.StartSeq)
+	err := esmaint.InitLastSyncSeqCacheFixTool(EsWrite, "convertfix", cfg.Sync.StartSeq)
 	if err != nil {
 		log.Error("初始化 区块解析进度参数 last_seq 失败，请确保ES服务正常且 配置文件参数sync.startSeq 参数大于或等于0")
 		panic(err)
@@ -130,7 +131,7 @@ func InitSeqNum(cfg *proto.ConfigNew, startSeqOverride, endSeqOverride int64) {
 
 // create index for last seq, used by all module
 func initIndex(cli schema.DBCreator) error {
-	return util.InitIndex(cli, schema.LastSeqDB, schema.LastSeqDB, schema.SeqMapping)
+	return esmaint.InitIndex(cli, schema.LastSeqDB, schema.LastSeqDB, schema.SeqMapping)
 }
 
 type App struct {

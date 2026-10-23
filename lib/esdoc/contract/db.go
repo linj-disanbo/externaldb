@@ -8,9 +8,10 @@ import (
 
 	"github.com/33cn/chain33/common/crypto"
 	l "github.com/33cn/chain33/common/log/log15"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/contractverify"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	"github.com/33cn/go-kit/convert"
 	pabi "github.com/33cn/plugin/plugin/dapp/evm/executor/abi"
 	lru "github.com/hashicorp/golang-lru"
@@ -56,7 +57,7 @@ type Contract struct {
 
 func NewContractByMap(data map[string]interface{}) *Contract {
 	var c Contract
-	c.Address = util.AddressConvert(convert.ToString(data["contract_addr"]))
+	c.Address = chaincfg.AddressConvert(convert.ToString(data["contract_addr"]))
 	c.Creator = convert.ToString(data["contract_creator"])
 	c.DeployBlockHash = convert.ToString(data["evm_block_hash"])
 	c.DeployBlockTime = convert.ToInt64(data["evm_block_time"])
@@ -120,7 +121,7 @@ func AddKeyPrefix(hash string) string {
 
 // InitESDB 创建db (插件满足接口 converter.ExecConvert)
 func InitESDB(cli schema.DBCreator) error {
-	return util.InitIndex(cli, TableName, TableName, Mapping)
+	return esmaint.InitIndex(cli, TableName, TableName, Mapping)
 }
 
 // NewEsDB new es DB

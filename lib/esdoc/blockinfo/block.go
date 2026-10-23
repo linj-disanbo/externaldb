@@ -2,13 +2,13 @@ package blockinfo
 
 import (
 	"github.com/33cn/chain33/types"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 // InitDB init db
 func InitDB(cli schema.DBCreator) error {
-	err := util.InitIndex(cli, TableName, TableName, Mapping)
+	err := esmaint.InitIndex(cli, TableName, TableName, Mapping)
 	return err
 }
 

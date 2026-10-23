@@ -16,12 +16,13 @@ import (
 	tml "github.com/BurntSushi/toml"
 
 	receiver "github.com/33cn/externaldb/convert/receiver"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/lib/schema"
+	"github.com/33cn/externaldb/lib/store"
+	"github.com/33cn/externaldb/lib/store/syncseq"
+	"github.com/33cn/externaldb/lib/util"
 	"github.com/33cn/externaldb/lib/version"
-	"github.com/33cn/externaldb/store"
-	"github.com/33cn/externaldb/store/syncseq"
-	"github.com/33cn/externaldb/util"
 )
 
 var (
@@ -40,7 +41,7 @@ func main() {
 	cfg := InitCfgNew(*configPath)
 
 	util.SetupLog(cfg.Sync.GetName(), "debug")
-	util.InitMapSet(cfg.EsVersion, cfg.EsIndex)
+	esmaint.InitMapSet(cfg.EsVersion, cfg.EsIndex)
 	log.Info("init config", "config", cfg)
 	log.Info("load config", "cfgPath", *configPath, "h1", cfg.Chain.Host, "h2", cfg.SyncEs.Host, "me", cfg.Sync.PushHost, "me-bind", cfg.Sync.PushBind)
 	schema.SetVersion(cfg.EsVersion)

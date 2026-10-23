@@ -5,10 +5,12 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/util"
 	pty "github.com/33cn/plugin/plugin/dapp/multisig/types"
 	"github.com/pkg/errors"
 )
@@ -70,15 +72,15 @@ func NewConvert(title, symbol string, supports []string) converter.ExecConvert {
 // InitDB 下阶段再处理配置存储(ES/MySQL/...)的问题
 // TODO 定义mapping
 func (t *msConvert) InitDB(cli schema.DBCreator) error {
-	err := util.InitIndex(cli, MSDBX, MSDBX, msMapping)
+	err := esmaint.InitIndex(cli, MSDBX, MSDBX, msMapping)
 	if err != nil {
 		return err
 	}
-	err = util.InitIndex(cli, MSListDBX, MSListDBX, listMapping)
+	err = esmaint.InitIndex(cli, MSListDBX, MSListDBX, listMapping)
 	if err != nil {
 		return err
 	}
-	return util.InitIndex(cli, MSTxDBX, MSTxDBX, txMapping)
+	return esmaint.InitIndex(cli, MSTxDBX, MSTxDBX, txMapping)
 }
 
 func (t *msConvert) InitConvert() {
@@ -95,7 +97,7 @@ func (t *msConvert) setupEnv(env *converter.TxEnv) {
 	receipt := env.Block.Receipts[env.TxIndex]
 	t.tx = tx
 	t.receipt = receipt
-	t.block = converter.SetupBlock(env, util.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
+	t.block = converter.SetupBlock(env, chaincfg.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
 
 	t.accountIDBty = account.Account{
 		AssetSymbol: t.symbol,
@@ -297,8 +299,8 @@ func makeTransferOp(action *pty.MultiSigExecTransferFrom) TxTransferOperate {
 		Amount:   action.Amount,
 		Note:     action.Note,
 		Execname: action.Execname,
-		To:       util.AddressConvert(action.To),
-		From:     util.AddressConvert(action.From),
+		To:       chaincfg.AddressConvert(action.To),
+		From:     chaincfg.AddressConvert(action.From),
 	}
 }
 

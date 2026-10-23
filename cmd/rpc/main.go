@@ -27,8 +27,8 @@ import (
 	rpcutils "github.com/33cn/externaldb/cmd/rpc/utils"
 	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/lib/schema"
+	"github.com/33cn/externaldb/lib/util"
 	"github.com/33cn/externaldb/lib/version"
-	"github.com/33cn/externaldb/util"
 	cors "github.com/rs/cors/wrapper/gin"
 )
 

@@ -6,10 +6,11 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	pty "github.com/33cn/plugin/plugin/dapp/token/types"
 )
 
@@ -50,7 +51,7 @@ func (e *Convert) InitDB(cli schema.DBCreator) error {
 		return err
 	}
 
-	err = util.InitIndex(cli, TokenInfoDB, TokenInfoDB, InfoRecordMapping)
+	err = esmaint.InitIndex(cli, TokenInfoDB, TokenInfoDB, InfoRecordMapping)
 	if err != nil {
 		return err
 	}
@@ -127,7 +128,7 @@ func (e *Convert) convertPreCreate(action *pty.TokenAction, op int) []schema.Rec
 		Symbol:        v.Symbol,
 		Amount:        v.Total,
 		Owner:         v.Owner,
-		Creator:       util.AddressConvert(e.env.Block.Block.Txs[e.env.TxIndex].From()),
+		Creator:       chaincfg.AddressConvert(e.env.Block.Block.Txs[e.env.TxIndex].From()),
 		Introduction:  v.Introduction,
 		Price:         v.Price,
 		Category:      int64(v.Category),
@@ -326,7 +327,7 @@ func (e *Convert) convertTransfer(action *pty.TokenAction, op int) []schema.Reco
 	tokenTx := converter.ConvertTransaction(e.env)
 	options := TxOption{
 		Symbol: v.Cointoken,
-		To:     util.AddressConvert(v.To),
+		To:     chaincfg.AddressConvert(v.To),
 		Note:   string(v.Note),
 	}
 	tokenTx.Options = &options
@@ -372,7 +373,7 @@ func (e *Convert) convertTransferToExec(action *pty.TokenAction, op int) []schem
 	tokenTx := converter.ConvertTransaction(e.env)
 	options := TxOption{
 		Symbol:   v.Cointoken,
-		To:       util.AddressConvert(v.To),
+		To:       chaincfg.AddressConvert(v.To),
 		ExecName: v.ExecName,
 		Note:     string(v.Note),
 	}
@@ -420,7 +421,7 @@ func (e *Convert) convertWithdraw(action *pty.TokenAction, op int) []schema.Reco
 	tokenTx := converter.ConvertTransaction(e.env)
 	options := TxOption{
 		Symbol:   v.Cointoken,
-		To:       util.AddressConvert(v.To),
+		To:       chaincfg.AddressConvert(v.To),
 		ExecName: v.ExecName,
 		Note:     string(v.Note),
 	}

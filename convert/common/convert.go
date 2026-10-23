@@ -6,7 +6,7 @@ import (
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/util"
 )
 
 // consts

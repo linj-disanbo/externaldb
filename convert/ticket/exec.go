@@ -8,10 +8,11 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	pty "github.com/33cn/plugin/plugin/dapp/ticket/types"
 	"github.com/pkg/errors"
 )
@@ -100,12 +101,12 @@ func (t *ticketConvert) InitDB(cli schema.DBCreator) error {
 		return err
 	}
 
-	err = util.InitIndex(cli, TicketDBX, TicketTableX, TicketMapping)
+	err = esmaint.InitIndex(cli, TicketDBX, TicketTableX, TicketMapping)
 	if err != nil {
 		return err
 	}
 
-	err = util.InitIndex(cli, TicketBindDBX, TicketBindTableX, BindMapping)
+	err = esmaint.InitIndex(cli, TicketBindDBX, TicketBindTableX, BindMapping)
 	if err != nil {
 		return err
 	}
@@ -138,7 +139,7 @@ func (t *ticketConvert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record
 	receipt := env.Block.Receipts[env.TxIndex]
 	t.tx = tx
 	t.receipt = receipt
-	t.block = converter.SetupBlock(env, util.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
+	t.block = converter.SetupBlock(env, chaincfg.AddressConvert(tx.From()), common.ToHex(tx.Hash()))
 
 	t.accountIDBty = account.Account{
 		AssetSymbol: t.symbol,

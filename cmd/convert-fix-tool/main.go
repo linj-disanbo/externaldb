@@ -35,13 +35,15 @@ import (
 	_ "github.com/33cn/externaldb/convert/unfreeze"
 	_ "github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/proto"
+	"github.com/33cn/externaldb/lib/util"
 	"github.com/33cn/externaldb/lib/version"
-	"github.com/33cn/externaldb/util"
 	tml "github.com/BurntSushi/toml"
 
 	_ "github.com/33cn/externaldb/convert/stat/block"
 
 	_ "github.com/33cn/chain33/system"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	_ "github.com/33cn/plugin/plugin/dapp/init"
 	_ "github.com/33cn/plugin/plugin/store/init"
 )
@@ -77,9 +79,9 @@ func main() {
 	if symbol == "" {
 		symbol = "bty"
 	}
-	util.InitChain33(title, symbol, *chainPath)
+	chaincfg.InitChain33(title, symbol, *chainPath)
 	util.SetupLog("convertfix", "debug")
-	util.InitMapSet(cfg.EsVersion, cfg.EsIndex)
+	esmaint.InitMapSet(cfg.EsVersion, cfg.EsIndex)
 
 	log.Info("init config", "config", cfg)
 	log.Info("load config", "cfgPath", *configPath, "read_es", cfg.SyncEs.Host, "write_es", cfg.ConvertEs.Host)

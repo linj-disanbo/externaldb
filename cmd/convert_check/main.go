@@ -17,13 +17,13 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	tml "github.com/BurntSushi/toml"
 
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	"github.com/33cn/externaldb/lib/esdoc/blockinfo"
 	"github.com/33cn/externaldb/lib/esdoc/seqmark"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 var (
@@ -106,7 +106,7 @@ func check(client escli.ESClient, cfg *proto.ConfigNew, from, to int64, page, pr
 	}
 
 	// 旧 convert 的进度（切换后应停止增长）
-	oldSeq, err := util.LastSyncSeq(client, cfg.Convert.AppName)
+	oldSeq, err := esmaint.LastSyncSeq(client, cfg.Convert.AppName)
 	if err != nil {
 		log.Warn("读取旧 db05_last_seq 失败", "appName", cfg.Convert.AppName, "err", err)
 	}

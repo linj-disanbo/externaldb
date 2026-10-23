@@ -7,14 +7,13 @@ import (
 	"testing"
 
 	converter "github.com/33cn/externaldb/convert"
-	"github.com/33cn/externaldb/escli/querypara"
 	"github.com/33cn/externaldb/lib/chaincfg"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	"github.com/33cn/externaldb/lib/schema"
 
 	"github.com/33cn/chain33/common"
 	"github.com/33cn/chain33/types"
 	"github.com/33cn/chain33/util"
-	util2 "github.com/33cn/externaldb/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -396,7 +395,7 @@ func createTx(exec string, payload []byte, privkey string) *types.Transaction {
 	tx.Execer = []byte(exec)
 	tx.Nonce = rand.Int63() // nolint
 	tx.Fee = 100000000
-	tx.To = util2.AddressConvert(chaincfg.ExecAddress(string(tx.Execer)))
+	tx.To = chaincfg.AddressConvert(chaincfg.ExecAddress(string(tx.Execer)))
 
 	priv := util.HexToPrivkey(privkey)
 	tx.Sign(types.SECP256K1, priv)

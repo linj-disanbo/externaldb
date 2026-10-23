@@ -8,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	pty "github.com/33cn/plugin/plugin/dapp/multisig/types"
 )
 
@@ -264,7 +264,7 @@ func (t *msConvert) TyLogMultiSigAccCreate(v []byte, op int) ([]schema.Record, e
 
 	var records []schema.Record
 	ms := &MS{
-		CreateAddr:     util.AddressConvert(t.tx.From()),
+		CreateAddr:     chaincfg.AddressConvert(t.tx.From()),
 		MultiSigAddr:   l.MultiSigAddr,
 		TxCount:        l.TxCount,
 		RequiredWeight: l.RequiredWeight,

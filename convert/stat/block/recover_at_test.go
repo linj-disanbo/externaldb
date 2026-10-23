@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/33cn/externaldb/escli"
+	"github.com/33cn/externaldb/lib/escli"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 // 集成测试（需要真实 ES）：验证 RecoverAt 按高度取恢复点，而不是取全局最新。
@@ -26,7 +26,7 @@ func TestRecoverAtIntegration(t *testing.T) {
 		t.Logf("delete index: %v", err)
 	}
 	s := &blockStat{title: "test", coin: coin}
-	if err := util.InitIndex(cli, DBStatX, DBStatX, StatMapping); err != nil {
+	if err := esmaint.InitIndex(cli, DBStatX, DBStatX, StatMapping); err != nil {
 		t.Fatalf("建索引失败: %v", err)
 	}
 	// 写入 height=1..5 的累计记录（tx_count = height）

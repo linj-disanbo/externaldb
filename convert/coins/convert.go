@@ -6,10 +6,11 @@ import (
 	pty "github.com/33cn/chain33/system/dapp/coins/types"
 	"github.com/33cn/chain33/types"
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/util"
 )
 
 type coinsConvert struct {
@@ -62,7 +63,7 @@ func (t *coinsConvert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record,
 	receipt := env.Block.Receipts[env.TxIndex]
 	t.tx = env.Block.Block.Txs[env.TxIndex]
 	t.receipt = receipt
-	t.block = converter.SetupBlock(env, util.AddressConvert(t.tx.From()), common.ToHex(t.tx.Hash()))
+	t.block = converter.SetupBlock(env, chaincfg.AddressConvert(t.tx.From()), common.ToHex(t.tx.Hash()))
 
 	var records []schema.Record
 

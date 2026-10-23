@@ -4,14 +4,15 @@ import (
 	"testing"
 
 	converter "github.com/33cn/externaldb/convert"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/util"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
-	util.InitChain33("local", "bty", "")
+	chaincfg.InitChain33("local", "bty", "")
 }
 
 func TestConvert_ConvertTx(t *testing.T) {

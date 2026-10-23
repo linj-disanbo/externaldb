@@ -7,10 +7,11 @@ import (
 	"github.com/33cn/chain33/common"
 	"github.com/33cn/chain33/types"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/util"
 	"github.com/stretchr/testify/assert"
 
 	_ "github.com/33cn/chain33/system"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	_ "github.com/33cn/plugin/plugin/dapp/init"
 	_ "github.com/33cn/plugin/plugin/store/init"
 )
@@ -54,7 +55,7 @@ func Test_None(t *testing.T) {
 	tx = ConvertTransaction(env)
 	assert.False(t, tx.Success)
 
-	util.InitChain33("user.p.sto.", "bty", "")
+	chaincfg.InitChain33("user.p.sto.", "bty", "")
 	coinTranfer := "0x0a0e757365722e702e612e636f696e73123418010a301080988be499031a03626262222231336e69787a5a4e53424168507a4b636d574d336e6b59316d4b5157684c4b69446420a08d0630a2b6c8d8fef6e1d82c3a2231486a686837665538566e444a615a31624a696947386f7268476d4c504532647a50"
 	bs, err := common.FromHex(coinTranfer)
 	assert.Nil(t, err)

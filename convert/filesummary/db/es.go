@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	converter "github.com/33cn/externaldb/convert"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 const (
@@ -20,7 +20,7 @@ func AddKeyPrefix(hash string) string {
 
 // InitESDB 创建db (插件满足接口 converter.ExecConvert)
 func InitESDB(cli schema.DBCreator) error {
-	return util.InitIndex(cli, TableName, TableName, FileSummaryMapping)
+	return esmaint.InitIndex(cli, TableName, TableName, FileSummaryMapping)
 }
 
 // EsDB elasticsearch

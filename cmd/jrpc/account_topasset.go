@@ -8,9 +8,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/aggdecode"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/aggdecode"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 )
 

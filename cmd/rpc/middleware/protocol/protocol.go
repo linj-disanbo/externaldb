@@ -3,7 +3,7 @@ package protocol
 import (
 	"encoding/json"
 
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 
 	"net/http"
 
@@ -86,7 +86,7 @@ func SetError(c *gin.Context, code int, err error) {
 	}
 }
 
-//ParserESclient  解析es的query结构体
+// ParserESclient  解析es的query结构体
 func ParserESclient(c *gin.Context) (*querypara.Query, error) {
 	var q querypara.Query
 	req, err := GetRequest(c)

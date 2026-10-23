@@ -8,8 +8,8 @@ import (
 	converter "github.com/33cn/externaldb/convert"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 	pty "github.com/33cn/plugin/plugin/dapp/exchange/types"
 )
 
@@ -52,7 +52,7 @@ func (e *Convert) InitDB(cli schema.DBCreator) error {
 		return err
 	}
 
-	err = util.InitIndex(cli, ExchangeInfoDB, ExchangeInfoDB, InfoRecordMapping)
+	err = esmaint.InitIndex(cli, ExchangeInfoDB, ExchangeInfoDB, InfoRecordMapping)
 	if err != nil {
 		return err
 	}

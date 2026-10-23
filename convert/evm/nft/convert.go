@@ -7,8 +7,8 @@ import (
 	l "github.com/33cn/chain33/common/log/log15"
 	"github.com/33cn/externaldb/convert/evm"
 	ndb "github.com/33cn/externaldb/convert/evm/nft/db"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 var (
@@ -25,15 +25,15 @@ func init() {
 }
 
 func initDB(cli schema.DBCreator) error {
-	err := util.InitIndex(cli, ndb.TokenX, ndb.TokenX, ndb.TokenMapping)
+	err := esmaint.InitIndex(cli, ndb.TokenX, ndb.TokenX, ndb.TokenMapping)
 	if err != nil {
 		return err
 	}
-	err = util.InitIndex(cli, ndb.TransferX, ndb.TransferX, ndb.TransferMapping)
+	err = esmaint.InitIndex(cli, ndb.TransferX, ndb.TransferX, ndb.TransferMapping)
 	if err != nil {
 		return err
 	}
-	err = util.InitIndex(cli, ndb.AccountX, ndb.AccountX, ndb.AccountMapping)
+	err = esmaint.InitIndex(cli, ndb.AccountX, ndb.AccountX, ndb.AccountMapping)
 	if err != nil {
 		return err
 	}

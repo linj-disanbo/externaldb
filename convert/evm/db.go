@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	converter "github.com/33cn/externaldb/convert"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	schema "github.com/33cn/externaldb/lib/schema"
 	lru "github.com/hashicorp/golang-lru"
 )

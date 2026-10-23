@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	"github.com/33cn/externaldb/lib/esdoc/blockinfo"
 	"github.com/pkg/errors"
 )

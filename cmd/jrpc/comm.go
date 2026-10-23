@@ -3,10 +3,10 @@ package main
 import (
 	"strings"
 
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 	"github.com/33cn/externaldb/lib/esdoc/block"
-	"github.com/33cn/externaldb/util"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 )
 
 // Comm Comm
@@ -38,7 +38,7 @@ func GetLastSeq(host, prefix, id string, version int32, user, pwd string) int64 
 		return -1
 	}
 
-	num, err := util.LastSyncSeq(cli, id)
+	num, err := esmaint.LastSyncSeq(cli, id)
 	if err != nil {
 		log.Error("lastSeq:LastSyncSeq", "err", err)
 		return -1

@@ -7,7 +7,7 @@ import (
 
 	"github.com/33cn/chain33/types"
 
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 )
 
 // TxEnv 转换上下文：一条交易在区块中的位置

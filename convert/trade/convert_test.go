@@ -5,7 +5,7 @@ import (
 
 	converter "github.com/33cn/externaldb/convert"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/util"
 	"github.com/stretchr/testify/assert"
 )
 

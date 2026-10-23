@@ -1,28 +1,28 @@
 package dao
 
 import (
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 // InitDB init db
 func InitDB(cli schema.DBCreator, ProofDBX, ProofTableX, LogDBX, LogTableX, TemplateDBX, TemplateTableX, ProofUpdateDBX, ProofUpdateTableX string) error {
-	err := util.InitIndex(cli, ProofDBX, ProofTableX, ProofMapping)
+	err := esmaint.InitIndex(cli, ProofDBX, ProofTableX, ProofMapping)
 	if err != nil {
 		return err
 	}
 	//TODO template mapping
-	err = util.InitIndex(cli, TemplateDBX, TemplateTableX, ProofTemplateMapping)
+	err = esmaint.InitIndex(cli, TemplateDBX, TemplateTableX, ProofTemplateMapping)
 	if err != nil {
 		return err
 	}
 
-	err = util.InitIndex(cli, ProofUpdateDBX, ProofUpdateTableX, ProofMapping)
+	err = esmaint.InitIndex(cli, ProofUpdateDBX, ProofUpdateTableX, ProofMapping)
 	if err != nil {
 		return err
 	}
 
-	return util.InitIndex(cli, LogDBX, LogTableX, ProofLogMapping)
+	return esmaint.InitIndex(cli, LogDBX, LogTableX, ProofLogMapping)
 }
 
 // ProofMapping es proof

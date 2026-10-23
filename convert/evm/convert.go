@@ -23,8 +23,8 @@ import (
 	dbcom "github.com/33cn/externaldb/convert/common"
 	proofconfig "github.com/33cn/externaldb/convert/proof_config"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/proto"
-	"github.com/33cn/externaldb/util"
 )
 
 var log = l.New("module", "db.evm")
@@ -66,15 +66,15 @@ func (c *Convert) InitDB(cli schema.DBCreator) error {
 	if err != nil {
 		return err
 	}
-	err = util.InitIndex(cli, EVMX, EVMX, EVMMapping)
+	err = esmaint.InitIndex(cli, EVMX, EVMX, EVMMapping)
 	if err != nil {
 		return err
 	}
-	err = util.InitIndex(cli, EVMTokenX, EVMTokenX, TokenMapping)
+	err = esmaint.InitIndex(cli, EVMTokenX, EVMTokenX, TokenMapping)
 	if err != nil {
 		return err
 	}
-	err = util.InitIndex(cli, EVMTransferX, EVMTransferX, EVMTransferMapping)
+	err = esmaint.InitIndex(cli, EVMTransferX, EVMTransferX, EVMTransferMapping)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (c *Convert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 	trans.Amount = int64(payload.Amount)
 	txOption.ContractAddr = payload.ContractAddr
 
-	fromAddr := util.AddressConvert(tx.From())
+	fromAddr := chaincfg.AddressConvert(tx.From())
 	// 签名地址是否有权限,没有直接返回
 	isProof := false
 	if isProof {
@@ -156,7 +156,7 @@ func (c *Convert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 		log.Warn("parseNote", "err", err)
 	}
 	eventLogs := c.parseLog(mapinfo)
-	mapinfo["to_addr"] = util.AddressConvert(tx.To)
+	mapinfo["to_addr"] = chaincfg.AddressConvert(tx.To)
 	mapinfo["from_addr"] = fromAddr
 	mapinfo["evm_tx_hash"] = common.ToHex(tx.Hash())
 	mapinfo["evm_height_index"] = converter.HeightIndex(height, env.TxIndex)
@@ -296,7 +296,7 @@ func (c *Convert) parseLog(mapinfo map[string]interface{}) []*types.EVMLog {
 				log.Error("parseLog: Decode EVMContractData", "err", err)
 				continue
 			}
-			mapinfo["contract_addr"] = util.AddressConvert(cd.Addr)
+			mapinfo["contract_addr"] = chaincfg.AddressConvert(cd.Addr)
 			mapinfo["contract_name"] = cd.Name
 			mapinfo["contract_creator"] = cd.Creator
 		case evmtypes.TyLogCallContract:
@@ -305,7 +305,7 @@ func (c *Convert) parseLog(mapinfo map[string]interface{}) []*types.EVMLog {
 				log.Error("parseLog: Decode ReceiptEVMContract", "err", err)
 				continue
 			}
-			mapinfo["contract_addr"] = util.AddressConvert(ec.ContractAddr)
+			mapinfo["contract_addr"] = chaincfg.AddressConvert(ec.ContractAddr)
 			mapinfo["contract_used_gas"] = ec.UsedGas
 		case evmtypes.TyLogEVMEventData:
 			var el types.EVMLog
@@ -406,7 +406,7 @@ func parseNote(mapinfo map[string]interface{}, payload string, addr string) (map
 		mapinfo["contract_abi"] = abi
 	} else {
 		mapinfo["call_func_name"] = mapNote["call_func_name"]
-		mapinfo["contract_addr"] = util.AddressConvert(addr)
+		mapinfo["contract_addr"] = chaincfg.AddressConvert(addr)
 	}
 
 	return mapinfo, nil

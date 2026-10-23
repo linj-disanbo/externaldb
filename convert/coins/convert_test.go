@@ -5,16 +5,17 @@ import (
 	"testing"
 
 	"github.com/33cn/externaldb/convert/coins"
+	chaincfg "github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/account"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
+	"github.com/33cn/externaldb/lib/util"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
 	// 用内嵌的 v1.72 完整配置（DisableForkCheck），不依赖 testdata/chain33.toml
-	util.InitChain33("local", "bty", "")
+	chaincfg.InitChain33("local", "bty", "")
 }
 
 // 期望的一条 account 快照（account 与 account_record 两条记录共用）

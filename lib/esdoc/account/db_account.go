@@ -7,7 +7,6 @@ import (
 
 	"github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 // TODO 更新时， 开block-height 和 tx-index的逻辑
@@ -110,7 +109,7 @@ func NewAccountRecordKey(id string) *schema.IKey {
 
 // Key for index id
 func (acc *Account) Key() string {
-	acc.Address = util.AddressConvert(acc.Address)
+	acc.Address = chaincfg.AddressConvert(acc.Address)
 	if acc.Exec == "" {
 		return fmt.Sprintf("%s-%s-%s:%s", acc.Address, acc.AssetExec, acc.AssetExec, acc.AssetSymbol)
 	}
@@ -119,7 +118,7 @@ func (acc *Account) Key() string {
 
 // RecordKey for index id
 func (acc *Account) RecordKey() string {
-	acc.Address = util.AddressConvert(acc.Address)
+	acc.Address = chaincfg.AddressConvert(acc.Address)
 	if acc.Exec == "" {
 		return fmt.Sprintf("%s-%s-%s-%d:%s", acc.Address, acc.AssetExec, acc.AssetExec, acc.Height, acc.AssetSymbol)
 	}

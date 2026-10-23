@@ -5,10 +5,10 @@ import (
 	"time"
 
 	converter "github.com/33cn/externaldb/convert"
-	"github.com/33cn/externaldb/escli"
-	"github.com/33cn/externaldb/escli/querypara"
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/querypara"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 const (
@@ -33,7 +33,7 @@ func InitESDB(cli schema.DBCreator) error {
 			}
 		}
 	}()
-	return util.InitIndex(cli, TableName, TableName, FilePartMapping)
+	return esmaint.InitIndex(cli, TableName, TableName, FilePartMapping)
 }
 
 // NewEsDB new es DB

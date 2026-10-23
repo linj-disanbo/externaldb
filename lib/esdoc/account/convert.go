@@ -2,18 +2,18 @@ package account
 
 import (
 	"github.com/33cn/chain33/types"
+	esmaint "github.com/33cn/externaldb/lib/esmaint"
 	"github.com/33cn/externaldb/lib/schema"
-	"github.com/33cn/externaldb/util"
 )
 
 // InitDB init account db
 func InitDB(cli schema.DBCreator) error {
-	err := util.InitIndex(cli, AccountRecordDBX, AccountRecordTableX, AccountMapping)
+	err := esmaint.InitIndex(cli, AccountRecordDBX, AccountRecordTableX, AccountMapping)
 	if err != nil {
 		return err
 	}
 
-	return util.InitIndex(cli, DBX, TableX, AccountMapping)
+	return esmaint.InitIndex(cli, DBX, TableX, AccountMapping)
 }
 
 // RecordHelper 把一条 receipt 资产日志（fee/transfer/exec-transfer 等）转成一对文档：
