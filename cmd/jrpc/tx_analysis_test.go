@@ -8,7 +8,6 @@ package main
 import (
 	"testing"
 
-	"github.com/33cn/chain33/common"
 	"github.com/stretchr/testify/assert"
 )
 
