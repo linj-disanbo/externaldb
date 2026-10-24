@@ -105,7 +105,7 @@ func MergeConfigWithFlagsFromStruct(cfg *Config, flags *CommonFlags, flagInfo *F
 // LoadAndMergeForScanner Scanner 专用的配置加载
 func LoadAndMergeForScanner(flags *ScannerFlags) (*Config, error) {
 	flagInfo := DetectFlagSet()
-	
+
 	configFile := "externaldb.toml"
 	if flags.ConfigFile != nil && *flags.ConfigFile != "" {
 		configFile = *flags.ConfigFile
@@ -134,7 +134,7 @@ func LoadAndMergeForScanner(flags *ScannerFlags) (*Config, error) {
 // LoadAndMergeForRPC RPC 专用的配置加载
 func LoadAndMergeForRPC(flags *RPCFlags) (*Config, error) {
 	flagInfo := DetectFlagSet()
-	
+
 	configFile := "externaldb.toml"
 	if flags.ConfigFile != nil && *flags.ConfigFile != "" {
 		configFile = *flags.ConfigFile
@@ -192,4 +192,3 @@ func GetFinalBoolValue(flagValue *bool, flagSet bool, configValue bool) bool {
 	}
 	return configValue
 }
-

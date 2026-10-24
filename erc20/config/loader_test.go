@@ -218,11 +218,11 @@ func TestGetFinalIntValue(t *testing.T) {
 
 func TestGetFinalBoolValue(t *testing.T) {
 	tests := []struct {
-		name         string
-		flagValue    *bool
-		flagSet      bool
-		configValue  bool
-		expected     bool
+		name        string
+		flagValue   *bool
+		flagSet     bool
+		configValue bool
+		expected    bool
 	}{
 		{
 			name:        "flag set to true",
@@ -794,4 +794,3 @@ func intPtr(i int) *int {
 func boolPtr(b bool) *bool {
 	return &b
 }
-

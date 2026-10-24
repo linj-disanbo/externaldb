@@ -11,7 +11,7 @@ var GitCommit string
 // ReleaseDate ...
 var ReleaseDate string
 
-//GetVersion 获取版本信息
+// GetVersion 获取版本信息
 func GetVersion() string {
 	if GitCommit != "" {
 		return version + "-" + ReleaseDate + "-" + GitCommit

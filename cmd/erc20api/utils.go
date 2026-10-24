@@ -66,4 +66,3 @@ func formatTokenAmount(amount *big.Int, decimals uint8) string {
 
 	return quotient.String() + "." + remainderStr
 }
-

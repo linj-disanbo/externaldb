@@ -42,10 +42,10 @@ type ScannerConfig struct {
 // BalanceRefresherConfig 地址代币余额后台刷新（链上 balanceOf）
 type BalanceRefresherConfig struct {
 	Enabled     bool   `yaml:"enabled"`
-	Interval    string `yaml:"interval"`     // 如 1h、30m；空则默认 1h
-	BatchSize   int    `yaml:"batch_size"`   // 每轮最多行数，<=0 则默认 50
-	Concurrency int    `yaml:"concurrency"`  // 并发 RPC 上限，<=0 则默认 5
-	MinAge      string `yaml:"min_age"`      // 只刷新超过该时间未更新的行，如 30s；空表示不限制
+	Interval    string `yaml:"interval"`    // 如 1h、30m；空则默认 1h
+	BatchSize   int    `yaml:"batch_size"`  // 每轮最多行数，<=0 则默认 50
+	Concurrency int    `yaml:"concurrency"` // 并发 RPC 上限，<=0 则默认 5
+	MinAge      string `yaml:"min_age"`     // 只刷新超过该时间未更新的行，如 30s；空表示不限制
 }
 
 // ParseBalanceRefresherDurations 解析 Interval 与 MinAge，供扫描器使用

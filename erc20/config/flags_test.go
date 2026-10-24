@@ -140,4 +140,3 @@ func TestFlags_RPCDefaultValues(t *testing.T) {
 		t.Errorf("Expected Port default to be '8080', got '%s'", *rpcFlags.Port)
 	}
 }
-

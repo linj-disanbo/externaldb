@@ -10,4 +10,3 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 		Data:    map[string]string{"status": "healthy"},
 	})
 }
-

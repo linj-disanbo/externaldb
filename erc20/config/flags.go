@@ -64,7 +64,6 @@ func DefineRPCFlags() *RPCFlags {
 	common := DefineCommonFlags()
 	return &RPCFlags{
 		CommonFlags: *common,
-		Port: flag.String("port", "8080", "HTTP server port"),
+		Port:        flag.String("port", "8080", "HTTP server port"),
 	}
 }
-

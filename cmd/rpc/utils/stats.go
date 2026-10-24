@@ -15,8 +15,8 @@ var (
 
 type CallBackFunc func(req interface{}) (interface{}, error)
 
-//统计项组件的方法集
-//StatsItem
+// 统计项组件的方法集
+// StatsItem
 type StatsItem interface {
 	IsMatch(falgType int, req interface{}) bool
 	PrintStatsItemJSON() string
@@ -104,7 +104,7 @@ type StatsCommInfo struct {
 	CallBack CallBackFunc
 }
 
-//NewStatsComm 创建一个新的统计公共实例
+// NewStatsComm 创建一个新的统计公共实例
 func NewStatsComm(req, rep interface{}, interval int64, lastSeq int64, callBack CallBackFunc) StatsComm {
 	return &StatsCommInfo{
 		Req:          req,
@@ -166,21 +166,21 @@ func (bi *StatsCommInfo) GetLastCallTime() int64 {
 	return bi.LastCallTime
 }
 
-//StatsHandle 比较需要统计的信息和现有cache统计信息是否匹配
+// StatsHandle 比较需要统计的信息和现有cache统计信息是否匹配
 func (bi *StatsCommInfo) StatsHandle(req interface{}) (interface{}, error) {
 	bi.RLock()
 	defer bi.RUnlock()
 	return bi.CallBack(req)
 }
 
-//Update 定时更新对应的统计信息
+// Update 定时更新对应的统计信息
 func (bi *StatsCommInfo) Update(rep interface{}) {
 	bi.Lock()
 	defer bi.Unlock()
 	bi.Rep = rep
 }
 
-//GetRep 获取缓存的返回信息
+// GetRep 获取缓存的返回信息
 func (bi *StatsCommInfo) GetRep() interface{} {
 	bi.RLock()
 	defer bi.RUnlock()
@@ -188,7 +188,7 @@ func (bi *StatsCommInfo) GetRep() interface{} {
 	return bi.Rep
 }
 
-//GetReq 获取缓存的请求信息
+// GetReq 获取缓存的请求信息
 func (bi *StatsCommInfo) GetReq() interface{} {
 	bi.RLock()
 	defer bi.RUnlock()
@@ -219,13 +219,13 @@ func (bi *StatsCommInfo) PrintStatusJSON() string {
 
 }
 
-//StatsItemInfo具体统计项的信息
+// StatsItemInfo具体统计项的信息
 type DonateStatsItem struct {
 	PrintJSON string
 	StatsComm
 }
 
-//IsMatch 比较需要统计的信息和现有cache统计信息是否匹配
+// IsMatch 比较需要统计的信息和现有cache统计信息是否匹配
 func (bi *DonateStatsItem) IsMatch(falgType int, reqinfo interface{}) bool {
 	if falgType != bi.FlagType() {
 		return false
@@ -257,7 +257,7 @@ func (bi *DonateStatsItem) IsMatch(falgType int, reqinfo interface{}) bool {
 	return matchNum == len(req.Match)
 }
 
-//PrintJson  通过json格式打印字符串
+// PrintJson  通过json格式打印字符串
 func (bi *DonateStatsItem) PrintStatsItemJSON() string {
 	if len(bi.PrintJSON) != 0 {
 		return bi.PrintJSON
@@ -272,18 +272,18 @@ func (bi *DonateStatsItem) PrintStatsItemJSON() string {
 	return bi.PrintJSON
 }
 
-//FalgType   返回统计项的类型
+// FalgType   返回统计项的类型
 func (bi *DonateStatsItem) FlagType() int {
 	return DonateFlag
 }
 
-//VolunteerStatsItem 具体统计项的信息
+// VolunteerStatsItem 具体统计项的信息
 type VolunteerStatsItem struct {
 	PrintJSON string
 	StatsComm
 }
 
-//IsMatch 比较需要统计的信息和现有cache统计信息是否匹配
+// IsMatch 比较需要统计的信息和现有cache统计信息是否匹配
 func (bi *VolunteerStatsItem) IsMatch(falgType int, reqinfo interface{}) bool {
 	if falgType != bi.FlagType() {
 		return false
@@ -315,7 +315,7 @@ func (bi *VolunteerStatsItem) IsMatch(falgType int, reqinfo interface{}) bool {
 	return matchNum == len(req.Match)
 }
 
-//PrintJson  通过json格式打印字符串
+// PrintJson  通过json格式打印字符串
 func (bi *VolunteerStatsItem) PrintStatsItemJSON() string {
 	if len(bi.PrintJSON) != 0 {
 		return bi.PrintJSON
@@ -332,7 +332,7 @@ func (bi *VolunteerStatsItem) PrintStatsItemJSON() string {
 	return bi.PrintJSON
 }
 
-//FalgType   返回统计项的类型
+// FalgType   返回统计项的类型
 func (bi *VolunteerStatsItem) FlagType() int {
 	return VolunteerFlag
 }

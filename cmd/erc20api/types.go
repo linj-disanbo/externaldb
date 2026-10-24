@@ -79,14 +79,14 @@ type HolderInfo struct {
 // AccountERC20TokenBalance 某地址持有的一笔 ERC20（按地址查询持仓列表项）
 type AccountERC20TokenBalance struct {
 	ContractAddress  string    `json:"contract_address"`
-	Name               string    `json:"name"`
-	Symbol             string    `json:"symbol"`
-	Decimals           uint8     `json:"decimals"`
-	Balance            string    `json:"balance"`
-	BalanceFormatted   string    `json:"balance_formatted"`
-	LastTxHash         string    `json:"last_tx_hash"`
-	LastTxBlock        uint64    `json:"last_tx_block"`
-	LastUpdated        time.Time `json:"last_updated"`
+	Name             string    `json:"name"`
+	Symbol           string    `json:"symbol"`
+	Decimals         uint8     `json:"decimals"`
+	Balance          string    `json:"balance"`
+	BalanceFormatted string    `json:"balance_formatted"`
+	LastTxHash       string    `json:"last_tx_hash"`
+	LastTxBlock      uint64    `json:"last_tx_block"`
+	LastUpdated      time.Time `json:"last_updated"`
 }
 
 // ApprovalInfo 授权信息（按 owner 查询时返回的列表项）
@@ -110,15 +110,14 @@ type GenericTransaction struct {
 
 // ApprovalInfo 授权信息（按 owner 查询时返回的列表项）
 type ApprovalInfo struct {
-	ContractAddress  string    `json:"contract_address"`
-	ContractName     string    `json:"contract_name"`
-	ContractSymbol   string    `json:"contract_symbol"`
-	Decimals         uint8     `json:"decimals"`
-	Spender          string    `json:"spender"`
-	Amount           string    `json:"amount"`
-	AmountFormatted  string    `json:"amount_formatted"`
-	LastTxHash       string    `json:"last_tx_hash"`
-	LastBlockNumber  uint64    `json:"last_block_number"`
-	LastUpdated      time.Time `json:"last_updated"`
+	ContractAddress string    `json:"contract_address"`
+	ContractName    string    `json:"contract_name"`
+	ContractSymbol  string    `json:"contract_symbol"`
+	Decimals        uint8     `json:"decimals"`
+	Spender         string    `json:"spender"`
+	Amount          string    `json:"amount"`
+	AmountFormatted string    `json:"amount_formatted"`
+	LastTxHash      string    `json:"last_tx_hash"`
+	LastBlockNumber uint64    `json:"last_block_number"`
+	LastUpdated     time.Time `json:"last_updated"`
 }
-

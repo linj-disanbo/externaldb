@@ -63,7 +63,7 @@ func TestParseReceiptLogs(t *testing.T) {
 				common.BytesToHash(common.HexToAddress("0xfrom1").Bytes()),
 				common.BytesToHash(common.HexToAddress("0xto1").Bytes()),
 			},
-			Data:   common.Hex2Bytes("0000000000000000000000000000000000000000000000000de0b6b3a7640000"),
+			Data:    common.Hex2Bytes("0000000000000000000000000000000000000000000000000de0b6b3a7640000"),
 			Removed: false,
 		},
 		// Approval event
@@ -74,7 +74,7 @@ func TestParseReceiptLogs(t *testing.T) {
 				common.BytesToHash(common.HexToAddress("0xowner").Bytes()),
 				common.BytesToHash(common.HexToAddress("0xspender").Bytes()),
 			},
-			Data:   common.Hex2Bytes("0000000000000000000000000000000000000000000000000de0b6b3a7640000"),
+			Data:    common.Hex2Bytes("0000000000000000000000000000000000000000000000000de0b6b3a7640000"),
 			Removed: false,
 		},
 		// Removed log (should be skipped)

@@ -44,9 +44,9 @@ func AlignEthTxsByNonce(block *types.Block, expects []SlotEthExpect) ([]*types.T
 	}
 	eth := block.Transactions()
 	type candView struct {
-		tx       *types.Transaction
-		nonce    uint64
-		fromHex  string // eth Sender 转为 Hex 字符串，与 chain33 From 字符串比较
+		tx      *types.Transaction
+		nonce   uint64
+		fromHex string // eth Sender 转为 Hex 字符串，与 chain33 From 字符串比较
 	}
 
 	var cands []candView
