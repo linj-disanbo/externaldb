@@ -19,6 +19,7 @@ import (
 	pabi "github.com/33cn/plugin/plugin/dapp/evm/executor/abi"
 	pcom "github.com/33cn/plugin/plugin/dapp/evm/executor/vm/common"
 	evmtypes "github.com/33cn/plugin/plugin/dapp/evm/types"
+	etypes "github.com/ethereum/go-ethereum/core/types"
 
 	converter "github.com/33cn/externaldb/convert"
 	dbcom "github.com/33cn/externaldb/convert/common"
@@ -152,9 +153,9 @@ func (c *Convert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 	}
 
 	mapinfo := make(map[string]interface{})
-	mapinfo, err = parseNote(mapinfo, payload.Note, payload.ContractAddr)
+	mapinfo, err = parseNote(mapinfo, payload.Note, payload.ContractAddr, types.IsEthSignID(tx.GetSignature().GetTy()))
 	if err != nil {
-		log.Warn("parseNote", "err", err)
+		log.Debug("parseNote", "err", err)
 	}
 	eventLogs := c.parseLog(mapinfo)
 	mapinfo["to_addr"] = chaincfg.AddressConvert(tx.To)
@@ -479,21 +480,50 @@ func innerActionAmount(execName string, tx *types.Transaction) (int64, bool) {
 	return 0, false
 }
 
-// parseNote 若是部署合约，获取abi；若是调用合约，获取调用方法
-func parseNote(mapinfo map[string]interface{}, payload string, addr string) (map[string]interface{}, error) {
+// parseNote 解析 payload.Note。note 的语义取决于签名类型（chain33 eth 兼容规范）：
+//
+//   - eth 签名交易（IsEthSignID）：note 必须是 hex(RLP raw tx)，是节点验签与 eth 交易哈希的依据
+//     （chain33 system/crypto/secp256k1eth.VerifyBytes / types.Transaction.GetEthTxHash）。
+//     这里只提取展示用信息，不做 base64/JSON 尝试。
+//   - 非 eth 签名：note 是自由备注，本项目约定为 base64(JSON)，可带 abi 或 call_func_name。
+//
+// 两种情况解析失败都只记为 Debug，不影响交易记录落库。
+func parseNote(mapinfo map[string]interface{}, note, addr string, isEthSign bool) (map[string]interface{}, error) {
+	if note == "" {
+		return mapinfo, nil
+	}
+
+	if isEthSign {
+		raw, err := common.FromHex(note)
+		if err != nil {
+			log.Debug("parseNote: eth note is not hex", "err", err)
+			return mapinfo, nil
+		}
+		var etx etypes.Transaction
+		if err := etx.UnmarshalBinary(raw); err != nil {
+			log.Debug("parseNote: eth note is not rlp tx", "err", err)
+			return mapinfo, nil
+		}
+		mapinfo["evm_note_type"] = "rlp"
+		mapinfo["evm_eth_tx_hash"] = common.ToHex(etx.Hash().Bytes())
+		mapinfo["evm_nonce"] = etx.Nonce()
+		mapinfo["evm_gas_price"] = etx.GasPrice().String()
+		mapinfo["evm_gas"] = etx.Gas()
+		return mapinfo, nil
+	}
+
 	mapNote := make(map[string]interface{})
-	note, err := dbcom.DecodeString(payload)
+	nb, err := dbcom.DecodeString(note)
 	if err != nil {
-		log.Warn("parseNote:DecodeString payload.Note", "err", err)
-		return mapinfo, err
+		log.Debug("parseNote:DecodeString payload.Note", "err", err)
+		return mapinfo, nil
 	}
+	mapinfo["evm_note"] = nb
 
-	err = json.Unmarshal(note, &mapNote)
-	if err != nil {
-		log.Warn("Unmarshal note failed", "err", err)
+	if err := json.Unmarshal(nb, &mapNote); err != nil {
+		log.Debug("Unmarshal note failed", "err", err)
+		return mapinfo, nil
 	}
-	mapinfo["evm_note"] = note
-
 	if abi, ok := mapNote["abi"]; ok {
 		mapinfo["contract_abi"] = abi
 	} else {

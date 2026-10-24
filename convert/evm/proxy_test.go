@@ -5,6 +5,7 @@ import (
 
 	"github.com/33cn/chain33/common"
 	chaintypes "github.com/33cn/chain33/types"
+	dbcom "github.com/33cn/externaldb/convert/common"
 	"github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	"github.com/33cn/externaldb/lib/proto"
@@ -77,4 +78,35 @@ func Test_ConvertTx_EvmCallGo(t *testing.T) {
 	assert.Equal(t, chaincfg.EvmCallGoAddr, opt.ContractAddr)
 	assert.Equal(t, "", opt.ContractType, "代理地址不是合约，不应伪造 contract_type")
 	assert.NotZero(t, txRecord.Tx.Amount, "金额应取内层 coins withdraw 的 amount")
+}
+
+func Test_parseNote_EthSign(t *testing.T) {
+	mapinfo := map[string]interface{}{}
+	_, err := parseNote(mapinfo, testEvmCallGoNote, chaincfg.EvmCallGoAddr, true)
+	assert.Nil(t, err)
+	assert.Equal(t, "rlp", mapinfo["evm_note_type"])
+	assert.Equal(t, "0x92c7592ab9e0262902881d8bb19dbf8d391ecddd99f96ba78a809c8c8aa99a6e", mapinfo["evm_eth_tx_hash"])
+	assert.EqualValues(t, 16005, mapinfo["evm_nonce"])
+	assert.Equal(t, "10000000000", mapinfo["evm_gas_price"])
+	assert.EqualValues(t, 150000, mapinfo["evm_gas"])
+	// eth 交易不应再写 base64 解出来的 evm_note
+	_, ok := mapinfo["evm_note"]
+	assert.False(t, ok)
+}
+
+func Test_parseNote_NotEthSign(t *testing.T) {
+	// 非 eth 签名：base64(JSON) 备注，带 call_func_name
+	raw := `{"call_func_name":"transfer"}`
+	note := dbcom.EncodeToString([]byte(raw))
+	mapinfo := map[string]interface{}{}
+	_, err := parseNote(mapinfo, note, "0xABC", false)
+	assert.Nil(t, err)
+	assert.Equal(t, "transfer", mapinfo["call_func_name"])
+	assert.Equal(t, "0xabc", mapinfo["contract_addr"])
+
+	// 非法 base64 只记 Debug，不报错
+	mapinfo = map[string]interface{}{}
+	_, err = parseNote(mapinfo, "not-base64!!", "0xabc", false)
+	assert.Nil(t, err)
+	assert.Nil(t, mapinfo["evm_note"])
 }
