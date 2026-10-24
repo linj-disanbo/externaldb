@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"strings"
 
+	coinsTypes "github.com/33cn/chain33/system/dapp/coins/types"
 	"github.com/33cn/chain33/types"
 	"github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/escli"
@@ -133,6 +134,56 @@ func getAbiFromES(address string) (string, error) {
 	return string(abiByte), err
 }
 
+// parseEvmCallGo 解析代理执行交易（EVM 合约 -> Go 执行器）。
+// para 是内层 chain33 交易：coins 的 transfer/withdraw/transferToExec 等，
+// 或其它执行器的 action；这里只填金额/执行器/动作名，不做 solidity ABI 解析（代理地址没有 ABI）。
+func parseEvmCallGo(info *EvmTxInfo, payload *proto.EVMContractAction) {
+	// eth 交易哈希（eth 签名交易的 note 是 RLP raw tx）
+	if noteRaw, err := FromHex(payload.Note); err == nil {
+		ntx := new(etypes.Transaction)
+		if err := ntx.UnmarshalBinary(noteRaw); err == nil {
+			info.EvmTxId = ToHex(ntx.Hash().Bytes())
+		}
+	}
+
+	var inner types.Transaction
+	if err := types.Decode(payload.Para, &inner); err != nil {
+		info.ParseSuccess = false
+		info.Error = "decode inner chain33 tx failed: " + err.Error()
+		return
+	}
+
+	execName := string(types.GetRealExecName(inner.Execer))
+	info.Asset.Exec = execName
+	info.Func.FuncName = execName + ".call"
+
+	if execName == "coins" {
+		var action coinsTypes.CoinsAction
+		if err := types.Decode(inner.Payload, &action); err != nil {
+			info.ParseSuccess = false
+			info.Error = "decode inner coins action failed: " + err.Error()
+			return
+		}
+		switch {
+		case action.GetTransfer() != nil:
+			info.Func.FuncName = "coins.transfer"
+			info.Amount = uint64(action.GetTransfer().GetAmount())
+		case action.GetWithdraw() != nil:
+			info.Func.FuncName = "coins.withdraw"
+			info.Amount = uint64(action.GetWithdraw().GetAmount())
+		case action.GetTransferToExec() != nil:
+			info.Func.FuncName = "coins.transferToExec"
+			info.Amount = uint64(action.GetTransferToExec().GetAmount())
+		}
+		info.Asset.Amount = int64(info.Amount)
+	} else if name := inner.ActionName(); name != "" && name != "unknown" {
+		info.Func.FuncName = execName + "." + name
+	}
+
+	info.ParseSuccess = true
+	info.Error = ""
+}
+
 // parseEvmTx 解析EVM交易
 // evm 合约有3中情况
 // 1. 部署合约, 执行器为 evm, 地址为 evm地址, 类型为部署
@@ -169,11 +220,10 @@ func parseEvmTx(txDetail *types.TransactionDetail, getabi func(string) (string, 
 		info.Asset.Symbol = symbol
 	}
 
-	// 处理特殊的合约: 使用evm 合约调用go合约
-	// 由于 没有solidity编译产生的abi, 所以这里插入处理
+	// 处理特殊的合约: EVM 合约经代理地址调用 Go 执行器（chain33 ForkProxyExec）。
+	// 规范：para 是内层 chain33 交易，note 仍是外层 eth 交易的 RLP（见 local/docs/notes/chain33-eth-compat-tx.md）。
 	if chaincfg.IsEvmCallGoAddr(info.ContractAddress) {
-		// 简化处理，直接返回
-		info.Error = "EvmCallGo contract not fully supported"
+		parseEvmCallGo(&info, &payload)
 		return &info
 	}
 
