@@ -3,11 +3,40 @@ package chaincfg
 import (
 	_ "embed"
 	"fmt"
+	"strings"
 
 	_ "github.com/33cn/chain33/system" // chain system init
 	"github.com/33cn/chain33/types"
 	_ "github.com/33cn/plugin/plugin" // chain plugin init
 )
+
+// EvmCallGoAddr 代理执行器地址的默认值（chain33 [exec].proxyExecAddress 的缺省）。
+// EVM 合约通过这个地址调用 Go 执行器（如 coins/ticket/token），链上没有对应的合约文档。
+// 实际取值优先用配置里的 proxyExecAddress（见 IsEvmCallGoAddr）。
+const EvmCallGoAddr = "0x0000000000000000000000000000000000200005"
+
+// chainCfg 最近一次 InitChain33 建出来的配置（nil 表示还没初始化）
+var chainCfg *types.Chain33Config
+
+// Config 返回 InitChain33 建出来的 chain33 配置；未初始化时返回 nil。
+func Config() *types.Chain33Config {
+	return chainCfg
+}
+
+// EvmCallGoAddress 返回代理执行器地址：配置里有 [exec].proxyExecAddress 就用配置值，否则用默认常量。
+func EvmCallGoAddress() string {
+	if cfg := Config(); cfg != nil {
+		if addr := cfg.GetModuleConfig().Exec.ProxyExecAddress; addr != "" {
+			return addr
+		}
+	}
+	return EvmCallGoAddr
+}
+
+// IsEvmCallGoAddr 判断地址是否为代理执行器地址（EVM 调 Go 执行器用，不是真实合约）。
+func IsEvmCallGoAddr(addr string) bool {
+	return addr != "" && strings.EqualFold(addr, EvmCallGoAddress())
+}
 
 // types/config L100 初始化， 需要手动调用， 不能自动
 // 1. chain33 更新配置的实现后， 插件需要手动调用生效
@@ -32,7 +61,7 @@ func InitChain33(title, symbol, configFile string) {
 	if configFile != "" {
 		configString = types.ReadFile(configFile)
 	}
-	types.NewChain33Config(configString)
+	chainCfg = types.NewChain33Config(configString)
 }
 
 func configV172(title, symbol, defaultConfig string) string {

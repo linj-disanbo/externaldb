@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/33cn/chain33/types"
+	"github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/escli"
 	"github.com/33cn/externaldb/lib/proto"
 	etypes "github.com/ethereum/go-ethereum/core/types"
@@ -21,7 +22,6 @@ import (
 const (
 	EvmActionNameCreate    = "createEvmContract"
 	EvmActionNameCall      = "callEvmContract"
-	EvmCallGoAddr          = "0x0000000000000000000000000000000000200005"
 	ContractAbiDB          = "contractabi"
 	ContractAbiDefaultType = "_doc"
 )
@@ -171,7 +171,7 @@ func parseEvmTx(txDetail *types.TransactionDetail, getabi func(string) (string, 
 
 	// 处理特殊的合约: 使用evm 合约调用go合约
 	// 由于 没有solidity编译产生的abi, 所以这里插入处理
-	if info.ContractAddress == EvmCallGoAddr {
+	if chaincfg.IsEvmCallGoAddr(info.ContractAddress) {
 		// 简化处理，直接返回
 		info.Error = "EvmCallGo contract not fully supported"
 		return &info

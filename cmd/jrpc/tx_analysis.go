@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc"
 
 	dbevm "github.com/33cn/externaldb/convert/evm"
+	"github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	pabi "github.com/33cn/plugin/plugin/dapp/evm/executor/abi"
 	pcom "github.com/33cn/plugin/plugin/dapp/evm/executor/vm/common"
@@ -133,7 +134,7 @@ func parseEvmTx(txDetail *types.TransactionDetail, getabi func(string) (string, 
 
 	// 处理特殊的合约: 使用evm 合约调用go合约
 	// 由于 没有solidity编译产生的abi, 所以这里插入处理
-	if info.ContractAddress == EvmCallGoAddr {
+	if chaincfg.IsEvmCallGoAddr(info.ContractAddress) {
 		return parseEvmCallGoTx(&info, payload.Para)
 	}
 

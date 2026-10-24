@@ -7,7 +7,6 @@ import (
 	types2 "github.com/33cn/plugin/plugin/dapp/ticket/types"
 )
 
-const EvmCallGoAddr = "0x0000000000000000000000000000000000200005"
 const TicketExecName = "ticket"
 const CoinsExecName = "coins"
 
