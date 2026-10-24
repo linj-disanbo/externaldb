@@ -91,7 +91,7 @@ checkgofmt: ## get all go files and run go fmt on them
 
 .PHONY: doc
 doc: swag
-	@go build $(BUILD_FLAGS) -v -o swag2md ${SRC}/tools/swag2md
+	@go build $(BUILD_FLAGS) -v -o build/swag2md ${SRC}/tools/swag2md
 	@bash ./tools/doc/doc.sh
 
 .PHONY: code_gen

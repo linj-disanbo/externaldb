@@ -603,11 +603,11 @@ definitions:
     type: object
   swagger.LoadAverage:
     properties:
-      15m:
-        type: number
       1m:
         type: number
       5m:
+        type: number
+      15m:
         type: number
     type: object
   swagger.Mapped:
