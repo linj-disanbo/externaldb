@@ -1,5 +1,9 @@
 package proofconfig
 
+import (
+	converter "github.com/33cn/externaldb/convert"
+)
+
 type None struct {
 	*configDB
 }
@@ -24,6 +28,11 @@ func (n *None) GetOrganizationName(addr string) (string, error) {
 	return "system", nil
 }
 
+// GetMember 关闭权限校验时也要能正确回答“记录是否存在”：
+// 直接返回空 Member 会让 AddMember 误判为“member exists”，导致成员记录写不进去。
 func (n *None) GetMember(addr string) (*Member, error) {
-	return &Member{}, nil
+	if n.configDB != nil && n.configDB.db != nil {
+		return n.configDB.GetMember(addr)
+	}
+	return nil, converter.ErrDBNotFound
 }

@@ -160,8 +160,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add super manager", rs)
 	k0 := orgKey("system")
 	v0 := `{"organization":"system","note":"","count":1,"height":1,"ts":0,"block_hash":"blockHash1","index":0,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100000}`
-	k1 := "proof_config/proof_config/member-1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4"
-	v1 := `{"address":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","role":"manager","organization":"system","note":"s1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":0,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100000}`
+	k1 := "proof_config/_doc/member-1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4"
+	v1 := `{"address":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","role":"manager","organization":"system","note":"s1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":0,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100000}`
 	assert.Equal(t, k0, rs[0].Key())
 	assert.Equal(t, v0, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k1, rs[1].Key())
@@ -174,8 +174,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add manager", rs)
 	k10 := orgKey("o1")
 	v10 := `{"organization":"o1","note":"o1","count":1,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k11 := "proof_config/proof_config/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
-	v11 := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
+	k11 := "proof_config/_doc/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
+	v11 := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
 	assert.Equal(t, k10, rs[0].Key())
 	assert.Equal(t, v10, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k11, rs[1].Key())
@@ -188,8 +188,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add member", rs)
 	k20 := orgKey("o1")
 	v20 := `{"organization":"o1","note":"o1","count":2,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k21 := "proof_config/proof_config/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k"
-	v21 := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002}`
+	k21 := "proof_config/_doc/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k"
+	v21 := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002}`
 	assert.Equal(t, k20, rs[0].Key())
 	assert.Equal(t, v20, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k21, rs[1].Key())
@@ -202,10 +202,10 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "del manager", rs)
 	k30 := orgKey("o1")
 	v30 := `{"organization":"o1","note":"o1","count":1,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k31 := "proof_config/proof_config/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
-	v31 := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k32 := `proof_config_delete/proof_config_delete/member-del-100003-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR`
-	v32 := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001,"delete":{"height":1,"ts":0,"block_hash":"blockHash1","index":3,"send":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","tx_hash":"","height_index":100003}}`
+	k31 := "proof_config/_doc/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
+	v31 := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
+	k32 := `proof_config_delete/_doc/member-del-100003-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR`
+	v32 := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001,"delete":{"height":1,"ts":0,"block_hash":"blockHash1","index":3,"send":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","tx_hash":"","height_index":100003}}`
 	assert.Equal(t, k30, rs[0].Key())
 	assert.Equal(t, v30, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k31, rs[1].Key())
@@ -220,8 +220,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add manager again", rs)
 	k40 := orgKey("o1")
 	v40 := `{"organization":"o1","note":"o1","count":2,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k41 := "proof_config/proof_config/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
-	v41 := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":4,"send":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","tx_hash":"","height_index":100004}`
+	k41 := "proof_config/_doc/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
+	v41 := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":4,"send":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","tx_hash":"","height_index":100004}`
 	assert.Equal(t, k40, rs[0].Key())
 	assert.Equal(t, v40, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k41, rs[1].Key())
@@ -234,10 +234,10 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "del member", rs)
 	k50 := orgKey("o1")
 	v50 := `{"organization":"o1","note":"o1","count":1,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k51 := `proof_config/proof_config/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k`
-	v51 := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002}`
-	k52 := `proof_config_delete/proof_config_delete/member-del-100005-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k`
-	v52 := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002,"delete":{"height":1,"ts":0,"block_hash":"blockHash1","index":5,"send":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","tx_hash":"","height_index":100005}}`
+	k51 := `proof_config/_doc/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k`
+	v51 := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002}`
+	k52 := `proof_config_delete/_doc/member-del-100005-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k`
+	v52 := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002,"delete":{"height":1,"ts":0,"block_hash":"blockHash1","index":5,"send":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","tx_hash":"","height_index":100005}}`
 	assert.Equal(t, k50, rs[0].Key())
 	assert.Equal(t, v50, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k51, rs[1].Key())
@@ -252,8 +252,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add member again", rs)
 	k60 := orgKey("o1")
 	v60 := `{"organization":"o1","note":"o1","count":2,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k61 := "proof_config/proof_config/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k"
-	v61 := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":6,"send":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","tx_hash":"","height_index":100006}`
+	k61 := "proof_config/_doc/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k"
+	v61 := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":6,"send":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","tx_hash":"","height_index":100006}`
 	assert.Equal(t, k60, rs[0].Key())
 	assert.Equal(t, v60, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k61, rs[1].Key())
@@ -266,8 +266,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add member again ROOLBACK", rs)
 	k60R := orgKey("o1")
 	v60R := `{"organization":"o1","note":"o1","count":1,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k61R := "proof_config/proof_config/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k"
-	v61R := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":6,"send":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","tx_hash":"","height_index":100006}`
+	k61R := "proof_config/_doc/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k"
+	v61R := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":6,"send":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","tx_hash":"","height_index":100006}`
 	assert.Equal(t, k60R, rs[0].Key())
 	assert.Equal(t, v60R, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k61R, rs[1].Key())
@@ -280,10 +280,10 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "del member ROOLBACK", rs)
 	k50R := orgKey("o1")
 	v50R := `{"organization":"o1","note":"o1","count":2,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k51R := `proof_config/proof_config/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k`
-	v51R := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002}`
-	k52R := `proof_config_delete/proof_config_delete/member-del-100005-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k`
-	v52R := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002,"delete":{"height":1,"ts":0,"block_hash":"blockHash1","index":5,"send":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","tx_hash":"","height_index":100005}}`
+	k51R := `proof_config/_doc/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k`
+	v51R := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002}`
+	k52R := `proof_config_delete/_doc/member-del-100005-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k`
+	v52R := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002,"delete":{"height":1,"ts":0,"block_hash":"blockHash1","index":5,"send":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","tx_hash":"","height_index":100005}}`
 	assert.Equal(t, k50R, rs[0].Key())
 	assert.Equal(t, v50R, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k51R, rs[1].Key())
@@ -298,8 +298,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add manager again ROOLBACK", rs)
 	k40R := orgKey("o1")
 	v40R := `{"organization":"o1","note":"o1","count":1,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k41R := "proof_config/proof_config/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
-	v41R := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":4,"send":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","tx_hash":"","height_index":100004}`
+	k41R := "proof_config/_doc/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
+	v41R := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":4,"send":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","tx_hash":"","height_index":100004}`
 	assert.Equal(t, k40R, rs[0].Key())
 	assert.Equal(t, v40R, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k41R, rs[1].Key())
@@ -312,10 +312,10 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "del manager ROOLBACK", rs)
 	k30R := orgKey("o1")
 	v30R := `{"organization":"o1","note":"o1","count":2,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k31R := "proof_config/proof_config/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
-	v31R := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k32R := `proof_config_delete/proof_config_delete/member-del-100003-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR`
-	v32R := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001,"delete":{"height":1,"ts":0,"block_hash":"blockHash1","index":3,"send":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","tx_hash":"","height_index":100003}}`
+	k31R := "proof_config/_doc/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
+	v31R := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
+	k32R := `proof_config_delete/_doc/member-del-100003-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR`
+	v32R := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001,"delete":{"height":1,"ts":0,"block_hash":"blockHash1","index":3,"send":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","tx_hash":"","height_index":100003}}`
 	assert.Equal(t, k30R, rs[0].Key())
 	assert.Equal(t, v30R, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k31R, rs[1].Key())
@@ -330,8 +330,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add member ROOLBACK", rs)
 	k20R := orgKey("o1")
 	v20R := `{"organization":"o1","note":"o1","count":1,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k21R := "proof_config/proof_config/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k"
-	v21R := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002}`
+	k21R := "proof_config/_doc/member-1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k"
+	v21R := `{"address":"1NLHPEcbTWWxxU3dGUZBhayjrCHD3psX7k","role":"member","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":2,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100002}`
 	assert.Equal(t, k20R, rs[0].Key())
 	assert.Equal(t, v20R, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k21R, rs[1].Key())
@@ -344,8 +344,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add manager ROOLBACK", rs)
 	k10R := orgKey("o1")
 	v10R := `{"organization":"o1","note":"o1","count":0,"height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
-	k11R := "proof_config/proof_config/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
-	v11R := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
+	k11R := "proof_config/_doc/member-1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR"
+	v11R := `{"address":"1JRNjdEqp4LJ5fqycUBm9ayCKSeeskgMKR","role":"manager","organization":"o1","note":"o1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":1,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100001}`
 	assert.Equal(t, k10R, rs[0].Key())
 	assert.Equal(t, v10R, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k11R, rs[1].Key())
@@ -358,8 +358,8 @@ func TestConvert(t *testing.T) {
 	debugRecords(t, "add super manager ROOLBACK", rs)
 	k0R := orgKey("system")
 	v0R := `{"organization":"system","note":"","count":0,"height":1,"ts":0,"block_hash":"blockHash1","index":0,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100000}`
-	k1R := "proof_config/proof_config/member-1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4"
-	v1R := `{"address":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","role":"manager","organization":"system","note":"s1-a1","height":1,"ts":0,"block_hash":"blockHash1","index":0,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100000}`
+	k1R := "proof_config/_doc/member-1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4"
+	v1R := `{"address":"1KSBd17H7ZK8iT37aJztFB22XGwsPTdwE4","role":"manager","organization":"system","note":"s1-a1","server_name":"","height":1,"ts":0,"block_hash":"blockHash1","index":0,"send":"1MCftFynyvG2F4ED5mdHYgziDxx6vDrScs","tx_hash":"","height_index":100000}`
 	assert.Equal(t, k0R, rs[0].Key())
 	assert.Equal(t, v0R, ignoreTxHash(string(rs[0].Value())))
 	assert.Equal(t, k1R, rs[1].Key())
@@ -453,5 +453,5 @@ func (d *dummyDB) Search(idx, typ string, query *querypara.Query, decode func(x 
 }
 
 func orgKey(x string) string {
-	return "proof_config_org/proof_config_org/org-" + x
+	return "proof_config_org/_doc/org-" + x
 }

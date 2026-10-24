@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	converter "github.com/33cn/externaldb/convert"
+	"github.com/33cn/externaldb/lib/schema"
 	lru "github.com/hashicorp/golang-lru"
 )
 
@@ -53,8 +54,12 @@ func NewConfigDB(db converter.WrapDB) ConfigDB {
 }
 
 func (db1 *configDB) GetMember(addr string) (*Member, error) {
-	if m, ok := memberCache.Get(addr); ok {
-		return m.(*Member), nil
+	if c, ok := memberCache.Get(addr); ok {
+		if m, ok := c.(*Member); ok {
+			return m, nil
+		}
+		// 缓存里可能是别的类型（历史 bug：SetMember 存过 *dbMember、SetOrganization 存过 *dbOrganization），清掉重查
+		memberCache.Remove(addr)
 	}
 	m1, err := db1.db.Get(db1.dbX, db1.tableX, MemberID(addr))
 	if err != nil {
@@ -83,8 +88,11 @@ func (db1 *configDB) GetMemberDel(addr string, h, i int64) (*memberDel, error) {
 }
 
 func (db1 *configDB) GetOrganization(org string) (*Organization, error) {
-	if o, ok := orgCache.Get(org); ok {
-		return o.(*Organization), nil
+	if c, ok := orgCache.Get(org); ok {
+		if o, ok := c.(*Organization); ok {
+			return o, nil
+		}
+		orgCache.Remove(org)
 	}
 	m1, err := db1.db.Get(db1.orgDBX, db1.orgTableX, OrganizationID(org))
 	if err != nil {
@@ -100,7 +108,12 @@ func (db1 *configDB) GetOrganization(org string) (*Organization, error) {
 }
 
 func (db1 *configDB) SetMember(addr string, m *dbMember) error {
-	memberCache.Add(addr, m)
+	if m.OpType() == schema.OpDel {
+		// 删除时同时失效缓存，否则删除后重新添加会被误判为“已存在”
+		memberCache.Remove(addr)
+	} else {
+		memberCache.Add(addr, m.M)
+	}
 	return db1.db.Set(db1.dbX, db1.tableX, m.M.ID(), m)
 }
 
@@ -109,7 +122,11 @@ func (db1 *configDB) SetMemberDel(addr string, m *dbMemberDel) error {
 }
 
 func (db1 *configDB) SetOrganization(org string, o *dbOrganization) error {
-	memberCache.Add(org, o)
+	if o.OpType() == schema.OpDel {
+		orgCache.Remove(org)
+	} else {
+		orgCache.Add(org, o.M)
+	}
 	return db1.db.Set(db1.orgDBX, db1.orgTableX, o.M.ID(), o)
 }
 

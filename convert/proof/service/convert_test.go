@@ -10,6 +10,7 @@ import (
 	proofconfig "github.com/33cn/externaldb/convert/proof_config"
 	"github.com/33cn/externaldb/lib/chaincfg"
 	"github.com/33cn/externaldb/lib/escli/querypara"
+	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	"github.com/33cn/externaldb/lib/schema"
 
 	"github.com/33cn/chain33/common"
@@ -117,7 +118,7 @@ func Test_Proof(t *testing.T) {
 	rec := types.ReceiptData{Ty: types.ExecPack}
 	env.Block.Receipts = append(env.Block.Receipts, &rec)
 
-	convert := NewConvert("sanhe", "bty", "proof")
+	convert := NewConvert("user.p.sanhe.", "bty", "proof")
 	c := convert.(*ProofConvert)
 	c.RecordGen = NewRecordGen("p1", "p2", "l1", "l2", "t1", "t2", "u1", "u2")
 	c.configDB = &proofconfig.None{}
@@ -144,7 +145,7 @@ func Test_Proof(t *testing.T) {
 	assert.Equal(t, blockTime, pInfo["proof_block_time"])
 	assert.Equal(t, blockHash, pInfo["proof_block_hash"])
 
-	assert.Equal(t, "fuzamei", pInfo["proof_organization"])
+	assert.Equal(t, "system", pInfo["proof_organization"])
 	assert.Equal(t, "12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", pInfo["proof_sender"])
 	assert.Equal(t, int64(100000), pInfo["proof_height_index"])
 	assert.Equal(t, notestr, pInfo["proof_note"])
@@ -236,21 +237,19 @@ func Test_Proof1(t *testing.T) {
 	assert.Equal(t, blockTime, pInfo["proof_block_time"])
 	assert.Equal(t, blockHash, pInfo["proof_block_hash"])
 
-	assert.Equal(t, "fuzamei", pInfo["proof_organization"])
+	assert.Equal(t, "system", pInfo["proof_organization"])
 	assert.Equal(t, "12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", pInfo["proof_sender"])
 	assert.Equal(t, int64(100000), pInfo["proof_height_index"])
 
 }
 
 func Test_ProofNestedCombination(t *testing.T) {
-	payload := creatProofpayload(1)
-	testProofNestedCombination(t, payload)
-	payload = creatProofpayload(2)
-	testProofNestedCombination(t, payload)
-	payload = creatProofpayload(3)
-	testProofNestedCombination(t, payload)
-	payload = creatProofpayload(4)
-	testProofNestedCombination(t, payload)
+	// 1.0.0、空 version、缺 version 都按 V1 处理（proofparse.FormatVersion），应产出存证记录；
+	// 1.1.1 不被支持，parseProof 会 panic 并被 AddProof 兜住，只落交易记录。
+	testProofNestedCombination(t, creatProofpayload(1), true)
+	testProofNestedCombination(t, creatProofpayload(2), true)  // 无 version 字段 -> V1
+	testProofNestedCombination(t, creatProofpayload(3), true)  // version 为空 -> V1
+	testProofNestedCombination(t, creatProofpayload(4), false) // 1.1.1 不支持
 }
 
 func creatProofpayload(flag int) string {
@@ -302,7 +301,7 @@ func creatProofpayload(flag int) string {
 
 	return payload
 }
-func testProofNestedCombination(t *testing.T, payload string) {
+func testProofNestedCombination(t *testing.T, payload string, expectProof bool) {
 	tx := &types.Transaction{Execer: []byte("user.p.sanhe.proof"), Payload: []byte(payload)}
 	tx.To = chaincfg.ExecAddress("user.p.sanhe.proof")
 	priv := HexToPrivkey(Priv)
@@ -326,7 +325,7 @@ func testProofNestedCombination(t *testing.T, payload string) {
 	rec := types.ReceiptData{Ty: types.ExecPack}
 	env.Block.Receipts = append(env.Block.Receipts, &rec)
 
-	convert := NewConvert("sanhe", "bty", "proof")
+	convert := NewConvert("user.p.sanhe.", "bty", "proof")
 	c := convert.(*ProofConvert)
 	c.RecordGen = NewRecordGen("p1", "p2", "l1", "l2", "t1", "t2", "u1", "u2")
 	c.configDB = &proofconfig.None{}
@@ -337,13 +336,20 @@ func testProofNestedCombination(t *testing.T, payload string) {
 	for _, r := range records {
 		t.Log("Test_ProofNestedCombination", "jsonstr", string(r.Value()))
 	}
+	if !expectProof {
+		// 不支持的 version：只有交易记录
+		assert.Len(t, records, 1)
+		_, ok := records[0].(*transaction.TxRecord)
+		assert.True(t, ok)
+		return
+	}
 	re := records[0].(*ProofRecord)
 	t.Log("Test_Proof", "ikey", re.Key())
 	t.Log("Test_Proof", "OpType", re.OpType())
 
 	pInfo := re.Proof.Proof
 
-	assert.Equal(t, "fuzamei", pInfo["proof_organization"])
+	assert.Equal(t, "system", pInfo["proof_organization"])
 	assert.Equal(t, "12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", pInfo["proof_sender"])
 	assert.Equal(t, int64(100000), pInfo["proof_height_index"])
 
@@ -388,7 +394,7 @@ func decodeProof(t *testing.T, x interface{}) (interface{}, error) {
 		return x, err
 	}
 
-	assert.Equal(t, "fuzamei", pInfo["proof_organization"])
+	assert.Equal(t, "system", pInfo["proof_organization"])
 	assert.Equal(t, "12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", pInfo["proof_sender"])
 	assert.Equal(t, float64(100000), pInfo["proof_height_index"])
 
@@ -746,7 +752,7 @@ func Test_ProofV3(t *testing.T) {
 	assert.Equal(t, blockTime, pInfo["proof_block_time"])
 	assert.Equal(t, blockHash, pInfo["proof_block_hash"])
 
-	assert.Equal(t, "fuzamei", pInfo["proof_organization"])
+	assert.Equal(t, "system", pInfo["proof_organization"])
 	assert.Equal(t, "12qyocayNF7Lv6C9qW4avxs2E7U41fKSfv", pInfo["proof_sender"])
 	assert.Equal(t, int64(100000), pInfo["proof_height_index"])
 	assert.Equal(t, notestr, pInfo["proof_note"])
