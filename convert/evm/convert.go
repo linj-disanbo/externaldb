@@ -8,6 +8,7 @@ import (
 
 	"github.com/33cn/chain33/common"
 	l "github.com/33cn/chain33/common/log/log15"
+	coinsTypes "github.com/33cn/chain33/system/dapp/coins/types"
 	"github.com/33cn/chain33/types"
 	ndb "github.com/33cn/externaldb/convert/evm/nft/db"
 	"github.com/33cn/externaldb/lib/chaincfg"
@@ -200,6 +201,14 @@ func (c *Convert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 	//	value: mapinfo,
 	//})
 
+	// 代理执行（EVM -> Go 执行器）：contractAddr 是 chain33 的 proxyExecAddress（如 0x…200005），
+	// 链上没有对应合约文档，payload.Para 是内层 chain33 交易（见 chain33 executor/execenv.go proxyGetRealTx）。
+	// 这里不能查 contract 索引，否则每笔都会 ErrDBNotFound 并丢掉后续解析。
+	if chaincfg.IsEvmCallGoAddr(payload.ContractAddr) {
+		c.convertEvmCallGo(records, trans, &txOption, mapinfo, &payload, op)
+		return records, nil
+	}
+
 	// 合约执行
 	ct, err := c.ContractDB.Get(payload.ContractAddr)
 	if err != nil {
@@ -385,6 +394,89 @@ func (c *Convert) parseParam(abi *pabi.ABI, data []byte, m map[string]interface{
 	}
 	m["evm_param"] = string(buf)
 	return pm, nil
+}
+
+// convertEvmCallGo 处理代理执行交易（EVM 合约经 proxyExecAddress 调用 Go 执行器）。
+//
+// chain33 规范（execenv.go proxyGetRealTx）：payload.Para 是内层 chain33 交易的 protobuf，
+// 内层交易才是真正的业务（本例：coins 的 withdraw，85 BTY）。note 属于外层 eth 交易，
+// 不参与代理执行，也不参与这里的解析。
+func (c *Convert) convertEvmCallGo(records []schema.Record, trans *transaction.Transaction,
+	txOption *TxOption, mapinfo map[string]interface{}, payload *proto.EVMContractAction, op int) {
+
+	log := log.New("tx_hash", trans.Hash)
+
+	var inner types.Transaction
+	if len(payload.Para) == 0 {
+		log.Debug("convertEvmCallGo: empty para")
+		return
+	}
+	if err := types.Decode(payload.Para, &inner); err != nil {
+		log.Debug("convertEvmCallGo: decode inner tx", "err", err)
+		return
+	}
+
+	execName := string(types.GetRealExecName(inner.Execer))
+	actionName := innerActionName(execName, &inner)
+	txOption.CallFunName = execName + "." + actionName
+	mapinfo["evm_call_go"] = true
+	mapinfo["evm_inner_exec"] = execName
+	if inner.To != "" {
+		mapinfo["to_addr"] = chaincfg.AddressConvert(inner.To)
+	}
+	if amount, ok := innerActionAmount(execName, &inner); ok && amount != 0 {
+		// trans 已被放进 transaction 记录（指针），这里改的是同一份数据
+		trans.Amount = amount
+	}
+	log.Debug("convertEvmCallGo", "exec", execName, "action", actionName)
+	_ = op
+}
+
+// innerActionName 取内层交易的 action 名。老执行器的 Transaction.ActionName() 可能返回 "unknown"，
+// 所以 coins 按 action 字段判断（比按 Ty 更稳，兼容历史交易）。
+func innerActionName(execName string, tx *types.Transaction) string {
+	if execName == "coins" {
+		var action coinsTypes.CoinsAction
+		if err := types.Decode(tx.Payload, &action); err == nil {
+			switch {
+			case action.GetTransfer() != nil:
+				return "transfer"
+			case action.GetWithdraw() != nil:
+				return "withdraw"
+			case action.GetTransferToExec() != nil:
+				return "transferToExec"
+			case action.GetGenesis() != nil:
+				return "genesis"
+			}
+		}
+	}
+	if name := tx.ActionName(); name != "" && name != "unknown" {
+		return name
+	}
+	return "call"
+}
+
+// innerActionAmount 取内层交易的金额（coins 的金额在 action 里，不在 tx.Amount）。
+func innerActionAmount(execName string, tx *types.Transaction) (int64, bool) {
+	if execName != "coins" {
+		amount, err := tx.Amount()
+		return amount, err == nil
+	}
+	var action coinsTypes.CoinsAction
+	if err := types.Decode(tx.Payload, &action); err != nil {
+		return 0, false
+	}
+	switch {
+	case action.GetTransfer() != nil:
+		return action.GetTransfer().GetAmount(), true
+	case action.GetWithdraw() != nil:
+		return action.GetWithdraw().GetAmount(), true
+	case action.GetTransferToExec() != nil:
+		return action.GetTransferToExec().GetAmount(), true
+	case action.GetGenesis() != nil:
+		return action.GetGenesis().GetAmount(), true
+	}
+	return 0, false
 }
 
 // parseNote 若是部署合约，获取abi；若是调用合约，获取调用方法
