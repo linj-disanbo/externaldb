@@ -140,3 +140,37 @@ func Test_ConvertTx_UnknownContract(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, records, 1)
 }
+
+// eth 纯转账（data 为空）：ContractAddr 是 evm 执行器地址，但 Code 为空 → 不能当部署合约
+func Test_ConvertTx_TransferOnly(t *testing.T) {
+	env := newEvmCallGoEnv(t, "")
+	execAddr := chaincfg.ExecAddress("evm")
+	to := "0x00000000000000000000000000000000000000bb"
+	payload := &proto.EVMContractAction{
+		Amount:       8500000000,
+		ContractAddr: execAddr,   // chain33 ethrpc：coins 转账时填执行器地址
+		Code:         nil,        // 纯转账没有 code
+		Para:         []byte(to), // 目的地址 bytes
+	}
+	env.Block.Block.Txs[0].To = to
+	env.Block.Block.Txs[0].Payload = chaintypes.Encode(payload)
+
+	convert := NewConvert("", "bty", nil).(*Convert)
+	records, err := convert.ConvertTx(env, schema.OpAdd)
+	assert.Nil(t, err)
+	// 只有交易记录，不产生 contract 文档
+	if !assert.Len(t, records, 1) {
+		return
+	}
+	txRecord, ok := records[0].(*transaction.TxRecord)
+	if !assert.True(t, ok) {
+		return
+	}
+	opt, ok := txRecord.Tx.Options.(*TxOption)
+	if !assert.True(t, ok) {
+		return
+	}
+	assert.Equal(t, "coins.transfer", opt.CallFunName)
+	assert.Equal(t, "", opt.ContractType)
+	assert.EqualValues(t, 8500000000, txRecord.Tx.Amount)
+}

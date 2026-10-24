@@ -168,8 +168,19 @@ func (c *Convert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 
 	// 合约处理
 	log = log.New("contract_addr", payload.ContractAddr)
+	// 合约部署 / 纯转账：两者在 chain33 里 ContractAddr 都是 evm 执行器地址，
+	// 区别是 payload.Code 是否为空（chain33 executor: isCreate = to==execAddr && len(data)>0，
+	// isTransferOnly = to==execAddr && len(data)==0；eth 的纯币转账 data 为空）。
+	execAddr := chaincfg.ExecAddress(string(tx.Execer))
+	if execAddr == payload.ContractAddr && len(payload.Code) == 0 {
+		// 纯 coins 转账（eth 发币交易）：没有合约文档可写，只补 options
+		txOption.CallFunName = "coins.transfer"
+		mapinfo["evm_transfer_only"] = true
+		log.Debug("ConvertTx.evm: transfer only", "to", tx.To, "amount", payload.Amount)
+		return records, nil
+	}
 	// 合约部署
-	if chaincfg.ExecAddress(string(tx.Execer)) == payload.ContractAddr {
+	if execAddr == payload.ContractAddr {
 		mapinfo["contract_bin"] = hex.EncodeToString(payload.Code)
 		ct := contract.NewContractByMap(mapinfo)
 
