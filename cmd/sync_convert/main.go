@@ -70,7 +70,8 @@ func main() {
 		return
 	}
 
-	// TODO schema.LastSeqDB 待确定
+	// 进度 doc id 用 schema.LastSeqDB（"last_seq"），与 convert/receiver 写进度时保持一致
+	// （receive_convert.go 里 NewLastRecord(schema.LastSeqDB, seq)）；不要改成 AppName，否则读不到自己的进度。
 	var progressFP *localfile.FileProgress
 	if cfg.Dbtype == "file" {
 		progressPath := syncseq.ProgressFilePath(d, syncseq.DefaultConvertProgressFile)

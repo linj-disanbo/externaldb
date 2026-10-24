@@ -53,7 +53,9 @@ func init() {
 }
 
 // NewConvert create
-// TODO gen flags 暂时没有用上
+//
+// 注意：参数 supports（配置里的 [convert].data[].generate）目前所有转换器都未使用，
+// 所有可展开的数据类型都会输出；这里保留接口位，后续若要支持按需裁剪再统一实现。
 func NewConvert(title, symbol string, supports []string) converter.ExecConvert {
 	e := &msConvert{title: title, symbol: symbol}
 
