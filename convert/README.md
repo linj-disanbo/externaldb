@@ -20,7 +20,6 @@
 | `pipeline/` | 运行驱动：`App`/`Service` 装配、pull 循环（`RunPull`）、seq 源/写/游标 |
 | `receiver/` | 推送链路的块接收（`Receiver`/`SeqsProc`/`DealBlocks`）|
 | `stat/` | 累积型转换的接口与注册表（`Stat`/`HeightRecover`）；`stat/block/` 是区块累计统计的实现 |
-| `fixamount/` | 金额修复工具（`cmd/convert-fix-tool` 用）|
 | `coins/` `coinsx/` `token/` `ticket/` `trade/` `multisig/` `pos33/` `proof/` `proof_config/` `exchange/` `evmxgo/` `unfreeze/` `common/` `filepart/` `filesummary/` `evm/` | 各合约/执行器的转换器；`evm/` 下另有 `erc20`/`erc721`/`erc1155`/`nft` |
 
 依赖方向：`convert → lib`；`cmd → convert`。这里不反向依赖 `cmd`，也不依赖 `erc20/`（MySQL 那条链路）。文档契约（`Record`/`Key`/`IKey`/`Op`/`SeqType`/`TxEnv`/`WrapDB`）在 `lib/schema`，具体文档类型（`account`/`transaction`/`blockinfo`/…）在 `lib/esdoc`，ES 客户端在 `lib/escli`，索引维护与进度缓存在 `lib/esmaint`，chain33 初始化/地址驱动在 `lib/chaincfg`。
@@ -31,7 +30,7 @@
    - `ConvertTx(env *lib.TxEnv, op int) ([]schema.Record, error)` —— 把一笔交易展开成若干文档记录；
    - `InitDB(cli schema.DBCreator) error` —— 声明自己用到的索引（`util.InitIndex`）。
 2. 在包内 `init()` 里注册：`convert.RegisterConvert("<name>", NewConvert)`（import `converter "github.com/33cn/externaldb/convert"`）。
-3. 在 `cmd/convert/main.go`、`cmd/pull_convert/main.go`（以及 `cmd/convert-fix-tool`）加 blank import。
+3. 在 `cmd/convert/main.go`、`cmd/pull_convert/main.go` 加 blank import。
 4. 配置里 `[convert].data` 的 exec 名单决定加载哪些转换器（`pipeline.NewApp` 按名字 `LoadConvert`），名字要与注册名一致。
 5. 补单测：用 `util.GenEnv(blockHex, txIndex)` 喂真实区块，断言产出的 `Key()`/`Value()`（参考 `coins/convert_test.go`）。
 

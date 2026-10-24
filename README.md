@@ -34,7 +34,7 @@
 ```
 cmd/        程序入口（每个二进制一个子目录）
 convert/    ES 落地管道：转换器框架 + 16 个合约转换器 + pipeline(装配/pull 循环) + receiver(推送接收)
-            + stat(累计统计) + fixamount(金额修复)
+            + stat(累计统计)
 erc20/      MySQL 落地管道：scanner / txparser / database / erc20api 等（内部自成一套）
 lib/        两个管道共用的底层：schema(文档契约) esdoc(文档类型) escli(ES 客户端) esmaint(索引维护)
             store(seq 存储) util(块处理编排) chaincfg(chain33 初始化/地址驱动) proto version

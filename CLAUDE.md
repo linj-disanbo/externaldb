@@ -81,7 +81,7 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
 - `util.AppConvert` interface (`lib/util/process.go`): Block-level convert with `ConvertBlock()` / `RecoverStats()`
   （直连链路另用 `RecoverStatsAt(height)` 让累计统计与游标高度对齐）; `DealBlockDetail` 是两条链路共用的块处理入口（del seq → 反做）。
 - `store.SeqStore` / `store.SeqNumStore`（`lib/store/`）：**老链路**的 seq 存储抽象（ES/Kafka）。
-- `convert/` 目录：转换器框架（`framework.go`/`plugin.go`/`registry.go`）+ 16 个合约转换器子包 + `pipeline`（运行驱动：装配与 pull 循环）+ `receiver`（推送接收）+ `stat`（累积型转换）+ `fixamount`。
+- `convert/` 目录：转换器框架（`framework.go`/`plugin.go`/`registry.go`）+ 16 个合约转换器子包 + `pipeline`（运行驱动：装配与 pull 循环）+ `receiver`（推送接收）+ `stat`（累积型转换）。
 - `lib/` 目录（最底层）：`schema`（契约）、`esdoc`（文档类型）、`escli`（ES 客户端）、`store`（seq 存储）、`util`（块处理编排 `process.go` 与小工具）、`chaincfg`（chain33 初始化/内嵌配置/地址驱动）、`esmaint`（索引/mapping/对账/状态缓存）、`proto`、`version`。
 - `lib/esdoc/seqmark`：直连链路的进度索引（doc id = seq，字段 seq/height/hash/type）。
 

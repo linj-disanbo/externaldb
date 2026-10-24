@@ -101,7 +101,6 @@ build: code_gen ## Build all binaries (static, CGO_ENABLED=0)
 	@$(STATIC_BUILD) -o  $(PRC) $(SRC_RPC)
 	@$(STATIC_BUILD) -o  $(CLI_SYNC) $(SRC_CLI)/sync
 	@$(STATIC_BUILD) -o  $(CLI_CONVERT) $(SRC_CLI)/convert
-	@$(STATIC_BUILD) -o  build/convertfix $(SRC_CLI)/convert-fix-tool/
 	@$(STATIC_BUILD) -o  build/rpc ${SRC_CLI}rpc/
 	@$(STATIC_BUILD) -o  build/dummy_node $(SRC_CLI)/dummy_node/
 	@$(STATIC_BUILD) -o  build/sync_convert $(SRC_CLI)/sync_convert
