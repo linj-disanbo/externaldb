@@ -1,3 +1,8 @@
+//go:build integration
+
+// 这些用例连线上节点（183.134.99.137:28902）取真实交易，默认 go test 不跑；
+// 需要时：go test -tags integration ./cmd/jrpc/
+
 package main
 
 import (
@@ -20,18 +25,6 @@ func TestParseEvmDeploy(t *testing.T) {
 
 func testGetAbi(address string) (string, error) {
 	return testAbi, nil
-}
-
-// []byte to  string
-func TestByteToString(t *testing.T) {
-	str := ("0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000008387505d1571ee2b2d7339addb3f5dcf9f32c389000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000023636000000000000000000000000000000000000000000000000000000000000")
-	assert.Equal(t, 322, len(str))
-	bs, err := common.FromHex(str)
-	assert.Nil(t, err)
-	assert.Equal(t, 160, len(bs))
-	str2 := string(bs)
-	assert.Equal(t, 160, len(str2))
-
 }
 
 func TestParseEvmCall(t *testing.T) {

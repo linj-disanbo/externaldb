@@ -1,3 +1,8 @@
+//go:build integration
+
+// 这些用例连线上 ES（见用例内的 host 常量），默认 go test 不跑；
+// 需要时：go test -tags integration cmd/jrpc/
+
 package main
 
 import (
