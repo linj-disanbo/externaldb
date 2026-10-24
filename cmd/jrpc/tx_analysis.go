@@ -134,7 +134,8 @@ func parseEvmTx(txDetail *types.TransactionDetail, getabi func(string) (string, 
 
 	// 处理特殊的合约: 使用evm 合约调用go合约
 	// 由于 没有solidity编译产生的abi, 所以这里插入处理
-	if chaincfg.IsEvmCallGoAddr(info.ContractAddress) {
+	// 代理执行要求 eth 签名（chain33 checkProxyExecTx），非 eth 签名按普通 EVM 调用处理
+	if chaincfg.IsEvmCallGoAddr(info.ContractAddress) && types.IsEthSignID(txDetail.Tx.GetSignature().GetTy()) {
 		return parseEvmCallGoTx(&info, payload.Para)
 	}
 

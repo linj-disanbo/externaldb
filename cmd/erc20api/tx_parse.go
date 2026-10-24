@@ -222,7 +222,8 @@ func parseEvmTx(txDetail *types.TransactionDetail, getabi func(string) (string, 
 
 	// 处理特殊的合约: EVM 合约经代理地址调用 Go 执行器（chain33 ForkProxyExec）。
 	// 规范：para 是内层 chain33 交易，note 仍是外层 eth 交易的 RLP（见 local/docs/notes/chain33-eth-compat-tx.md）。
-	if chaincfg.IsEvmCallGoAddr(info.ContractAddress) {
+	// 代理执行要求 eth 签名（chain33 checkProxyExecTx），非 eth 签名按普通 EVM 调用处理
+	if chaincfg.IsEvmCallGoAddr(info.ContractAddress) && types.IsEthSignID(txDetail.Tx.GetSignature().GetTy()) {
 		parseEvmCallGo(&info, &payload)
 		return &info
 	}

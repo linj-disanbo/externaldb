@@ -216,7 +216,9 @@ func (c *Convert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 	// 代理执行（EVM -> Go 执行器）：contractAddr 是 chain33 的 proxyExecAddress（如 0x…200005），
 	// 链上没有对应合约文档，payload.Para 是内层 chain33 交易（见 chain33 executor/execenv.go proxyGetRealTx）。
 	// 这里不能查 contract 索引，否则每笔都会 ErrDBNotFound 并丢掉后续解析。
-	if chaincfg.IsEvmCallGoAddr(payload.ContractAddr) {
+	// chain33 代理执行的前提是 eth 签名（execenv.checkProxyExecTx: tx.To==proxy && IsEthSignID），
+	// 非 eth 签名即使 to 是代理地址也只是一次普通 EVM 调用，不能按内层交易解析
+	if chaincfg.IsEvmCallGoAddr(payload.ContractAddr) && types.IsEthSignID(tx.GetSignature().GetTy()) {
 		c.convertEvmCallGo(records, trans, &txOption, mapinfo, &payload, op)
 		return records, nil
 	}

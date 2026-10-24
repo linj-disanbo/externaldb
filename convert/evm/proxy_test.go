@@ -174,3 +174,28 @@ func Test_ConvertTx_TransferOnly(t *testing.T) {
 	assert.Equal(t, "", opt.ContractType)
 	assert.EqualValues(t, 8500000000, txRecord.Tx.Amount)
 }
+
+// 非 eth 签名：即使 to 是代理地址，也不按内层交易解析（chain33 checkProxyExecTx 要求 IsEthSignID）
+func Test_ConvertTx_EvmCallGo_NonEthSign(t *testing.T) {
+	env := newEvmCallGoEnv(t, testEvmCallGoNote)
+	// 改成普通 chain33 签名类型
+	env.Block.Block.Txs[0].Signature.Ty = chaintypes.SECP256K1
+
+	convert := NewConvert("", "bty", nil).(*Convert)
+	convert.ContractDB = notFoundContractDB{}
+
+	records, err := convert.ConvertTx(env, schema.OpAdd)
+	assert.Nil(t, err)
+	if !assert.Len(t, records, 1) {
+		return
+	}
+	txRecord, ok := records[0].(*transaction.TxRecord)
+	if !assert.True(t, ok) {
+		return
+	}
+	opt, ok := txRecord.Tx.Options.(*TxOption)
+	if !assert.True(t, ok) {
+		return
+	}
+	assert.Equal(t, "", opt.CallFunName, "非 eth 签名不应按代理执行解析内层交易")
+}
