@@ -213,7 +213,12 @@ func (c *Convert) ConvertTx(env *converter.TxEnv, op int) ([]schema.Record, erro
 	// 合约执行
 	ct, err := c.ContractDB.Get(payload.ContractAddr)
 	if err != nil {
-		log.Error("ConvertTx.evm:ContractDB.Get", "err", err)
+		// 合约没录 ABI（或根本不是合约）：没有可解析的 ABI/事件，保留交易记录即可，不算错误
+		if errors.Is(err, converter.ErrDBNotFound) {
+			log.Debug("ConvertTx.evm: contract not found", "addr", payload.ContractAddr)
+		} else {
+			log.Error("ConvertTx.evm:ContractDB.Get", "err", err)
+		}
 		return records, nil
 	}
 	mapinfo["contract_type"] = ct.ContractType

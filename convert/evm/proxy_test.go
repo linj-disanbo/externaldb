@@ -5,11 +5,14 @@ import (
 
 	"github.com/33cn/chain33/common"
 	chaintypes "github.com/33cn/chain33/types"
+	converter "github.com/33cn/externaldb/convert"
 	dbcom "github.com/33cn/externaldb/convert/common"
 	"github.com/33cn/externaldb/lib/chaincfg"
+	"github.com/33cn/externaldb/lib/esdoc/contract"
 	"github.com/33cn/externaldb/lib/esdoc/transaction"
 	"github.com/33cn/externaldb/lib/proto"
 	"github.com/33cn/externaldb/lib/schema"
+	pabi "github.com/33cn/plugin/plugin/dapp/evm/executor/abi"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 )
@@ -109,4 +112,31 @@ func Test_parseNote_NotEthSign(t *testing.T) {
 	_, err = parseNote(mapinfo, "not-base64!!", "0xabc", false)
 	assert.Nil(t, err)
 	assert.Nil(t, mapinfo["evm_note"])
+}
+
+// 未录 ABI 的普通合约：只保留交易记录，不 panic
+type notFoundContractDB struct{}
+
+func (notFoundContractDB) Get(string) (*contract.Contract, error) {
+	return nil, converter.ErrDBNotFound
+}
+func (notFoundContractDB) Set(*contract.Record) error                     { return nil }
+func (notFoundContractDB) GetABI(string) (*pabi.ABI, error)               { return nil, nil }
+func (notFoundContractDB) GetContract(string) (*contract.Contract, error) { return nil, nil }
+func (notFoundContractDB) UpdateCache(*contract.Contract)                 {}
+
+func Test_ConvertTx_UnknownContract(t *testing.T) {
+	env := newEvmCallGoEnv(t, "")
+	env.Block.Block.Txs[0].To = "0x00000000000000000000000000000000000000aa"
+	payload := &proto.EVMContractAction{
+		ContractAddr: "0x00000000000000000000000000000000000000aa",
+	}
+	env.Block.Block.Txs[0].Payload = chaintypes.Encode(payload)
+
+	converter := NewConvert("", "bty", nil).(*Convert)
+	converter.ContractDB = notFoundContractDB{}
+
+	records, err := converter.ConvertTx(env, schema.OpAdd)
+	assert.Nil(t, err)
+	assert.Len(t, records, 1)
 }
