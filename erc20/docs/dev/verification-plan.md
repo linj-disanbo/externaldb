@@ -9,7 +9,7 @@
 
 ```bash
 cd erc20Scaner
-go build ./database/... ./scanner/... ./cmd/scannerfix/... ./rpc/...
+go build ./erc20/... ./cmd/erc20scan/ ./cmd/erc20api/
 ```
 
 ## 2. 单元测试
@@ -25,7 +25,7 @@ go test ./... 2>&1 | grep -v "admin-rpc"
 - `scanner/integration_test.go`
 - `config/*_test.go`
 
-## 3. scannerfix 历史数据补扫
+## 3. 区间补扫（`erc20scan -mode fix`）
 
 ### 3.1 数据库迁移
 
@@ -37,8 +37,8 @@ ALTER TABLE transactions ADD INDEX idx_from_block (from_address, block_number);
 ### 3.2 小范围补扫（50~100 seq）
 
 ```bash
-./scannerfix -s <start_seq> -e <end_seq> \
-  -c config.yaml -db -dsn "user:pass@tcp(host:3306)/db" \
+./erc20scan -mode fix -s <start_seq> -e <end_seq> \
+  -c externaldb.toml -db -dsn "user:pass@tcp(host:3306)/db" \
   -chain-grpc <host:port>
 ```
 
@@ -52,7 +52,7 @@ ALTER TABLE transactions ADD INDEX idx_from_block (from_address, block_number);
 | transactions 出现 unknown | `SELECT * FROM transactions WHERE func_name = 'unknown' LIMIT 10;` |
 | func_selector 为真实值（非 nested_call） | `SELECT func_selector, COUNT(*) FROM transactions GROUP BY func_selector;` |
 | ERC20 transfer 交易 events 正确 | `SELECT e.* FROM events e JOIN transactions t ON e.tx_hash = t.tx_hash WHERE t.func_name = 'unknown' LIMIT 10;` |
-| 无 FK 约束报错 | 检查 scannerfix 日志无 `foreign key constraint fails` 错误 |
+| 无 FK 约束报错 | 检查 `logs/scannerfix_app.log` 无 `foreign key constraint fails` 错误 |
 | 合约列表不出现 UNKNOWN | `curl "http://localhost:8080/evmapi/contracts?page=1&size=20"` — 无 contract_type=UNKNOWN |
 
 ### 3.4 扩大范围

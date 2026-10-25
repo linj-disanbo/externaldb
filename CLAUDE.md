@@ -63,10 +63,11 @@ The `Makefile` expects a `.env` file at the project root (included via `include 
   EVM 交易解析按合约地址从 ES `contractabi` 索引取 ABI（`cmd/jrpc/evmabi.go`，**只读**）；
   ABI 注册已从 jrpc 移除，改由仓库外私有工具（`local/tools/saveabi`，不随开源仓库发布）离线写入。
 - **rpc**（`cmd/rpc/`）：Gin REST，proof 相关；与 jrpc 独立，含白名单与 Sentinel 限流中间件。
-- **erc20 扫块/查询**：已并入主 module（不再是独立工程）。程序 `cmd/erc20scan`（扫 ERC20 转账写 MySQL）、
+- **erc20 扫块/查询**：已并入主 module（不再是独立工程）。程序 `cmd/erc20scan`（扫 ERC20 转账写 MySQL；
+  `-mode fix -s -e` 为区间补扫：闭区间、不读/写进度、跑完退出）、
   `cmd/erc20api`（`/evmapi/*` 读 MySQL，原 `erc20Scaner/rpc`，现 `cmd/erc20api`）；库在 `erc20/`（`scanner/engine`、`txparser`、
   `database`、`config`、`erc20abi`、`blockalign`、`logger`、`txinspect`），文档在 `erc20/docs/`；
-  离线工具 `cmd/tools/erc20-{blockparse,scannerfix,txinfo}`。
+  离线工具 `cmd/tools/erc20-{blockparse,txinfo}`。
 - **account_refresh**（`cmd/account_refresh`, `lib/util/accountrefresh/`）：常驻循环，把主币（BTY）真实余额
   按三档（top N 1h / 活跃 24h / 全量 168h）从链上 `Chain33.GetBalance` 校正回 ES `account` 文档
   （只部分更新 balance/frozen/total 与 `balance_refresh_at`；配置段 `[accountRefresh]`）。

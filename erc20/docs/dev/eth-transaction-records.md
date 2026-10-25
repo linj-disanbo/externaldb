@@ -228,7 +228,7 @@ LIMIT ? OFFSET ?
 - [ ] `rpc/main.go` 路由注册 `GET /evmapi/transactions`
 
 ### 阶段 4：验证
-- [ ] `scannerfix` 模式对历史数据补扫验证
+- [ ] `erc20scan -mode fix` 对历史数据补扫验证
 - [ ] 实时扫描新数据验证
 
 ## 5. 代码改动范围

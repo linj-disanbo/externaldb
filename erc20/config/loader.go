@@ -21,6 +21,7 @@ type FlagSetInfo struct {
 	ChainSymbol bool
 	StartBlock  bool
 	EndBlock    bool
+	Mode        bool
 	Port        bool
 }
 
@@ -57,6 +58,8 @@ func DetectFlagSet() *FlagSetInfo {
 			info.StartBlock = true
 		case "e":
 			info.EndBlock = true
+		case "mode":
+			info.Mode = true
 		case "port":
 			info.Port = true
 		}

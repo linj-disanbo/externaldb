@@ -20,4 +20,4 @@ ALTER TABLE transactions ADD INDEX idx_from_block (from_address, block_number);
 
 1. 执行 DB 迁移
 2. 部署新版本
-3. 历史数据：`scannerfix -s <start> -e <end> -db -dsn "..." -chain-grpc <host>`
+3. 历史数据：`./erc20scan -mode fix -s <start> -e <end> -db -dsn "..." -chain-grpc <host>`（闭区间，不写进度）

@@ -7,7 +7,7 @@
 # 程序（部署包里的名字见括号）
 go build ./cmd/erc20scan      # scanner ：按 seq 拉块解析 ERC20 转账写 MySQL
 go build ./cmd/erc20api       # erc20api：/evmapi/* 查询 MySQL
-go build ./cmd/tools/erc20-{txinfo,blockparse,scannerfix}   # 离线工具，见 docs/tools/
+go build ./cmd/tools/erc20-{txinfo,blockparse}   # 离线工具，见 docs/tools/
 
 # 配置：externaldb.toml 的 [mysql] + [erc20scan]
 #   [mysql]   enabled / dsn
@@ -41,5 +41,5 @@ go build ./cmd/tools/erc20-{txinfo,blockparse,scannerfix}   # 离线工具，见
   重放与 reorg 重扫都幂等；del seq 只写 marker + 推进游标（旧行由随后同高度的 add 清掉）。
 - 余额表 `token_balances` 不做反向运算：默认扫块时内联查链上 `balanceOf` 写绝对值（自愈）；
   若开启 `skipInlineBalanceUpdate`，则由 `[erc20scan.balanceRefresher]`（链上 `balanceOf` 定时校准）兜底。
-- 已知边界：del seq 后该高度若**没有重新出块**（链缩短），旧行不会被自动清掉；用 `scannerfix` 区间重扫
-  或人工清理。node 模式（不走 chain33 seq 的 eth JSON-RPC 模式）没有上述 reorg 保护。
+- 已知边界：del seq 后该高度若**没有重新出块**（链缩短），旧行不会被自动清掉；用
+  `erc20scan -mode fix -s <seq> -e <seq>` 区间重扫或人工清理。node 模式（不走 chain33 seq 的 eth JSON-RPC 模式）没有上述 reorg 保护。

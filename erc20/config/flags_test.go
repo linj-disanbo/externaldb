@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"strings"
 	"testing"
 )
 
@@ -138,5 +139,95 @@ func TestFlags_RPCDefaultValues(t *testing.T) {
 
 	if *rpcFlags.Port != "8080" {
 		t.Errorf("Expected Port default to be '8080', got '%s'", *rpcFlags.Port)
+	}
+}
+
+// newTestScannerFlags 重置全局 flag 集并返回新的 ScannerFlags，供 -mode 校验用例使用
+func newTestScannerFlags(t *testing.T) *ScannerFlags {
+	t.Helper()
+	flag.CommandLine = flag.NewFlagSet("test", flag.ContinueOnError)
+	return DefineScannerFlags()
+}
+
+func TestScannerFlags_FixMode(t *testing.T) {
+	tests := []struct {
+		name    string
+		set     map[string]string
+		wantFix bool
+		wantErr string
+	}{
+		{
+			name:    "默认 run 模式",
+			set:     nil,
+			wantFix: false,
+		},
+		{
+			name:    "run 模式带 -s/-e 仍不是修复",
+			set:     map[string]string{"mode": "run", "s": "10", "e": "20"},
+			wantFix: false,
+		},
+		{
+			name:    "fix 模式区间合法",
+			set:     map[string]string{"mode": "fix", "s": "10", "e": "20"},
+			wantFix: true,
+		},
+		{
+			name:    "fix 模式允许单块区间",
+			set:     map[string]string{"mode": "fix", "s": "7", "e": "7"},
+			wantFix: true,
+		},
+		{
+			name:    "fix 模式缺 -e",
+			set:     map[string]string{"mode": "fix", "s": "10"},
+			wantErr: "必须显式指定 -s 与 -e",
+		},
+		{
+			name:    "fix 模式缺 -s",
+			set:     map[string]string{"mode": "fix", "e": "10"},
+			wantErr: "必须显式指定 -s 与 -e",
+		},
+		{
+			name:    "fix 模式 e 小于 s",
+			set:     map[string]string{"mode": "fix", "s": "20", "e": "10"},
+			wantErr: "-e >= -s",
+		},
+		{
+			name:    "fix 模式 e 为 0（engine 哨兵值）",
+			set:     map[string]string{"mode": "fix", "s": "0", "e": "0"},
+			wantErr: "-e >= 1",
+		},
+		{
+			name:    "非法 mode",
+			set:     map[string]string{"mode": "repair", "s": "1", "e": "2"},
+			wantErr: "-mode 只支持",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			flags := newTestScannerFlags(t)
+			for k, v := range tt.set {
+				if err := flag.Set(k, v); err != nil {
+					t.Fatalf("set flag %s=%s: %v", k, v, err)
+				}
+			}
+
+			fix, err := flags.FixMode()
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil (fix=%v)", tt.wantErr, fix)
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("expected error containing %q, got %q", tt.wantErr, err.Error())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if fix != tt.wantFix {
+				t.Fatalf("fix mode = %v, want %v", fix, tt.wantFix)
+			}
+		})
 	}
 }

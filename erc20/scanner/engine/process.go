@@ -64,8 +64,9 @@ type Process struct {
 
 	SkipInlineBalanceUpdate bool // 为 true 时不扫块内联 balanceOf，依赖占位行 + balance_refresher
 
-	// NoProgress 为 true 时不读/写 scan_progress 表（修复模式，方案 D）
-	NoProgress bool
+	// FixMode 为 true 时进入区间修复模式（-mode fix）：只处理 [StartPoint, EndPoint] 闭区间，
+	// 不读/写 scan_progress 与 scan_seq_marker（不影响线上 scanner 的断点续扫），处理完即返回。
+	FixMode bool
 
 	// contractCache 进程级合约缓存，避免同一地址反复发起 eth_call/eth_getCode。
 	// scanner 主循环单线程，无需加锁。
@@ -91,8 +92,8 @@ func (p *Process) Init() {
 			p.EnableDB = false
 		} else {
 			log.Info("[Init] Database connected")
-			if p.NoProgress {
-				log.Info("[Init] NoProgress mode: skipping scan_progress read, using configured start point",
+			if p.FixMode {
+				log.Info("[Init] fix mode: skipping scan_progress read, using -s/-e range",
 					"startPoint", p.StartPoint)
 			} else {
 				// 读取上次处理的进度
@@ -116,7 +117,7 @@ func (p *Process) Init() {
 // resumeFromSeqMarker 用 append-only 的 scan_seq_marker 恢复游标（游标 = max(seq)）。
 // 返回 false 表示还没有 marker（首次运行或从老版本升级），调用方再走 alignScanStart 兜底。
 func (p *Process) resumeFromSeqMarker() bool {
-	if p.NoProgress || !p.EnableDB || p.db == nil {
+	if p.FixMode || !p.EnableDB || p.db == nil {
 		return false
 	}
 	m, err := p.db.MaxSeqMarker()
@@ -139,7 +140,7 @@ func (p *Process) resumeFromSeqMarker() bool {
 // 从 scan_progress 读到 lastH 后，查节点获取 lastH+1 对应的 seq，
 // 计算 delta = seq - height，调整 StartPoint。
 func (p *Process) alignScanStart() {
-	if p.NoProgress || !p.EnableDB || p.db == nil {
+	if p.FixMode || !p.EnableDB || p.db == nil {
 		return
 	}
 	progress, err := p.db.GetScanProgress()
@@ -192,14 +193,18 @@ func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcCo
 	}
 
 	for {
-		// 检查是否到达结束点
-		if p.EndPoint > 0 && p.StartPoint >= uint64(p.EndPoint) {
-			if p.NoProgress {
-				log.Info("[Exit] scannerfix completed (chain33 mode)", "endBlock", p.EndPoint, "lastSeq", p.StartPoint)
+		// 结束点：fix 模式处理 [StartPoint, EndPoint] 闭区间（EndPoint 含在内），跑完即返回；
+		// run 模式保持原语义（到达 end_block 后停住等待，不退出）。
+		if p.EndPoint > 0 {
+			if p.FixMode && p.StartPoint > uint64(p.EndPoint) {
+				log.Info("[Exit] fix mode completed (chain33 mode)",
+					"endSeq", p.EndPoint, "processedThrough", p.StartPoint-1)
 				return
 			}
-			time.Sleep(time.Second)
-			continue
+			if !p.FixMode && p.StartPoint >= uint64(p.EndPoint) {
+				time.Sleep(time.Second)
+				continue
+			}
 		}
 
 		// 从 chain33 gRPC 按 seq 读取区块
@@ -215,7 +220,7 @@ func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcCo
 		if blockSeq.Type != schema.SeqTypeAdd {
 			log.Info("[Reorg] del seq, advance cursor only",
 				"seq", blockSeq.SyncSeq, "hash", blockSeq.Hash, "type", blockSeq.Type)
-			if !p.NoProgress && p.EnableDB && p.db != nil {
+			if !p.FixMode && p.EnableDB && p.db != nil {
 				if err = p.db.SaveSeqMarker(&database.SeqMarker{
 					Seq:    uint64(blockSeq.SyncSeq),
 					Height: 0,
@@ -243,7 +248,7 @@ func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcCo
 		var detail chain33types.BlockDetail
 		if decErr := chain33types.Decode(blockSeq.BlockDetail, &detail); decErr == nil {
 			have := uint64(detail.Block.Height)
-			if !p.NoProgress && p.EnableDB && p.db != nil {
+			if !p.FixMode && p.EnableDB && p.db != nil {
 				if err = p.db.SaveSeqMarker(&database.SeqMarker{
 					Seq:    uint64(blockSeq.SyncSeq),
 					Height: have,
@@ -269,20 +274,23 @@ func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcCo
 // Start 启动模块
 func (p *Process) Start() {
 	for {
+		// 结束点：fix 模式处理 [StartPoint, EndPoint] 闭区间，跑完即返回（不必等链尖）；
+		// run 模式保持原语义（到达 end_block 后停住等待，不退出）。
+		if p.EndPoint > 0 && p.FixMode && p.StartPoint > uint64(p.EndPoint) {
+			log.Info("[Exit] fix mode completed (node mode)",
+				"endBlock", p.EndPoint, "processedThrough", p.StartPoint-1)
+			return
+		}
+		if p.EndPoint > 0 && !p.FixMode && p.StartPoint >= uint64(p.EndPoint) {
+			time.Sleep(time.Second)
+			continue
+		}
 		blockNum, err := p.cli.BlockNum()
 		if err != nil {
 			time.Sleep(time.Second)
 			continue
 		}
 		if blockNum < p.StartPoint {
-			time.Sleep(time.Second)
-			continue
-		}
-		if p.EndPoint > 0 && blockNum >= p.EndPoint {
-			if p.NoProgress {
-				log.Info("[Exit] scannerfix completed (node mode)", "endBlock", p.EndPoint, "lastNum", p.StartPoint)
-				return
-			}
 			time.Sleep(time.Second)
 			continue
 		}
@@ -299,7 +307,7 @@ func (p *Process) Start() {
 		}
 
 		// 更新处理进度
-		if !p.NoProgress && p.EnableDB && p.db != nil {
+		if !p.FixMode && p.EnableDB && p.db != nil {
 			blockTime := time.Unix(int64(block.Time()), 0)
 			err = p.db.UpdateScanProgress(
 				block.NumberU64(),
