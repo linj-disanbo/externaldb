@@ -11,7 +11,7 @@ version: '2'
 services:
   pull_convert: # 服务名/二进制/容器名都沿用旧包命名，升级前后一致
     container_name: ${PROJECT_NAME}-pull-convert
-    image: docker.io/ubuntu:16.04
+    image: docker.io/ubuntu:22.04
     working_dir: /root/bin
     volumes:
       - ./bin/:/root/bin/
@@ -22,7 +22,7 @@ services:
 
   jrpc: # 浏览器/查询使用
     container_name: ${PROJECT_NAME}-jrpc
-    image: docker.io/ubuntu:16.04
+    image: docker.io/ubuntu:22.04
     working_dir: /root/bin
     volumes:
       - ./bin/:/root/bin/
@@ -32,7 +32,7 @@ services:
 
   scanner: # ERC20 扫块（写 MySQL，需要 [mysql] 启用）
     container_name: ${PROJECT_NAME}-scanner
-    image: docker.io/ubuntu:16.04
+    image: docker.io/ubuntu:22.04
     working_dir: /root/bin
     volumes:
       - ./bin/:/root/bin/
@@ -42,7 +42,7 @@ services:
 
   erc20api: # ERC20 查询（读 MySQL，/evmapi/*）
     container_name: ${PROJECT_NAME}-erc20api
-    image: docker.io/ubuntu:16.04
+    image: docker.io/ubuntu:22.04
     working_dir: /root/bin
     volumes:
       - ./bin/:/root/bin/
@@ -52,7 +52,7 @@ services:
 
   accountrefresh: # 主币（BTY）余额定时校正（写 ES account 文档；[accountRefresh].enabled=false 时空转退出）
     container_name: ${PROJECT_NAME}-accountrefresh
-    image: docker.io/ubuntu:16.04
+    image: docker.io/ubuntu:22.04
     working_dir: /root/bin
     volumes:
       - ./bin/:/root/bin/

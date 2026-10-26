@@ -5,7 +5,7 @@ version: '2'
 services:
   sync:
     container_name: ${PROJECT_NAME}-sync
-    image: docker.io/ubuntu:16.04
+    image: docker.io/ubuntu:22.04
     volumes:
       - ./bin/:/root/bin/
       - ./etc/:/root/etc/
@@ -14,7 +14,7 @@ services:
 
   convert:
     container_name: ${PROJECT_NAME}-convert
-    image: docker.io/ubuntu:16.04
+    image: docker.io/ubuntu:22.04
     depends_on:
       - sync
     volumes:
@@ -25,7 +25,7 @@ services:
 
   rpc: # 存证项目使用
     container_name: ${PROJECT_NAME}-rpc
-    image: docker.io/ubuntu:16.04
+    image: docker.io/ubuntu:22.04
     volumes:
       - ./bin/:/root/bin/
       - ./etc/:/root/etc/
@@ -35,7 +35,7 @@ services:
 
   jrpc: # 浏览器项目使用
     container_name: ${PROJECT_NAME}-jrpc
-    image: docker.io/ubuntu:16.04
+    image: docker.io/ubuntu:22.04
     volumes:
       - ./bin/:/root/bin/
       - ./etc/:/root/etc/
