@@ -151,13 +151,13 @@ type fakeWriter struct {
 	records    [][]schema.Record
 	markers    []*seqmark.Marker
 	pruned     []int64
-	failOnCall int // 第几次 WriteRecords 失败（1-based）
+	failUntil  int // 前 failUntil 次 WriteRecords 失败（0 = 从不失败）
 	markerFail bool
 }
 
 func (w *fakeWriter) WriteRecords(rs []schema.Record) error {
 	w.calls++
-	if w.calls == w.failOnCall {
+	if w.calls <= w.failUntil {
 		return errors.New("write records failed")
 	}
 	w.records = append(w.records, rs)
@@ -248,15 +248,35 @@ func TestRunPullConvertErrorStopsBeforeMarker(t *testing.T) {
 	}
 }
 
-func TestRunPullWriteErrorStopsBeforeMarker(t *testing.T) {
+// 写记录失败不再退出：按 WriteRetryInterval 重试，成功后写 marker 并继续。
+func TestRunPullWriteErrorRetriesUntilSuccess(t *testing.T) {
 	src := &fakeSource{last: 11, blocks: blocksFor(10, 11)}
-	w := &fakeWriter{failOnCall: 2} // 第 2 个 seq（11）写失败
+	w := &fakeWriter{failUntil: 2} // seq 10 连续失败 2 次
 	d := &fakeDealer{}
-	err := startPull(t, src, w, d, PullOptions{Cursor: 9, Batch: 10, PollInterval: 5 * time.Millisecond}, time.Second)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "write seq 11")
+	err := startPull(t, src, w, d, PullOptions{
+		Cursor: 9, Batch: 10, PollInterval: 5 * time.Millisecond,
+		WriteRetryInterval: 5 * time.Millisecond,
+	}, 300*time.Millisecond)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, w.calls, "seq10 失败 2 次 + 成功 1 次，seq11 成功 1 次")
+	if assert.Len(t, w.markers, 2) {
+		assert.Equal(t, int64(10), w.markers[0].Seq)
+		assert.Equal(t, int64(11), w.markers[1].Seq)
 	}
-	assert.Len(t, w.markers, 1, "写记录失败时不得写 marker")
+}
+
+// 一直失败：进程不退出，也不写 marker；ctx 结束后干净退出。
+func TestRunPullWriteErrorRetriesUntilCanceled(t *testing.T) {
+	src := &fakeSource{last: 10, blocks: blocksFor(10, 10)}
+	w := &fakeWriter{failUntil: 1 << 30}
+	d := &fakeDealer{}
+	err := startPull(t, src, w, d, PullOptions{
+		Cursor: 9, Batch: 10, PollInterval: 5 * time.Millisecond,
+		WriteRetryInterval: 10 * time.Millisecond,
+	}, 80*time.Millisecond)
+	assert.NoError(t, err, "ctx 结束属于正常退出")
+	assert.Greater(t, w.calls, 2, "应持续重试而不是退出")
+	assert.Empty(t, w.markers, "写记录一直失败时不得写 marker")
 }
 
 func TestRunPullMarkerErrorStops(t *testing.T) {

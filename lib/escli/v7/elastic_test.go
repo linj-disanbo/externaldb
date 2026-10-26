@@ -63,6 +63,32 @@ func TestCollectBulkFailures(t *testing.T) {
 	assert.Empty(t, collectBulkFailures(withNil))
 }
 
+// 删除不存在的文档（del seq 回滚、同一 _bulk 内重复 delete）：ES 返回 404/not_found
+// 且不带 error，属于幂等成功，不能算失败（否则进度永远卡在 404）。
+func TestCollectBulkFailuresDeleteNotFoundIsSuccess(t *testing.T) {
+	resp := &elasticV7.BulkResponse{Items: []map[string]*elasticV7.BulkResponseItem{
+		item("delete", &elasticV7.BulkResponseItem{Index: "db05_account_record", Id: "gone", Status: 404, Result: "not_found"}),
+		item("delete", &elasticV7.BulkResponseItem{Index: "db05_account_record", Id: "gone2", Status: 404}),
+		// update 缺失文档是真正的错误（带 error），仍要上抛
+		item("update", &elasticV7.BulkResponseItem{
+			Index: "db05_account_record", Id: "missing", Status: 404,
+			Error: &elasticV7.ErrorDetails{Type: "document_missing_exception", Reason: "document missing"},
+		}),
+		// delete 打到不存在的索引：404 但带 error（index_not_found_exception），不能吞
+		item("delete", &elasticV7.BulkResponseItem{
+			Index: "no_such_index", Id: "x", Status: 404,
+			Error: &elasticV7.ErrorDetails{Type: "index_not_found_exception", Reason: "no such index"},
+		}),
+	}}
+	fails := collectBulkFailures(resp)
+	if assert.Len(t, fails, 2) {
+		assert.Equal(t, "missing", fails[0].ID)
+		assert.Contains(t, fails[0].Reason, "document_missing_exception")
+		assert.Equal(t, "x", fails[1].ID)
+		assert.Contains(t, fails[1].Reason, "index_not_found_exception")
+	}
+}
+
 func TestBulkFailureErrorTruncates(t *testing.T) {
 	resp := &elasticV7.BulkResponse{}
 	var fails []ItemFailure

@@ -234,16 +234,32 @@ func (e *BulkError) Error() string {
 	return sb.String()
 }
 
+// isDeleteNotFound 删除一个不存在的文档：ES 返回 status=404、result=not_found，
+// 且**不带 error 字段**（update 缺失文档是 document_missing_exception，带 error）。
+// 语义上等价于"已经删掉了"，不算失败：回滚重放的 del seq、同一 _bulk 里同一 id
+// 被删两次都会命中，硬当失败会让进度永远卡在 404 上。
+func isDeleteNotFound(action string, v *elasticV7.BulkResponseItem) bool {
+	if action != "delete" || v == nil || v.Error != nil || v.Status != 404 {
+		return false
+	}
+	// not_found 是 delete 缺失文档的标准 result；个别版本/场景可能不带 result，按 404 兜底
+	return v.Result == "" || v.Result == "not_found"
+}
+
 // collectBulkFailures 收集 _bulk 响应里的 per-item 失败（status>=400）。
 // 注意：_bulk 的 HTTP 状态码是 200，即使部分 item 失败也一样，必须逐条检查。
+// 例外：delete 不存在的文档（404/not_found、无 error）按成功处理，见 isDeleteNotFound。
 func collectBulkFailures(responses *elasticV7.BulkResponse) []ItemFailure {
 	if responses == nil {
 		return nil
 	}
 	var fails []ItemFailure
 	for _, item := range responses.Items {
-		for _, v := range item {
+		for action, v := range item {
 			if v == nil || v.Status < 400 {
+				continue
+			}
+			if isDeleteNotFound(action, v) {
 				continue
 			}
 			reason := ""
