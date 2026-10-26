@@ -455,7 +455,7 @@ func (db *DB) SaveContract(contract *Contract) error {
 	// 处理 total_supply 字段：如果为 nil，传递 nil（SQL NULL），否则传递字符串
 	var totalSupplyStr interface{}
 	if contract.TotalSupply != nil {
-		totalSupplyStr = contract.TotalSupply.String()
+		totalSupplyStr = clampAmountForDB(contract.TotalSupply).String()
 	} else {
 		totalSupplyStr = nil
 	}
@@ -494,7 +494,7 @@ func (db *DB) SaveTransaction(tx *Transaction) error {
 	// 处理 DECIMAL 字段：如果为 nil，传递 nil（SQL NULL），否则传递字符串
 	var valueStr interface{}
 	if tx.Value != nil {
-		valueStr = tx.Value.String()
+		valueStr = clampAmountForDB(tx.Value).String()
 	} else {
 		valueStr = nil
 	}
@@ -549,7 +549,7 @@ func (db *DB) UpdateTokenBalance(address, contractAddress string, balance *big.I
 	_, err := db.exec(query,
 		address,
 		contractAddress,
-		balance.String(),
+		clampAmountForDB(balance).String(),
 		txHash,
 		blockNumber,
 	)
@@ -611,7 +611,7 @@ func (db *DB) UpdateTokenBalanceFromChain(address, contractAddress string, balan
 	}
 	q := `UPDATE token_balances SET balance = ?, last_updated_at = CURRENT_TIMESTAMP
 		WHERE address = ? AND contract_address = ?`
-	_, err := db.exec(q, balance.String(), address, contractAddress)
+	_, err := db.exec(q, clampAmountForDB(balance).String(), address, contractAddress)
 	return err
 }
 
@@ -642,7 +642,7 @@ func (db *DB) SaveEvent(event *Event) error {
 	// 处理 value 字段：如果为 nil，传递 nil（SQL NULL），否则传递字符串
 	var valueStr interface{}
 	if event.Value != nil {
-		valueStr = event.Value.String()
+		valueStr = clampAmountForDB(event.Value).String()
 	} else {
 		valueStr = nil
 	}
@@ -650,7 +650,7 @@ func (db *DB) SaveEvent(event *Event) error {
 	// 处理 amount 字段：如果为 nil，传递 nil（SQL NULL），否则传递字符串
 	var amountStr interface{}
 	if event.Amount != nil {
-		amountStr = event.Amount.String()
+		amountStr = clampAmountForDB(event.Amount).String()
 	} else {
 		amountStr = nil
 	}
@@ -978,7 +978,7 @@ func (db *DB) UpsertAllowance(owner, spender, contractAddress string, amount *bi
 		owner,
 		spender,
 		contractAddress,
-		amount.String(),
+		clampAmountForDB(amount).String(),
 		txHash,
 		blockNumber,
 	)

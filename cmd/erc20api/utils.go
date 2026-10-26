@@ -42,7 +42,10 @@ func formatTokenAmount(amount *big.Int, decimals uint8) string {
 	if amount == nil {
 		return "0"
 	}
-	if txparser.IsUnlimitedApproval(amount) {
+	// IsUnlimitedApproval 覆盖链上原值（MaxUint256）；负数是我们入库时的统一哨兵：
+	// DB 列是 DECIMAL(65,0)，装不下 1e65 以上的 uint256 金额，写入前归一成 -1（见
+	// erc20/database.clampAmountForDB），展示上同样按 unlimited 处理。
+	if txparser.IsUnlimitedApproval(amount) || amount.Sign() < 0 {
 		return "unlimited"
 	}
 	divisor := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil)
