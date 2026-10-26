@@ -8,6 +8,7 @@ import (
 
 	"github.com/33cn/externaldb/erc20/blockalign"
 	"github.com/33cn/externaldb/erc20/txparser"
+	"github.com/33cn/externaldb/erc20/tz"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -61,7 +62,7 @@ func (a *Analyzer) InspectBlock(height uint64, seqTxCount int) (*BlockReport, er
 	}
 
 	bt := time.Unix(int64(block.Time()), 0)
-	cst, _ := time.LoadLocation("Asia/Shanghai")
+	cst := tz.CST()
 
 	out := &BlockReport{
 		Number:       block.NumberU64(),
@@ -231,7 +232,7 @@ func (a *Analyzer) buildReport(tx *types.Transaction, receipt *types.Receipt, bl
 	}
 
 	blockTime := time.Unix(int64(block.Time()), 0)
-	cst, _ := time.LoadLocation("Asia/Shanghai")
+	cst := tz.CST()
 
 	if tx.To() == nil {
 		cc := a.buildContractCreationView(receipt, block, tx, blockTime, cst)

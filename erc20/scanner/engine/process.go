@@ -24,6 +24,7 @@ import (
 	"github.com/33cn/externaldb/erc20/database"
 	"github.com/33cn/externaldb/erc20/erc20abi/generated"
 	"github.com/33cn/externaldb/erc20/txparser"
+	"github.com/33cn/externaldb/erc20/tz"
 	"github.com/33cn/externaldb/lib/esdoc/block"
 	"github.com/33cn/externaldb/lib/schema"
 	"google.golang.org/grpc"
@@ -601,10 +602,7 @@ func (p *Process) handleContractCreation(tx *types.Transaction, receipt *types.R
 	}
 
 	ut := time.Unix(int64(block.Time()), 0)
-	cst, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		return err
-	}
+	cst := tz.CST()
 
 	// 使用 Debug 级别输出详细的合约信息
 	log.Debug("Contract creation details",
@@ -958,7 +956,7 @@ func (p *Process) parseERC20Transfer(tx *types.Transaction, receipt *types.Recei
 
 	// 输出详细的transfer信息
 	ut := time.Unix(int64(block.Time()), 0)
-	cst, _ := time.LoadLocation("Asia/Shanghai")
+	cst := tz.CST()
 
 	// 尝试从交易签名中恢复发送者地址
 	var fromAddr common.Address

@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/33cn/externaldb/erc20/txparser"
+	"github.com/33cn/externaldb/erc20/tz"
 )
 
 // Analyzer uses the same RPC and ABI calls as scanner Process.
@@ -265,7 +266,7 @@ func (a *Analyzer) Inspect(txHash common.Hash) (*Report, error) {
 
 func blockView(block *types.Block, txIdx int) *BlockView {
 	bt := time.Unix(int64(block.Time()), 0)
-	cst, _ := time.LoadLocation("Asia/Shanghai")
+	cst := tz.CST()
 	return &BlockView{
 		Number:   block.NumberU64(),
 		Hash:     block.Hash().Hex(),
