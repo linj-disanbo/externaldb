@@ -216,11 +216,25 @@ func (p *Process) StartWithChain33(grpcClient chain33types.Chain33Client, grpcCo
 			continue
 		}
 
-		// del seq（回滚）：不解析块体，只记录进度；被回滚块的旧行由后续 add seq 的
-		// 按块替换清掉（同一高度重新写入时先删后插）。
+		// del seq（回滚）：节点通常会把被回滚块的明细带回来（chain33 DelBlock 只删 height→hash，
+		// 块体按 hash 仍在），能取到原高度就当场删掉该高度的 events/transactions；取不到就跳过——
+		// 不删也无害，后续同高度 add 会先按高度删除再插入（见 parseBlockFromChain33）。
 		if blockSeq.Type != schema.SeqTypeAdd {
-			log.Info("[Reorg] del seq, advance cursor only",
-				"seq", blockSeq.SyncSeq, "hash", blockSeq.Hash, "type", blockSeq.Type)
+			h := delBlockHeight(blockSeq)
+			if h > 0 && p.EnableDB && p.db != nil {
+				if err := p.cleanupRevertedBlock(h); err != nil {
+					log.Error("[Reorg] del seq: cleanup block rows failed, will retry",
+						"err", err, "seq", blockSeq.SyncSeq, "height", h)
+					time.Sleep(time.Second)
+					continue
+				}
+			} else if h > 0 {
+				log.Info("[Reorg] del seq, database disabled, skip cleanup",
+					"seq", blockSeq.SyncSeq, "height", h)
+			} else {
+				log.Info("[Reorg] del seq without block height, skip cleanup (同高度 add 会按高度替换)",
+					"seq", blockSeq.SyncSeq, "hash", blockSeq.Hash, "type", blockSeq.Type)
+			}
 			if !p.FixMode && p.EnableDB && p.db != nil {
 				if err = p.db.SaveSeqMarker(&database.SeqMarker{
 					Seq:    uint64(blockSeq.SyncSeq),
@@ -358,8 +372,8 @@ func (p *Process) getBlockFromChain33(seqNum int64) (*block.Seq, error) {
 		return nil, fmt.Errorf("GetBlockBySeq returned nil for seq=%d", seqNum)
 	}
 	if reply.GetDetail() == nil {
-		// del seq（回滚）通常没有 Detail：仍返回 seq/hash/type，让上层写 marker 并推进游标；
-		// 该高度的旧数据由"按块幂等替换"在随后的 add seq 上清掉（见 parseBlockFromChain33）。
+		// 节点没带回明细（异常/空响应）：仍返回 seq/hash/type，让上层写 marker 并推进游标。
+		// del seq 拿不到明细时不做清理，交给后续同高度 add 的"按块替换"兜底（见 StartWithChain33）。
 		return &block.Seq{
 			SyncSeq: int(reply.GetNum()),
 			Hash:    fmt.Sprintf("0x%x", reply.GetSeq().GetHash()),
@@ -375,6 +389,43 @@ func (p *Process) getBlockFromChain33(seqNum int64) (*block.Seq, error) {
 		BlockDetail: chain33types.Encode(reply.GetDetail()),
 	}
 	return seq, nil
+}
+
+// delBlockHeight 从 del seq 的明细里取被回滚块的原高度；取不到（无明细 / Block 为 nil / 高度<=0）返回 0。
+// chain33 的 DelBlock 只删 height→hash、块体按 hash 保留，所以 GetBlockBySeq 对 del 通常能带回原块。
+func delBlockHeight(blockSeq *block.Seq) uint64 {
+	if blockSeq == nil || len(blockSeq.BlockDetail) == 0 {
+		return 0
+	}
+	var detail chain33types.BlockDetail
+	if err := chain33types.Decode(blockSeq.BlockDetail, &detail); err != nil {
+		return 0
+	}
+	if detail.Block == nil || detail.Block.Height <= 0 {
+		return 0
+	}
+	return uint64(detail.Block.Height)
+}
+
+// cleanupRevertedBlock 按高度删除被回滚块写入的数据（events / transactions），事务内执行；
+// 失败返回错误，由调用方不推进游标、稍后重试（删除是幂等的）。
+// 注意：token_allowances / token_balances 是当前态、不按高度组织，这里不处理。
+func (p *Process) cleanupRevertedBlock(height uint64) error {
+	fresh, err := p.db.BeginBlock()
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	deletedEvents, deletedTxs, delErr := p.db.DeleteBlockData(height)
+	if delErr != nil {
+		p.db.RollbackBlock(fresh)
+		return fmt.Errorf("delete block data: %w", delErr)
+	}
+	if cErr := p.db.CommitBlock(fresh); cErr != nil {
+		return fmt.Errorf("commit transaction: %w", cErr)
+	}
+	log.Info("[Reorg] del seq, cleaned block rows",
+		"height", height, "deletedEvents", deletedEvents, "deletedTxs", deletedTxs)
+	return nil
 }
 
 // isEvmExecer 检查执行器是否是evm
