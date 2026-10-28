@@ -44,3 +44,35 @@ func TestNewDefaults(t *testing.T) {
 		t.Errorf("主链 execer 不该带前缀: coins=%s ticket=%s", r2.execCoins, r2.execTicket)
 	}
 }
+
+// 推算 ticket 执行器：只有 user.p. 开头的 title 才是平行链，主链 title 不参与计算；
+// 地址格式随 AddressDriver（btc → base58，eth → 0x）。
+func TestTicketExecDerivedFromTitleAndDriver(t *testing.T) {
+	cases := []struct {
+		name       string
+		title      string
+		driver     string
+		wantExec   string
+		wantTicket string
+	}{
+		{"主链空 title/btc", "", "btc", "ticket", "16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp"},
+		{"主链 title 非 user.p. 不参与计算", "bityuan", "btc", "ticket", "16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp"},
+		{"平行链 btc", "user.p.ex.", "btc", "user.p.ex.ticket", "1GBnPKVSPrKuWBi1jwsHEKmSKTnjgo8ex3"},
+		{"主链 eth", "", "eth", "ticket", "0x47e48d946c5db1a18de7357a01d070c0bf328158"},
+	}
+	for _, c := range cases {
+		r := New(Options{Symbol: "bty", Title: c.title, AddressDriver: c.driver})
+		if r.execTicket != c.wantExec {
+			t.Errorf("%s: execTicket = %q, want %q", c.name, r.execTicket, c.wantExec)
+		}
+		if r.ticketExec != c.wantTicket {
+			t.Errorf("%s: ticketExec = %q, want %q", c.name, r.ticketExec, c.wantTicket)
+		}
+	}
+
+	// 显式配置优先于推算（不因 AddressDriver 改写）
+	r := New(Options{Symbol: "bty", Title: "bityuan", AddressDriver: "eth", TicketExec: "0xabc"})
+	if r.ticketExec != "0xabc" {
+		t.Errorf("显式 TicketExec 应直接使用, got %q", r.ticketExec)
+	}
+}

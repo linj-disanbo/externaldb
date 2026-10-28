@@ -131,6 +131,7 @@ func buildOptions(cfg *proto.ConfigNew, es escli.ESClient, chain accountrefresh.
 		FullInterval:   parseDur(rc.GetFullInterval(), 168*time.Hour),
 		ActiveWindow:   parseDur(rc.GetActiveWindow(), 24*time.Hour),
 		TicketExec:     rc.GetTicketExec(),
+		AddressDriver:  cfg.GetConvert().GetAddressDriver(),
 	}
 	if opt.Symbol == "" {
 		opt.Symbol = cfg.GetChain().GetSymbol()

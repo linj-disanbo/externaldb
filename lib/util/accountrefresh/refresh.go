@@ -97,7 +97,12 @@ type Options struct {
 	FullInterval   time.Duration
 	ActiveWindow   time.Duration
 
-	TicketExec string // ticket 执行器地址；空则用 chaincfg.ExecAddress(title+"ticket")
+	// AddressDriver 地址格式（[convert].addressDriver）：btc / eth / btcMultiSign。
+	// 非空时用它设置 chain33 默认地址驱动，使推算出的执行器地址与链上数据格式一致
+	// （btc → 类似 16htvc… 的 base58，eth → 0x…）。
+	AddressDriver string
+
+	TicketExec string // ticket 执行器地址；空则按 [chain].title 推算（见 New）
 
 	DryRun bool
 	Now    func() time.Time
@@ -143,12 +148,22 @@ func New(opt Options) *Refresher {
 		opt.Log = func(string, ...interface{}) {}
 	}
 	r := &Refresher{opt: opt}
+
+	// 只有平行链（title 以 user.p. 开头）的 execer 才带 title 前缀；
+	// 主链的 title（如 "bityuan"）不参与计算，execer 就是 coins / ticket。
 	r.execCoins = "coins"
 	r.execTicket = "ticket"
-	if opt.Title != "" {
-		r.execCoins = opt.Title + "coins"
-		r.execTicket = opt.Title + "ticket"
+	if para := chaincfg.CalcParaTitle(opt.Title); para != "" {
+		r.execCoins = para + "coins"
+		r.execTicket = para + "ticket"
 	}
+
+	// 推算地址要跟链上数据的地址格式一致：先按配置设置默认地址驱动（btc/eth），
+	// 再由 chaincfg.ExecAddress 算出 base58 或 0x 地址。
+	if opt.AddressDriver != "" {
+		chaincfg.SetAddrID(opt.AddressDriver)
+	}
+
 	r.ticketExec = opt.TicketExec
 	if r.ticketExec == "" {
 		r.ticketExec = chaincfg.ExecAddress(r.execTicket)

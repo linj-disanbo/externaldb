@@ -283,5 +283,6 @@ batchSize = 200
 pageSize = 1000
 # 资产符号，留空用 [chain].symbol
 symbol = ""
-# ticket 执行器地址，留空按 [chain].title+"ticket" 推算（平行链需带 title）
+# ticket 执行器地址，留空自动推算：只有 user.p. 开头的 title 才当前缀（主链 title 不参与），
+# 地址格式跟随 [convert].addressDriver（btc→base58，eth→0x…）
 ticketExec = ""
