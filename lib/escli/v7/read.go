@@ -106,9 +106,24 @@ func (cli *ESClientV7) Agg(idx, typ string, query *querypara.Search) (*aggdecode
 	responses, err := search.Do(context.TODO())
 	if err != nil {
 		if elasticV7.IsNotFound(err) {
-			return nil, nil
+			// 索引不存在（新环境还没写入过该索引）：返回空结果而不是 nil。
+			// 契约：Agg 永远返回非 nil，调用方统一走 Term/Sum/Range 的 found=false 分支；
+			// 返回 nil 会让 "res.Term(...)" 这类取值接收者的调用直接 nil 解引用 panic
+			// （account_refresh 首轮、jrpc Account.TopAsset 等）。
+			return &aggdecode.AggregationBucketKeyItem{
+				Aggregations: map[string]json.RawMessage{},
+				Version:      cli.Version,
+			}, nil
 		}
 		return nil, errors.Wrap(err, "Search failed")
+	}
+
+	if responses == nil {
+		// 防御：正常不会出现，但不让调用方拿到 nil
+		return &aggdecode.AggregationBucketKeyItem{
+			Aggregations: map[string]json.RawMessage{},
+			Version:      cli.Version,
+		}, nil
 	}
 
 	b := &aggdecode.AggregationBucketKeyItem{

@@ -1,8 +1,14 @@
 package accountrefresh
 
 import (
+	"context"
+	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/33cn/externaldb/lib/escli"
+	"github.com/33cn/externaldb/lib/escli/aggdecode"
+	"github.com/33cn/externaldb/lib/escli/querypara"
 )
 
 func TestDue(t *testing.T) {
@@ -74,5 +80,47 @@ func TestTicketExecDerivedFromTitleAndDriver(t *testing.T) {
 	r := New(Options{Symbol: "bty", Title: "bityuan", AddressDriver: "eth", TicketExec: "0xabc"})
 	if r.ticketExec != "0xabc" {
 		t.Errorf("显式 TicketExec 应直接使用, got %q", r.ticketExec)
+	}
+}
+
+// emptyEnvES 模拟"新环境、索引都还没建"：Agg 返回空结果（ESClientV7 对 404 的新契约），
+// Search 返回空列表。其它方法不该被调用，故用嵌入的 nil 接口占位。
+type emptyEnvES struct {
+	escli.ESClient
+	aggCalls int
+}
+
+func (e *emptyEnvES) Agg(idx, typ string, _ *querypara.Search) (*aggdecode.AggregationBucketKeyItem, error) {
+	e.aggCalls++
+	return &aggdecode.AggregationBucketKeyItem{Aggregations: map[string]json.RawMessage{}, Version: 7}, nil
+}
+
+func (e *emptyEnvES) Search(idx, typ string, _ *querypara.Query, _ func(*json.RawMessage) (interface{}, error)) ([]interface{}, error) {
+	return nil, nil
+}
+
+// 回归：索引还不存在的新机器上跑一轮必须不 panic（历史问题是 Agg 返回 nil 导致
+// refreshTop 里 res.Term 空指针，进程启动即退出），并且不该产生任何处理量。
+func TestRunOnceEmptyEnv(t *testing.T) {
+	es := &emptyEnvES{}
+	r := New(Options{
+		ES:             es,
+		Symbol:         "bty",
+		TicketExec:     "16htvcBNSEA7fZhAdLJphDwQRQJaHpyHTp",
+		TopInterval:    time.Hour,
+		ActiveInterval: time.Hour,
+		FullInterval:   time.Hour,
+		Now:            func() time.Time { return time.Unix(1_700_000_000, 0) },
+	})
+
+	st, err := r.RunOnce(context.Background())
+	if err != nil {
+		t.Fatalf("空环境不应报错: %v", err)
+	}
+	if st != (Stats{}) {
+		t.Fatalf("空环境不应有处理量: %+v", st)
+	}
+	if es.aggCalls != 3 { // top 1 次 + active 的 from/to 各 1 次
+		t.Fatalf("agg 调用次数 = %d, want 3", es.aggCalls)
 	}
 }
