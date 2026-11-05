@@ -505,11 +505,50 @@ func (c *Client) TxReceipt(hash common.Hash) (*types.Receipt, error) {
 	return c.cli.TransactionReceipt(ctx, hash)
 }
 
-// CallContract 合约调用
+// ethCallArg 构造 eth_call 的请求参数。
+//
+// calldata 必须同时放在 data 和 input 两个字段里：
+//   - geth 从 v1.10.19 起，ethclient 的 toCallArg 把字段名从 data 改成了 input
+//     （本仓库用 go-ethereum v1.14.8，只发 input）；
+//   - chain33 v1.72 的 rpc/ethrpc/types.CallMsg 只有 json:"data"（注释写着两种都接受，
+//     但没有实现 input 的反序列化），只发 input 会被静默丢弃。
+//
+// 两边都发才不会被任何一侧丢掉；否则 eth_call 以空 calldata 执行，合约走 fallback 后 revert，
+// 节点返回空结果，客户端表现为 "abi: attempting to unmarshal an empty string while arguments are expected"。
+func ethCallArg(call ethereum.CallMsg) map[string]interface{} {
+	arg := map[string]interface{}{
+		"from": call.From,
+		"to":   call.To,
+	}
+	if len(call.Data) > 0 {
+		calldata := hexutil.Bytes(call.Data)
+		arg["data"] = calldata
+		arg["input"] = calldata
+	}
+	if call.Value != nil {
+		arg["value"] = (*hexutil.Big)(call.Value)
+	}
+	if call.Gas != 0 {
+		arg["gas"] = hexutil.Uint64(call.Gas)
+	}
+	if call.GasPrice != nil {
+		arg["gasPrice"] = (*hexutil.Big)(call.GasPrice)
+	}
+	return arg
+}
+
+// CallContract 合约调用（显式带 data/input，见 ethCallArg）
 func (c *Client) CallContract(call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
-	return c.cli.CallContract(ctx, call, blockNumber)
+	if c.rpcCli == nil {
+		return c.cli.CallContract(ctx, call, blockNumber)
+	}
+	var out hexutil.Bytes
+	if err := c.rpcCli.CallContext(ctx, &out, "eth_call", ethCallArg(call), toBlockNumArg(blockNumber)); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // CodeAt 获取合约代码
