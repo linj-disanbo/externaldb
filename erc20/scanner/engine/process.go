@@ -1605,6 +1605,26 @@ func (p *Process) saveNonERC20ContractInfoFromAddress(contractAddress *common.Ad
 }
 
 // saveTransactionToDB 保存交易信息到数据库
+// txValue 计算 transactions.value：
+//   - ERC20 transfer(address,uint256) / transferFrom(address,address,uint256)：取 calldata 里的代币数量
+//   - 其它（普通主币转账、带 value 的 payable 合约调用）：取 tx.Value()
+//
+// 旧实现只在 len(txData)>=4 时赋值，导致普通 ETH/BTY 转账的 value 一律是 NULL。
+func txValue(txData []byte, funcSelector string, txVal *big.Int) *big.Int {
+	if txVal == nil {
+		txVal = new(big.Int)
+	}
+	if len(txData) >= 4 {
+		if funcSelector == "a9059cbb" && len(txData) >= 68 {
+			return new(big.Int).SetBytes(txData[36:68])
+		}
+		if funcSelector == "23b872dd" && len(txData) >= 100 {
+			return new(big.Int).SetBytes(txData[68:100])
+		}
+	}
+	return txVal
+}
+
 func (p *Process) saveTransactionToDB(tx *types.Transaction, receipt *types.Receipt, block *types.Block, contractAddress common.Address, funcSelector, funcName string) error {
 	if p.db == nil {
 		return fmt.Errorf("database not initialized")
@@ -1624,19 +1644,10 @@ func (p *Process) saveTransactionToDB(tx *types.Transaction, receipt *types.Rece
 		toAddr = tx.To().Hex()
 	}
 
-	// 解析交易数据获取函数选择器和参数
+	// 交易金额：主币转账 / 带 value 的合约调用取 tx.Value()，
+	// ERC20 transfer/transferFrom 取 calldata 里的代币数量（tx.Value 通常是 0）。
 	txData := tx.Data()
-	var value *big.Int
-	if len(txData) >= 4 {
-		// 如果是transfer函数，解析value参数
-		if funcSelector == "a9059cbb" && len(txData) >= 68 {
-			// transfer(address,uint256) - 参数从第4字节开始
-			value = new(big.Int).SetBytes(txData[36:68])
-		} else if funcSelector == "23b872dd" && len(txData) >= 100 {
-			// transferFrom(address,address,uint256) - value在最后32字节
-			value = new(big.Int).SetBytes(txData[68:100])
-		}
-	}
+	value := txValue(txData, funcSelector, tx.Value())
 
 	gasPrice := tx.GasPrice()
 	var txFee *big.Int
