@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"io"
@@ -235,5 +236,27 @@ func TestClassifyErr(t *testing.T) {
 	}
 	if !transient("timeout(x)") || !transient("rate-limit(x)") {
 		t.Error("瞬时错误应该重试")
+	}
+}
+
+func TestIsTransientDBErr(t *testing.T) {
+	cases := []struct {
+		err  error
+		want bool
+	}{
+		{errors.New("Error 1205 (HY000): Lock wait timeout exceeded"), true},
+		{errors.New("Error 1213 (40001): Deadlock found"), true},
+		{errors.New("invalid connection"), true},
+		{errors.New("[mysql] packets.go:58 unexpected EOF"), true},
+		{errors.New("write tcp: broken pipe"), true},
+		{driver.ErrBadConn, true},
+		{errors.New("Error 1062 (23000): Duplicate entry"), false},
+		{errors.New("Error 1146 (42S02): Table doesn't exist"), false},
+		{nil, false},
+	}
+	for _, c := range cases {
+		if got := isTransientDBErr(c.err); got != c.want {
+			t.Errorf("isTransientDBErr(%v) = %v, want %v", c.err, got, c.want)
+		}
 	}
 }

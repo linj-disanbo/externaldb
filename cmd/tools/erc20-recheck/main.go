@@ -21,8 +21,10 @@ package main
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -136,10 +138,24 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
+	// 连接池：与并发数对齐，并让连接定期重建。
+	// 线上 `unexpected EOF` + `invalid connection` 的典型来源是池里的连接被服务端
+	// （wait_timeout / 前置代理空闲超时 / 重启）关掉了，拿旧连接就直接报错。
+	db.SetMaxOpenConns(opt.concurrency)
+	db.SetMaxIdleConns(opt.concurrency)
+	db.SetConnMaxLifetime(3 * time.Minute)
+	db.SetConnMaxIdleTime(1 * time.Minute)
 	if err := db.PingContext(context.Background()); err != nil {
 		log.Error("connect mysql", "err", err)
 		os.Exit(1)
 	}
+	var waitTimeout, netWrite, netRead, maxConn, lockWait sql.NullInt64
+	_ = db.QueryRowContext(context.Background(),
+		`SELECT @@wait_timeout, @@net_write_timeout, @@net_read_timeout, @@max_connections, @@innodb_lock_wait_timeout`).
+		Scan(&waitTimeout, &netWrite, &netRead, &maxConn, &lockWait)
+	log.Info("mysql session", "wait_timeout", waitTimeout.Int64, "net_write_timeout", netWrite.Int64,
+		"net_read_timeout", netRead.Int64, "max_connections", maxConn.Int64,
+		"innodb_lock_wait_timeout", lockWait.Int64)
 
 	rpcCli, err := rpc.DialContext(context.Background(), opt.rpcURL)
 	if err != nil {
@@ -841,7 +857,7 @@ func pruneOne(ctx context.Context, db *sql.DB, addr string) (int64, error) {
 		if err == nil {
 			return n, nil
 		}
-		if !isLockErr(err) {
+		if !isTransientDBErr(err) {
 			return 0, err
 		}
 		lastErr = err
@@ -860,6 +876,30 @@ func isLockErr(err error) bool {
 		strings.Contains(s, "Lock wait timeout") || strings.Contains(s, "Deadlock")
 }
 
+// isTransientDBErr 可重试的 DB 错误：锁冲突 + 连接被服务端/代理断掉。
+// "invalid connection" 是 go-sql-driver 拿到已关闭连接时的错误，
+// 重试会从池里取一条新连接；对应 UPDATE 幂等，重试安全。
+func isTransientDBErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if isLockErr(err) {
+		return true
+	}
+	if errors.Is(err, driver.ErrBadConn) {
+		return true
+	}
+	s := strings.ToLower(err.Error())
+	for _, kw := range []string{"invalid connection", "unexpected eof", "bad connection",
+		"connection reset", "broken pipe", "i/o timeout", "busy buffer", "server has gone away",
+		"connection refused"} {
+		if strings.Contains(s, kw) {
+			return true
+		}
+	}
+	return false
+}
+
 // pruneChunk 单个地址每批搬多少条交易。一个 EOA 名下可能有几十万笔交易，
 // 一次性 UPDATE 会锁住全部行（实测把并发写方拖到 Error 1205），所以分批提交。
 const pruneChunk = 5000
@@ -871,7 +911,7 @@ func pruneOneOnce(ctx context.Context, db *sql.DB, addr string) (int64, error) {
 			`UPDATE transactions SET contract_address=? WHERE contract_address=? LIMIT ?`,
 			database.NativeTransferAddress, addr, pruneChunk)
 		if err != nil {
-			if isLockErr(err) {
+			if isTransientDBErr(err) {
 				return total, err // 交给外层退避重试
 			}
 			return total, fmt.Errorf("update transactions: %w", err)
@@ -884,7 +924,7 @@ func pruneOneOnce(ctx context.Context, db *sql.DB, addr string) (int64, error) {
 	}
 	if _, err := db.ExecContext(ctx,
 		`DELETE FROM contracts WHERE contract_address=? AND contract_type='UNKNOWN'`, addr); err != nil {
-		if isLockErr(err) {
+		if isTransientDBErr(err) {
 			return total, err
 		}
 		return total, fmt.Errorf("delete contract: %w", err)
@@ -996,7 +1036,7 @@ func runBackfillValue(ctx context.Context, log *slog.Logger, db *sql.DB, p *prob
 					for try := 0; try < 5; try++ {
 						_, dbErr = db.ExecContext(ctx,
 							`UPDATE transactions SET value=? WHERE id=? AND value IS NULL`, clampAmount(val), it.id)
-						if dbErr == nil || !isLockErr(dbErr) {
+						if dbErr == nil || !isTransientDBErr(dbErr) {
 							break
 						}
 						select {
