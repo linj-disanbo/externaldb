@@ -1,5 +1,7 @@
 package database
 
+import "strings"
+
 // NativeTransferAddress 普通主币转账（无 calldata 的 ETH/BTY 转账）在 contracts 表里的归属地址。
 //
 // 为什么需要它：transactions.contract_address 是 NOT NULL + 外键到 contracts，普通转账交易也必须
@@ -14,15 +16,14 @@ package database
 const NativeTransferAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
 
 // EnsureNativeTransferContract 幂等写入"主币转账"记录行（contract_type='NATIVE'）。
+// symbol 统一大写（配置里 [chain].symbol 通常是小写 bty），空则用 BTY。
 // decimals 固定 18：transactions.value 是 EVM wei，v_transaction_details 用该字段算 value_formatted；
 // total_supply 留 NULL（不参与代币列表/余额查询）。
 func (db *DB) EnsureNativeTransferContract(name, symbol string) error {
 	if name == "" {
 		name = "Native"
 	}
-	if symbol == "" {
-		symbol = "BTY"
-	}
+	symbol = normalizeNativeSymbol(symbol)
 	q := `INSERT INTO contracts (
 			contract_address, contract_name, contract_symbol, contract_type, decimals,
 			verification_status, verified_functions
@@ -34,4 +35,13 @@ func (db *DB) EnsureNativeTransferContract(name, symbol string) error {
 			decimals = 18`
 	_, err := db.exec(q, NativeTransferAddress, name, symbol)
 	return err
+}
+
+// normalizeNativeSymbol 主币符号统一大写（配置里通常是 bty），空则 BTY
+func normalizeNativeSymbol(symbol string) string {
+	symbol = strings.ToUpper(strings.TrimSpace(symbol))
+	if symbol == "" {
+		return "BTY"
+	}
+	return symbol
 }
