@@ -72,6 +72,8 @@ type options struct {
 	onlyUnknown bool
 	pairsLimit  int
 	retries     int
+	funcs       string
+	fromBlock   int64
 	verbose     bool
 }
 
@@ -80,7 +82,7 @@ func main() {
 	flag.StringVar(&opt.configPath, "c", "", "externaldb.toml 路径（从 [mysql].dsn 与 [erc20scan].ethUrl 取值；也可用 -dsn/-rpc 覆盖）")
 	flag.StringVar(&opt.dsn, "dsn", "", "MySQL DSN（-c 没给时必填）")
 	flag.StringVar(&opt.rpcURL, "rpc", "", "eth JSON-RPC URL（-c 没给时必填）")
-	flag.StringVar(&opt.stage, "stage", "all", "contracts|balances|prune-eoa|all")
+	flag.StringVar(&opt.stage, "stage", "all", "contracts|balances|prune-eoa|backfill-value|all")
 	flag.IntVar(&opt.concurrency, "concurrency", 20, "并发数（RPC 查询）")
 	flag.IntVar(&opt.limit, "limit", 0, "本次最多处理的合约数（0=全部）")
 	flag.IntVar(&opt.pairsLimit, "pairs-limit", 0, "余额阶段最多处理多少个 (地址,合约) 对（0=全部）")
@@ -88,6 +90,8 @@ func main() {
 	flag.BoolVar(&opt.onlyUnknown, "only-unknown", true, "合约阶段只处理 contract_type='UNKNOWN'")
 	flag.BoolVar(&opt.verbose, "v", false, "打印每个地址的判定结果")
 	flag.IntVar(&opt.retries, "retries", 2, "瞬时错误（超时/限流/网络）重试次数")
+	flag.StringVar(&opt.funcs, "func", "eth_transfer", "backfill-value 只补这些 func_name（逗号分隔，all=不限）")
+	flag.Int64Var(&opt.fromBlock, "from-block", 0, "backfill-value 只补 >= 该高度的交易（0=不限）")
 	flag.Parse()
 
 	if opt.configPath != "" {
@@ -114,8 +118,9 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
-	if opt.stage != "contracts" && opt.stage != "balances" && opt.stage != "prune-eoa" && opt.stage != "all" {
-		fmt.Fprintf(os.Stderr, "FATAL: -stage 只支持 contracts/balances/prune-eoa/all（收到 %q）\n", opt.stage)
+	if opt.stage != "contracts" && opt.stage != "balances" && opt.stage != "prune-eoa" &&
+		opt.stage != "backfill-value" && opt.stage != "all" {
+		fmt.Fprintf(os.Stderr, "FATAL: -stage 只支持 contracts/balances/prune-eoa/backfill-value/all（收到 %q）\n", opt.stage)
 		os.Exit(2)
 	}
 
@@ -157,6 +162,12 @@ func main() {
 	if opt.stage == "balances" || opt.stage == "all" {
 		if err := runBalances(context.Background(), log, db, p, opt); err != nil {
 			log.Error("balances stage failed", "err", err)
+			os.Exit(1)
+		}
+	}
+	if opt.stage == "backfill-value" {
+		if err := runBackfillValue(context.Background(), log, db, p, opt); err != nil {
+			log.Error("backfill-value stage failed", "err", err)
 			os.Exit(1)
 		}
 	}
@@ -317,6 +328,27 @@ func (p *probe) tokenMeta(ctx context.Context, addr common.Address) (string, str
 		}
 	}
 	return name, symbol, decimals, supply
+}
+
+// txValueByHash 用 eth_getTransactionByHash 取主币金额（wei）
+func (p *probe) txValueByHash(ctx context.Context, hash string) (*big.Int, error) {
+	var raw json.RawMessage
+	if err := p.rpc.CallContext(ctx, &raw, "eth_getTransactionByHash", hash); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(string(raw)) == "null" {
+		return nil, fmt.Errorf("节点查不到该交易（可能已被裁剪）")
+	}
+	var tx struct {
+		Value *hexutil.Big `json:"value"`
+	}
+	if err := json.Unmarshal(raw, &tx); err != nil {
+		return nil, err
+	}
+	if tx.Value == nil {
+		return nil, fmt.Errorf("返回里没有 value 字段")
+	}
+	return (*big.Int)(tx.Value), nil
 }
 
 func (p *probe) balanceOf(ctx context.Context, contract, holder common.Address) (*big.Int, error) {
@@ -759,32 +791,10 @@ func runPruneEOA(ctx context.Context, log *slog.Logger, db *sql.DB, p *probe, op
 					mu.Unlock()
 					continue
 				}
-				tx, err := db.BeginTx(ctx, nil)
+				n, err := pruneOne(ctx, db, addr)
 				if err != nil {
 					atomic.AddInt64(&st.codeErr, 1)
-					log.Error("begin tx failed", "err", err)
-					continue
-				}
-				res, err := tx.ExecContext(ctx,
-					`UPDATE transactions SET contract_address=? WHERE contract_address=?`,
-					database.NativeTransferAddress, addr)
-				if err != nil {
-					_ = tx.Rollback()
-					atomic.AddInt64(&st.codeErr, 1)
-					log.Error("update transactions failed", "contract", addr, "err", err)
-					continue
-				}
-				n, _ := res.RowsAffected()
-				if _, err := tx.ExecContext(ctx,
-					`DELETE FROM contracts WHERE contract_address=? AND contract_type='UNKNOWN'`, addr); err != nil {
-					_ = tx.Rollback()
-					atomic.AddInt64(&st.codeErr, 1)
-					log.Error("delete contract failed", "contract", addr, "err", err)
-					continue
-				}
-				if err := tx.Commit(); err != nil {
-					atomic.AddInt64(&st.codeErr, 1)
-					log.Error("commit failed", "contract", addr, "err", err)
+					log.Error("prune failed", "contract", addr, "err", err)
 					continue
 				}
 				atomic.AddInt64(&st.pruned, 1)
@@ -815,4 +825,175 @@ func countRefs(ctx context.Context, db *sql.DB, addr string) (int64, error) {
 		return 0, err
 	}
 	return n, nil
+}
+
+// pruneOne 把一个 EOA 占位行的交易改指主币哨兵地址后删除该 contracts 行（单事务）。
+// 线上 scanner 同时在写，偶发 Error 1205(Lock wait timeout)/1213(Deadlock)，退避重试即可。
+func pruneOne(ctx context.Context, db *sql.DB, addr string) (int64, error) {
+	const maxTry = 5
+	var lastErr error
+	for try := 1; try <= maxTry; try++ {
+		n, err := pruneOneOnce(ctx, db, addr)
+		if err == nil {
+			return n, nil
+		}
+		if !isLockErr(err) {
+			return 0, err
+		}
+		lastErr = err
+		select {
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		case <-time.After(time.Duration(try) * 300 * time.Millisecond):
+		}
+	}
+	return 0, fmt.Errorf("重试 %d 次仍失败: %w", maxTry, lastErr)
+}
+
+func isLockErr(err error) bool {
+	s := err.Error()
+	return strings.Contains(s, "1205") || strings.Contains(s, "1213") ||
+		strings.Contains(s, "Lock wait timeout") || strings.Contains(s, "Deadlock")
+}
+
+func pruneOneOnce(ctx context.Context, db *sql.DB, addr string) (int64, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	res, err := tx.ExecContext(ctx,
+		`UPDATE transactions SET contract_address=? WHERE contract_address=?`,
+		database.NativeTransferAddress, addr)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, fmt.Errorf("update transactions: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM contracts WHERE contract_address=? AND contract_type='UNKNOWN'`, addr); err != nil {
+		_ = tx.Rollback()
+		return 0, fmt.Errorf("delete contract: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit: %w", err)
+	}
+	return n, nil
+}
+
+// ---------------- 回填 transactions.value ----------------
+//
+// 修复前（d35df9c 之前）普通主币转账的 value 恒为 NULL，历史行只能回链上按 tx hash 取。
+// 量级提醒：几十万条可几分钟跑完；千万级建议按 -from-block 分段、分批执行。
+func runBackfillValue(ctx context.Context, log *slog.Logger, db *sql.DB, p *probe, opt options) error {
+	q := `SELECT id, tx_hash FROM transactions WHERE value IS NULL`
+	args := []interface{}{}
+	if strings.ToLower(opt.funcs) != "all" {
+		funcs := strings.Split(opt.funcs, ",")
+		ph := make([]string, 0, len(funcs))
+		for _, f := range funcs {
+			f = strings.TrimSpace(f)
+			if f == "" {
+				continue
+			}
+			ph = append(ph, "?")
+			args = append(args, f)
+		}
+		if len(ph) > 0 {
+			q += " AND func_name IN (" + strings.Join(ph, ",") + ")"
+		}
+	}
+	if opt.fromBlock > 0 {
+		q += " AND block_number >= ?"
+		args = append(args, opt.fromBlock)
+	}
+	q += " ORDER BY id"
+	if opt.limit > 0 {
+		q += fmt.Sprintf(" LIMIT %d", opt.limit)
+	}
+
+	rows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return fmt.Errorf("query null-value transactions: %w", err)
+	}
+	type item struct {
+		id   uint64
+		hash string
+	}
+	items := make([]item, 0, 4096)
+	for rows.Next() {
+		var it item
+		if err := rows.Scan(&it.id, &it.hash); err != nil {
+			rows.Close()
+			return err
+		}
+		items = append(items, it)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	log.Info("backfill-value candidates", "rows", len(items), "funcs", opt.funcs,
+		"fromBlock", opt.fromBlock, "dryRun", opt.dryRun)
+	if len(items) == 0 {
+		return nil
+	}
+
+	var updated, missing, failed int64
+	jobs := make(chan item, opt.concurrency*2)
+	var wg sync.WaitGroup
+	for i := 0; i < opt.concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for it := range jobs {
+				var val *big.Int
+				var err error
+				for try := 0; try <= opt.retries; try++ {
+					cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+					val, err = p.txValueByHash(cctx, it.hash)
+					cancel()
+					if err == nil || !transient(classifyErr(err)) {
+						break
+					}
+					time.Sleep(time.Duration(200*(try+1)) * time.Millisecond)
+				}
+				if err != nil {
+					if strings.Contains(err.Error(), "查不到") || strings.Contains(err.Error(), "没有 value") {
+						atomic.AddInt64(&missing, 1)
+					} else {
+						atomic.AddInt64(&failed, 1)
+						log.Warn("get tx value failed", "tx", it.hash, "err", err)
+					}
+					continue
+				}
+				if opt.dryRun {
+					var have uint64
+					_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM transactions WHERE id=? AND value IS NULL`, it.id).Scan(&have)
+					if have > 0 {
+						atomic.AddInt64(&updated, 1)
+					}
+					continue
+				}
+				res, err := db.ExecContext(ctx,
+					`UPDATE transactions SET value=? WHERE id=? AND value IS NULL`, clampAmount(val), it.id)
+				if err != nil {
+					atomic.AddInt64(&failed, 1)
+					log.Error("update value failed", "tx", it.hash, "err", err)
+					continue
+				}
+				if n, _ := res.RowsAffected(); n > 0 {
+					atomic.AddInt64(&updated, 1)
+				}
+			}
+		}()
+	}
+	for _, it := range items {
+		jobs <- it
+	}
+	close(jobs)
+	wg.Wait()
+
+	log.Info("backfill-value stage done", "updated", updated, "notFound", missing,
+		"failed", failed, "dryRun", opt.dryRun)
+	return nil
 }
