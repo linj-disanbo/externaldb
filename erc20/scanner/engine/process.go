@@ -60,6 +60,7 @@ type Process struct {
 	DBDSN      string
 	db         *database.DB
 	NodeURL    string
+	Symbol     string                     // 主币符号（[chain].symbol），用于主币转账记录行
 	grpcClient chain33types.Chain33Client // chain33 gRPC，用于按 seq 读取区块
 	grpcConn   *grpc.ClientConn           // gRPC 连接，用于清理
 
@@ -93,6 +94,11 @@ func (p *Process) Init() {
 			p.EnableDB = false
 		} else {
 			log.Info("[Init] Database connected")
+			// 普通主币转账统一指向该哨兵地址（见 database.NativeTransferAddress），
+			// 先确保记录行存在，避免每笔转账都去 INSERT。
+			if err := p.db.EnsureNativeTransferContract("", p.Symbol); err != nil {
+				log.Error("[Init] ensure native transfer contract failed", "err", err)
+			}
 			if p.FixMode {
 				log.Info("[Init] fix mode: skipping scan_progress read, using -s/-e range",
 					"startPoint", p.StartPoint)
@@ -781,8 +787,9 @@ func classifyTxForSave(tx *types.Transaction, receipt *types.Receipt) (contractA
 		}
 		funcName = "contract_creation"
 	} else if len(txData) == 0 {
-		// 普通 ETH 转账
-		contractAddr = *tx.To()
+		// 普通 ETH/BTY 转账：统一指向主币转账哨兵地址（database.NativeTransferAddress）。
+		// 否则每个收款 EOA 都会在 contracts 里留一条 UNKNOWN 占位行，表会无限增长。
+		contractAddr = common.HexToAddress(database.NativeTransferAddress)
 		funcSelector = "0x"
 		funcName = "eth_transfer"
 	} else if len(txData) >= 4 {
@@ -791,8 +798,8 @@ func classifyTxForSave(tx *types.Transaction, receipt *types.Receipt) (contractA
 		funcSelector = hex.EncodeToString(txData[:4])
 		funcName = "unknown"
 	} else {
-		// 短 data，按 ETH 转账处理
-		contractAddr = *tx.To()
+		// 短 data，按 ETH 转账处理，同样指向主币转账哨兵地址
+		contractAddr = common.HexToAddress(database.NativeTransferAddress)
 		funcSelector = "0x"
 		funcName = "unknown"
 	}

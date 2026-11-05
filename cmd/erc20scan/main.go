@@ -67,6 +67,7 @@ func initAndStart(cfg *config.Config, fixMode bool) {
 	p.EnableDB = cfg.Database.Enabled
 	p.DBDSN = cfg.Database.DSN
 	p.NodeURL = cfg.Node.URL
+	p.Symbol = cfg.Node.Symbol
 	p.SkipInlineBalanceUpdate = cfg.Scanner.SkipInlineBalanceUpdate
 	p.FixMode = fixMode // fix 模式：不读/写进度，处理完 [s,e] 即退出
 
