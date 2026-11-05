@@ -74,6 +74,8 @@ type options struct {
 	retries     int
 	funcs       string
 	fromBlock   int64
+	afterID     int64
+	batchSize   int
 	verbose     bool
 }
 
@@ -92,6 +94,8 @@ func main() {
 	flag.IntVar(&opt.retries, "retries", 2, "瞬时错误（超时/限流/网络）重试次数")
 	flag.StringVar(&opt.funcs, "func", "eth_transfer", "backfill-value 只补这些 func_name（逗号分隔，all=不限）")
 	flag.Int64Var(&opt.fromBlock, "from-block", 0, "backfill-value 只补 >= 该高度的交易（0=不限）")
+	flag.Int64Var(&opt.afterID, "after-id", 0, "backfill-value 从 id > 该值 开始（断点续跑用，结束时会打印下次的值）")
+	flag.IntVar(&opt.batchSize, "batch-size", 2000, "backfill-value 每页取多少行（内部游标分批，避免每轮重扫）")
 	flag.Parse()
 
 	if opt.configPath != "" {
@@ -891,129 +895,142 @@ func pruneOneOnce(ctx context.Context, db *sql.DB, addr string) (int64, error) {
 // ---------------- 回填 transactions.value ----------------
 //
 // 修复前（d35df9c 之前）普通主币转账的 value 恒为 NULL，历史行只能回链上按 tx hash 取。
-// 量级提醒：几十万条可几分钟跑完；千万级建议按 -from-block 分段、分批执行。
+// 用游标分批（id > cursor ORDER BY id LIMIT batch）：value 没有索引，若每轮都从头扫，
+// 已补过的行会重复扫到，成本会随进度线性上涨（几百万行后一轮只剩几十条的产出）。
 func runBackfillValue(ctx context.Context, log *slog.Logger, db *sql.DB, p *probe, opt options) error {
-	q := `SELECT id, tx_hash FROM transactions WHERE value IS NULL`
+	base := `SELECT id, tx_hash FROM transactions WHERE value IS NULL`
 	args := []interface{}{}
 	if strings.ToLower(opt.funcs) != "all" {
-		funcs := strings.Split(opt.funcs, ",")
-		ph := make([]string, 0, len(funcs))
-		for _, f := range funcs {
-			f = strings.TrimSpace(f)
-			if f == "" {
-				continue
+		var ph []string
+		for _, f := range strings.Split(opt.funcs, ",") {
+			if f = strings.TrimSpace(f); f != "" {
+				ph = append(ph, "?")
+				args = append(args, f)
 			}
-			ph = append(ph, "?")
-			args = append(args, f)
 		}
 		if len(ph) > 0 {
-			q += " AND func_name IN (" + strings.Join(ph, ",") + ")"
+			base += " AND func_name IN (" + strings.Join(ph, ",") + ")"
 		}
 	}
 	if opt.fromBlock > 0 {
-		q += " AND block_number >= ?"
+		base += " AND block_number >= ?"
 		args = append(args, opt.fromBlock)
 	}
-	q += " ORDER BY id"
-	if opt.limit > 0 {
-		q += fmt.Sprintf(" LIMIT %d", opt.limit)
+
+	cursor := opt.afterID
+	var scanned, updated, missing, failed int64
+	started := time.Now()
+	batch := opt.batchSize
+	if batch <= 0 {
+		batch = 2000
 	}
 
-	rows, err := db.QueryContext(ctx, q, args...)
-	if err != nil {
-		return fmt.Errorf("query null-value transactions: %w", err)
-	}
-	type item struct {
-		id   uint64
-		hash string
-	}
-	items := make([]item, 0, 4096)
-	for rows.Next() {
-		var it item
-		if err := rows.Scan(&it.id, &it.hash); err != nil {
-			rows.Close()
+	for {
+		if opt.limit > 0 && updated+missing+failed >= int64(opt.limit) {
+			log.Info("达到 -limit，停止（可用 -after-id 续跑）", "limit", opt.limit, "afterID", cursor)
+			break
+		}
+		pageArgs := append(append([]interface{}{}, args...), cursor, batch)
+		rows, err := db.QueryContext(ctx, base+" AND id > ? ORDER BY id LIMIT ?", pageArgs...)
+		if err != nil {
+			return fmt.Errorf("query null-value transactions: %w", err)
+		}
+		type item struct {
+			id   uint64
+			hash string
+		}
+		items := make([]item, 0, batch)
+		for rows.Next() {
+			var it item
+			if err := rows.Scan(&it.id, &it.hash); err != nil {
+				rows.Close()
+				return err
+			}
+			items = append(items, it)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
 			return err
 		}
-		items = append(items, it)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	log.Info("backfill-value candidates", "rows", len(items), "funcs", opt.funcs,
-		"fromBlock", opt.fromBlock, "dryRun", opt.dryRun)
-	if len(items) == 0 {
-		return nil
-	}
+		if len(items) == 0 {
+			log.Info("没有更多待补行", "afterID", cursor)
+			break
+		}
+		cursor = int64(items[len(items)-1].id)
+		scanned += int64(len(items))
 
-	var updated, missing, failed int64
-	jobs := make(chan item, opt.concurrency*2)
-	var wg sync.WaitGroup
-	for i := 0; i < opt.concurrency; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for it := range jobs {
-				var val *big.Int
-				var err error
-				for try := 0; try <= opt.retries; try++ {
-					cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-					val, err = p.txValueByHash(cctx, it.hash)
-					cancel()
-					if err == nil || !transient(classifyErr(err)) {
-						break
+		if opt.dryRun {
+			updated += int64(len(items))
+			log.Info("dry-run 页", "rows", len(items), "afterID", cursor)
+			continue
+		}
+
+		jobs := make(chan item, opt.concurrency*2)
+		var wg sync.WaitGroup
+		for i := 0; i < opt.concurrency; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for it := range jobs {
+					var val *big.Int
+					var getErr error
+					for try := 0; try <= opt.retries; try++ {
+						cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+						val, getErr = p.txValueByHash(cctx, it.hash)
+						cancel()
+						if getErr == nil || !transient(classifyErr(getErr)) {
+							break
+						}
+						time.Sleep(time.Duration(200*(try+1)) * time.Millisecond)
 					}
-					time.Sleep(time.Duration(200*(try+1)) * time.Millisecond)
-				}
-				if err != nil {
-					if strings.Contains(err.Error(), "查不到") || strings.Contains(err.Error(), "没有 value") {
-						atomic.AddInt64(&missing, 1)
-					} else {
+					if getErr != nil {
+						if strings.Contains(getErr.Error(), "查不到") || strings.Contains(getErr.Error(), "没有 value") {
+							atomic.AddInt64(&missing, 1)
+						} else {
+							atomic.AddInt64(&failed, 1)
+							log.Warn("get tx value failed", "tx", it.hash, "err", getErr)
+						}
+						continue
+					}
+					var dbErr error
+					for try := 0; try < 5; try++ {
+						_, dbErr = db.ExecContext(ctx,
+							`UPDATE transactions SET value=? WHERE id=? AND value IS NULL`, clampAmount(val), it.id)
+						if dbErr == nil || !isLockErr(dbErr) {
+							break
+						}
+						select {
+						case <-ctx.Done():
+						case <-time.After(time.Duration(try+1) * 300 * time.Millisecond):
+						}
+					}
+					if dbErr != nil {
 						atomic.AddInt64(&failed, 1)
-						log.Warn("get tx value failed", "tx", it.hash, "err", err)
+						log.Error("update value failed", "tx", it.hash, "err", dbErr)
+						continue
 					}
-					continue
-				}
-				if opt.dryRun {
-					var have uint64
-					_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM transactions WHERE id=? AND value IS NULL`, it.id).Scan(&have)
-					if have > 0 {
-						atomic.AddInt64(&updated, 1)
-					}
-					continue
-				}
-				var res sql.Result
-				var dbErr error
-				for try := 0; try < 5; try++ {
-					res, dbErr = db.ExecContext(ctx,
-						`UPDATE transactions SET value=? WHERE id=? AND value IS NULL`, clampAmount(val), it.id)
-					if dbErr == nil || !isLockErr(dbErr) {
-						break
-					}
-					// 与 scanner 的按块事务 / prune-eoa 撞锁：退避后重试
-					select {
-					case <-ctx.Done():
-					case <-time.After(time.Duration(try+1) * 300 * time.Millisecond):
-					}
-				}
-				if dbErr != nil {
-					atomic.AddInt64(&failed, 1)
-					log.Error("update value failed", "tx", it.hash, "err", dbErr)
-					continue
-				}
-				if n, _ := res.RowsAffected(); n > 0 {
 					atomic.AddInt64(&updated, 1)
 				}
-			}
-		}()
-	}
-	for _, it := range items {
-		jobs <- it
-	}
-	close(jobs)
-	wg.Wait()
+			}()
+		}
+		for _, it := range items {
+			jobs <- it
+		}
+		close(jobs)
+		wg.Wait()
 
-	log.Info("backfill-value stage done", "updated", updated, "notFound", missing,
-		"failed", failed, "dryRun", opt.dryRun)
+		if scanned%(int64(batch)*10) == 0 {
+			el := time.Since(started).Seconds()
+			log.Info("进度", "scanned", scanned, "updated", updated, "notFound", missing,
+				"failed", failed, "rows/s", int(float64(updated)/el), "afterID", cursor)
+		}
+	}
+
+	log.Info("backfill-value stage done", "scanned", scanned, "updated", updated,
+		"notFound", missing, "failed", failed, "afterID", cursor,
+		"cost", time.Since(started).Round(time.Second), "dryRun", opt.dryRun)
+	if failed > 0 {
+		log.Warn("有失败行未补，重跑即可（幂等）", "failed", failed)
+	}
 	return nil
 }
