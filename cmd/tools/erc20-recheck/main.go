@@ -88,7 +88,7 @@ func main() {
 	flag.StringVar(&opt.rpcURL, "rpc", "", "eth JSON-RPC URL（-c 没给时必填）")
 	flag.StringVar(&opt.stage, "stage", "all", "contracts|balances|prune-eoa|backfill-value|all")
 	flag.IntVar(&opt.concurrency, "concurrency", 20, "并发数（RPC 查询）")
-	flag.IntVar(&opt.limit, "limit", 0, "本次最多处理的合约数（0=全部）")
+	flag.IntVar(&opt.limit, "limit", 0, "本次最多处理多少行（0=全部；contracts/prune-eoa 按地址、backfill-value 按交易，页级近似）")
 	flag.IntVar(&opt.pairsLimit, "pairs-limit", 0, "余额阶段最多处理多少个 (地址,合约) 对（0=全部）")
 	flag.BoolVar(&opt.dryRun, "dry-run", false, "只打印将要写入的内容，不落库")
 	flag.BoolVar(&opt.onlyUnknown, "only-unknown", true, "合约阶段只处理 contract_type='UNKNOWN'")
