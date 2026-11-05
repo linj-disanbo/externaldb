@@ -856,28 +856,36 @@ func isLockErr(err error) bool {
 		strings.Contains(s, "Lock wait timeout") || strings.Contains(s, "Deadlock")
 }
 
+// pruneChunk 单个地址每批搬多少条交易。一个 EOA 名下可能有几十万笔交易，
+// 一次性 UPDATE 会锁住全部行（实测把并发写方拖到 Error 1205），所以分批提交。
+const pruneChunk = 5000
+
 func pruneOneOnce(ctx context.Context, db *sql.DB, addr string) (int64, error) {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("begin tx: %w", err)
+	var total int64
+	for {
+		res, err := db.ExecContext(ctx,
+			`UPDATE transactions SET contract_address=? WHERE contract_address=? LIMIT ?`,
+			database.NativeTransferAddress, addr, pruneChunk)
+		if err != nil {
+			if isLockErr(err) {
+				return total, err // 交给外层退避重试
+			}
+			return total, fmt.Errorf("update transactions: %w", err)
+		}
+		n, _ := res.RowsAffected()
+		total += n
+		if n < pruneChunk {
+			break
+		}
 	}
-	res, err := tx.ExecContext(ctx,
-		`UPDATE transactions SET contract_address=? WHERE contract_address=?`,
-		database.NativeTransferAddress, addr)
-	if err != nil {
-		_ = tx.Rollback()
-		return 0, fmt.Errorf("update transactions: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	if _, err := tx.ExecContext(ctx,
+	if _, err := db.ExecContext(ctx,
 		`DELETE FROM contracts WHERE contract_address=? AND contract_type='UNKNOWN'`, addr); err != nil {
-		_ = tx.Rollback()
-		return 0, fmt.Errorf("delete contract: %w", err)
+		if isLockErr(err) {
+			return total, err
+		}
+		return total, fmt.Errorf("delete contract: %w", err)
 	}
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit: %w", err)
-	}
-	return n, nil
+	return total, nil
 }
 
 // ---------------- 回填 transactions.value ----------------
@@ -974,11 +982,23 @@ func runBackfillValue(ctx context.Context, log *slog.Logger, db *sql.DB, p *prob
 					}
 					continue
 				}
-				res, err := db.ExecContext(ctx,
-					`UPDATE transactions SET value=? WHERE id=? AND value IS NULL`, clampAmount(val), it.id)
-				if err != nil {
+				var res sql.Result
+				var dbErr error
+				for try := 0; try < 5; try++ {
+					res, dbErr = db.ExecContext(ctx,
+						`UPDATE transactions SET value=? WHERE id=? AND value IS NULL`, clampAmount(val), it.id)
+					if dbErr == nil || !isLockErr(dbErr) {
+						break
+					}
+					// 与 scanner 的按块事务 / prune-eoa 撞锁：退避后重试
+					select {
+					case <-ctx.Done():
+					case <-time.After(time.Duration(try+1) * 300 * time.Millisecond):
+					}
+				}
+				if dbErr != nil {
 					atomic.AddInt64(&failed, 1)
-					log.Error("update value failed", "tx", it.hash, "err", err)
+					log.Error("update value failed", "tx", it.hash, "err", dbErr)
 					continue
 				}
 				if n, _ := res.RowsAffected(); n > 0 {
