@@ -40,6 +40,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/33cn/externaldb/erc20/config"
+	"github.com/33cn/externaldb/erc20/database"
 	"github.com/33cn/externaldb/erc20/erc20abi/generated"
 	"github.com/33cn/externaldb/erc20/logger"
 )
@@ -79,7 +80,7 @@ func main() {
 	flag.StringVar(&opt.configPath, "c", "", "externaldb.toml 路径（从 [mysql].dsn 与 [erc20scan].ethUrl 取值；也可用 -dsn/-rpc 覆盖）")
 	flag.StringVar(&opt.dsn, "dsn", "", "MySQL DSN（-c 没给时必填）")
 	flag.StringVar(&opt.rpcURL, "rpc", "", "eth JSON-RPC URL（-c 没给时必填）")
-	flag.StringVar(&opt.stage, "stage", "all", "contracts|balances|all")
+	flag.StringVar(&opt.stage, "stage", "all", "contracts|balances|prune-eoa|all")
 	flag.IntVar(&opt.concurrency, "concurrency", 20, "并发数（RPC 查询）")
 	flag.IntVar(&opt.limit, "limit", 0, "本次最多处理的合约数（0=全部）")
 	flag.IntVar(&opt.pairsLimit, "pairs-limit", 0, "余额阶段最多处理多少个 (地址,合约) 对（0=全部）")
@@ -113,8 +114,8 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
-	if opt.stage != "contracts" && opt.stage != "balances" && opt.stage != "all" {
-		fmt.Fprintf(os.Stderr, "FATAL: -stage 只支持 contracts/balances/all（收到 %q）\n", opt.stage)
+	if opt.stage != "contracts" && opt.stage != "balances" && opt.stage != "prune-eoa" && opt.stage != "all" {
+		fmt.Fprintf(os.Stderr, "FATAL: -stage 只支持 contracts/balances/prune-eoa/all（收到 %q）\n", opt.stage)
 		os.Exit(2)
 	}
 
@@ -156,6 +157,12 @@ func main() {
 	if opt.stage == "balances" || opt.stage == "all" {
 		if err := runBalances(context.Background(), log, db, p, opt); err != nil {
 			log.Error("balances stage failed", "err", err)
+			os.Exit(1)
+		}
+	}
+	if opt.stage == "prune-eoa" {
+		if err := runPruneEOA(context.Background(), log, db, p, opt); err != nil {
+			log.Error("prune-eoa stage failed", "err", err)
 			os.Exit(1)
 		}
 	}
@@ -651,4 +658,161 @@ func runBalances(ctx context.Context, log *slog.Logger, db *sql.DB, p *probe, op
 	log.Info("balances stage done", "written", st.written, "zeroBalance", st.zero,
 		"failed", st.failed, "skippedNonERC20", st.skipped, "dryRun", opt.dryRun)
 	return nil
+}
+
+// ---------------- 清理 EOA 占位行 ----------------
+//
+// scanner 旧版本把"普通 ETH 转账的 to"也当合约地址写进 contracts（EnsureContract 满足外键），
+// 线上留下 5.8 万条没有代码的 UNKNOWN 行。新版本已改为统一指向 database.NativeTransferAddress，
+// 本阶段用于清理历史：只处理**链上无代码**且**没有被 events/token_balances/token_allowances 引用**的行，
+// 先把 transactions.contract_address 改到主币哨兵地址，再删 contracts 行（外键 RESTRICT，顺序不能反）。
+
+const upsertNativeContractSQL = `INSERT INTO contracts (
+		contract_address, contract_name, contract_symbol, contract_type, decimals, verification_status, verified_functions
+	) VALUES (?, 'Native', 'BTY', 'NATIVE', 18, 0, '[]')
+	ON DUPLICATE KEY UPDATE contract_name=VALUES(contract_name), contract_symbol=VALUES(contract_symbol),
+		contract_type='NATIVE', decimals=18`
+
+type pruneStats struct {
+	examined   int64
+	pruned     int64
+	hasCode    int64
+	referenced int64
+	codeErr    int64
+	updatedTx  int64
+}
+
+func runPruneEOA(ctx context.Context, log *slog.Logger, db *sql.DB, p *probe, opt options) error {
+	log.Info("prune-eoa stage", "nativeAddr", database.NativeTransferAddress, "dryRun", opt.dryRun)
+	if opt.dryRun {
+		log.Info("would ensure native contract row", "address", database.NativeTransferAddress)
+	} else if _, err := db.ExecContext(ctx, upsertNativeContractSQL, database.NativeTransferAddress); err != nil {
+		return fmt.Errorf("ensure native contract row: %w", err)
+	}
+
+	query := `SELECT contract_address FROM contracts WHERE contract_type='UNKNOWN' ORDER BY id`
+	if opt.limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", opt.limit)
+	}
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("query unknown contracts: %w", err)
+	}
+	addrs := make([]string, 0, 1024)
+	for rows.Next() {
+		var a string
+		if err := rows.Scan(&a); err != nil {
+			rows.Close()
+			return err
+		}
+		addrs = append(addrs, a)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	log.Info("prune-eoa candidates", "unknown", len(addrs))
+
+	var st pruneStats
+	var mu sync.Mutex
+	jobs := make(chan string, opt.concurrency*2)
+	var wg sync.WaitGroup
+	for i := 0; i < opt.concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for raw := range jobs {
+				addr := strings.ToLower(raw)
+				atomic.AddInt64(&st.examined, 1)
+				cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+				code, err := p.codeAt(cctx, common.HexToAddress(addr))
+				cancel()
+				switch {
+				case err != nil:
+					atomic.AddInt64(&st.codeErr, 1)
+					log.Warn("eth_getCode failed, skip", "contract", addr, "err", err)
+					continue
+				case len(code) > 0:
+					atomic.AddInt64(&st.hasCode, 1) // 真合约，不动
+					continue
+				}
+
+				cctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+				refs, err := countRefs(cctx, db, addr)
+				cancel()
+				if err != nil {
+					atomic.AddInt64(&st.codeErr, 1)
+					log.Warn("count refs failed, skip", "contract", addr, "err", err)
+					continue
+				}
+				if refs > 0 {
+					atomic.AddInt64(&st.referenced, 1)
+					continue
+				}
+
+				if opt.dryRun {
+					atomic.AddInt64(&st.pruned, 1)
+					mu.Lock()
+					if st.pruned <= 10 {
+						log.Info("would prune", "contract", addr)
+					}
+					mu.Unlock()
+					continue
+				}
+				tx, err := db.BeginTx(ctx, nil)
+				if err != nil {
+					atomic.AddInt64(&st.codeErr, 1)
+					log.Error("begin tx failed", "err", err)
+					continue
+				}
+				res, err := tx.ExecContext(ctx,
+					`UPDATE transactions SET contract_address=? WHERE contract_address=?`,
+					database.NativeTransferAddress, addr)
+				if err != nil {
+					_ = tx.Rollback()
+					atomic.AddInt64(&st.codeErr, 1)
+					log.Error("update transactions failed", "contract", addr, "err", err)
+					continue
+				}
+				n, _ := res.RowsAffected()
+				if _, err := tx.ExecContext(ctx,
+					`DELETE FROM contracts WHERE contract_address=? AND contract_type='UNKNOWN'`, addr); err != nil {
+					_ = tx.Rollback()
+					atomic.AddInt64(&st.codeErr, 1)
+					log.Error("delete contract failed", "contract", addr, "err", err)
+					continue
+				}
+				if err := tx.Commit(); err != nil {
+					atomic.AddInt64(&st.codeErr, 1)
+					log.Error("commit failed", "contract", addr, "err", err)
+					continue
+				}
+				atomic.AddInt64(&st.pruned, 1)
+				atomic.AddInt64(&st.updatedTx, n)
+			}
+		}()
+	}
+	for _, a := range addrs {
+		jobs <- a
+	}
+	close(jobs)
+	wg.Wait()
+
+	log.Info("prune-eoa stage done",
+		"examined", st.examined, "pruned", st.pruned, "txMovedToNative", st.updatedTx,
+		"keptHasCode", st.hasCode, "keptReferenced", st.referenced, "errors", st.codeErr, "dryRun", opt.dryRun)
+	return nil
+}
+
+// countRefs 该地址是否被事件/余额/授权引用（被引用就不能删 contracts 行）
+func countRefs(ctx context.Context, db *sql.DB, addr string) (int64, error) {
+	var n int64
+	q := `SELECT
+		(SELECT COUNT(*) FROM events e WHERE e.contract_address = ?) +
+		(SELECT COUNT(*) FROM token_balances b WHERE b.contract_address = ?) +
+		(SELECT COUNT(*) FROM token_allowances a WHERE a.contract_address = ?)`
+	if err := db.QueryRowContext(ctx, q, addr, addr, addr).Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
 }
