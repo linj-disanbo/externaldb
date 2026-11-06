@@ -1,4 +1,4 @@
-.PHONY: quickStart run logs logs-pull-convert logs-scanner logs-erc20api logs-jrpc logs-account-refresh stop restart rm down clean initConfig initES restartES downES initMySQL downMySQL restartMySQL initMySQLSchema mysql-cli check es-indices es-marker
+.PHONY: quickStart run logs logs-pull-convert logs-scanner logs-erc20api logs-jrpc logs-account-refresh stop restart rm down clean initConfig initES restartES downES initMySQL downMySQL restartMySQL initMySQLSchema mysql-cli check check-deploy es-indices es-marker
 
 include .env
 
@@ -54,6 +54,9 @@ run:
 # 对账/巡检（marker 链连续性、marker 与 block_info 一致性、旧 last_seq 是否停更）
 check:
 	@./tools/convert_check -f ./etc/externaldb.toml || true
+
+check-deploy: ## 部署后自检：容器 / ES 索引 / convert+scanner 进度 / erc20api / jrpc
+	@bash check/check.sh all
 
 log-pull-convert:
 	@tail -200f ./bin/logs/convert.log

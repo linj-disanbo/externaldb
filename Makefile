@@ -274,6 +274,8 @@ pkg-pull:
 	cp build/erc20api build/externaldb-pull/bin/erc20api
 	cp build/account_refresh build/externaldb-pull/bin/account_refresh
 	cp build/convert_check build/externaldb-pull/tools/
+	cp -r deploy/pull-convert/check build/externaldb-pull/check
+	chmod +x build/externaldb-pull/check/check.sh
 	cp config/externaldb.toml build/externaldb-pull/etc/
 	cp config/chain33.toml build/externaldb-pull/etc/
 	cp deploy/env/es7/docker-compose.yaml build/externaldb-pull/env/es7/docker-compose.yaml

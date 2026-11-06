@@ -13,6 +13,7 @@
 externaldb-pull/
 ├── bin/            pull_convert、scanner（=erc20scan）、jrpc、erc20api、account_refresh（常驻程序）
 ├── tools/          convert_check（离线对账；后续一次性/排障工具也放这里）
+├── check/          部署后自检脚本（check.sh + README：容器/ES/进度/接口，见 make check-deploy）
 ├── etc/            externaldb.toml、chain33.toml
 ├── env/mysql/      包内 MySQL 8.0 的 compose（sql/schema.sql 首次启动自动建表）
 ├── env/es7/        ES 7.17.29 的 compose + proof-init.bash（默认）
@@ -31,7 +32,9 @@ externaldb-pull/
 2. 按物料表改 `etc/externaldb.toml`（节点 gRPC/推送、ES 地址、`[convert].appName`、直连参数 `pullBatch`/`pullPollMs`/`pullDetailCache`/`pullMarkerKeep`）。
 3. 一键启动：`make quickStart`；或分开 `make initES` → `make initConfig` → `make run`。
 4. 对账：`make check`（= `tools/convert_check`，在宿主机跑），或 `make es-marker` 看游标。
-5. 回退：停掉 `convert`，另行用老链路（`sync` → `convert`，不在本包内）从 `seq05_seq` 续跑；
+5. 部署后自检：`make check-deploy`（= `bash check/check.sh`），一次看容器、ES 索引、
+   convert/scanner 进度是否在推进、erc20api 与 jrpc 接口返回是否正常；用法见 `check/README.md`。
+6. 回退：停掉 `convert`，另行用老链路（`sync` → `convert`，不在本包内）从 `seq05_seq` 续跑；
    同一批索引只能有一个写方，切换前务必停干净。
 
 ## 5 个程序
