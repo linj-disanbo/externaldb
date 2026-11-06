@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 部署后自检：容器 / ES 索引 / convert 进度 / scanner 进度 / erc20api 接口 / jrpc 接口。
+# 部署后自检：容器与资源 / ES 索引与写入 / convert 进度 / scanner 进度 / MySQL 数据健康 /
+# erc20api 接口 / jrpc 接口 / 日志错误。
 #
 # 用法（在包根目录或任意位置都行）：
 #   bash check/check.sh              # 全部检查
@@ -14,6 +15,7 @@
 #   JRPC_URL / ERC20_API_URL
 #   CHECK_MYSQL_MODE=auto|docker|cli|skip   CHECK_MYSQL_NAME / MYSQL_*（自动从 .env 取）
 #   MAX_LAG_BLOCKS=100   PROGRESS_WAIT=8   CHECK_TIMEOUT=10
+#   LOG_LINES=2000（每个日志文件看最后多少行） DISK_WARN=85 DISK_FAIL=95
 #
 # 退出码：0 = 没有 FAIL（WARN 不算失败）；1 = 有 FAIL；2 = 前置条件不满足（如 .env 缺失）
 set -u
@@ -42,10 +44,14 @@ ERC20_API_URL="${ERC20_API_URL:-http://127.0.0.1:${ERC20_API_PORT:-8080}}"
 JRPC_PORT="${JRPC_PORT:-${JRPC_HOST##*:}}"
 JRPC_URL="${JRPC_URL:-http://127.0.0.1:${JRPC_PORT:-9993}}"
 MAX_LAG_BLOCKS="${MAX_LAG_BLOCKS:-100}"
+LOG_LINES="${LOG_LINES:-2000}"
+DISK_WARN="${DISK_WARN:-85}"
+DISK_FAIL="${DISK_FAIL:-95}"
 PROGRESS_WAIT="${PROGRESS_WAIT:-8}"
 CHECK_TIMEOUT="${CHECK_TIMEOUT:-10}"
 
 PASS=0; WARN=0; FAIL=0; SKIP=0
+CONVERT_HEIGHT=""   # check_convert 记录，供 jrpc 交叉校验
 sec_fail() { FAIL=$((FAIL + 1)); printf '  [FAIL] %s\n' "$*"; }
 sec_warn() { WARN=$((WARN + 1)); printf '  [WARN] %s\n' "$*"; }
 sec_pass() { PASS=$((PASS + 1)); printf '  [PASS] %s\n' "$*"; }
@@ -118,6 +124,54 @@ check_docker() {
   [ "$cnt" -gt 0 ] || sec_skip "按 .env 没有需要检查的常驻服务"
 }
 
+
+# ---------- 1b. 容器重启/退出与磁盘 ----------
+check_runtime() {
+  echo
+  echo "[runtime] 容器重启/退出码与磁盘"
+  if ! command -v docker >/dev/null 2>&1; then
+    sec_skip "没装 docker，跳过"
+    return
+  fi
+  local svc name info restarts status exitcode started
+  for svc in pull-convert jrpc scanner erc20api accountrefresh; do
+    case "$svc" in
+      scanner|erc20api) [ "${MYSQL_ENABLED:-false}" = "true" ] || continue ;;
+      accountrefresh) [ "${ACCOUNT_REFRESH_ENABLED:-false}" = "true" ] || continue ;;
+    esac
+    name="${PROJECT_NAME:-ex}-${svc}"
+    info="$(docker inspect -f '{{.RestartCount}}|{{.State.Status}}|{{.State.ExitCode}}|{{.State.StartedAt}}' "$name" 2>/dev/null)"
+    if [ -z "$info" ]; then
+      sec_skip "${name} 不存在"
+      continue
+    fi
+    IFS='|' read -r restarts status exitcode started <<<"$info"
+    if [ "$status" != "running" ]; then
+      sec_fail "${name} 状态 ${status}（exit=${exitcode}，重启 ${restarts} 次）"
+      continue
+    fi
+    if [ "${restarts:-0}" -gt 5 ]; then
+      sec_warn "${name} 已重启 ${restarts} 次（疑似 crash-loop，看日志）"
+    else
+      sec_pass "${name} 运行中（重启 ${restarts} 次，started ${started}）"
+    fi
+  done
+
+  local dir used
+  for dir in "${ES_DIR:-}" "${MYSQL_DIR:-}" "$ROOT_DIR"; do
+    [ -n "$dir" ] && [ -d "$dir" ] || continue
+    used="$(df -P "$dir" 2>/dev/null | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+    is_num "${used:-}" || continue
+    if [ "$used" -ge "$DISK_FAIL" ]; then
+      sec_fail "${dir} 磁盘使用 ${used}%（≥${DISK_FAIL}%）"
+    elif [ "$used" -ge "$DISK_WARN" ]; then
+      sec_warn "${dir} 磁盘使用 ${used}%（≥${DISK_WARN}%）"
+    else
+      sec_pass "${dir} 磁盘使用 ${used}%"
+    fi
+  done
+}
+
 # ---------- 2. ES 与索引 ----------
 check_es() {
   echo
@@ -144,6 +198,52 @@ check_es() {
       *) sec_warn "索引 ${idx} 探测返回 HTTP ${code}" ;;
     esac
   done
+
+  local unassigned rejected heap
+  unassigned="$(printf '%s' "$health" | jget unassigned_shards)"
+  if [ -n "${unassigned:-}" ] && [ "${unassigned:-0}" -gt 0 ]; then
+    sec_warn "有 ${unassigned} 个分片未分配（单节点副本未分配属正常）"
+  fi
+
+  rejected="$(es_get '/_nodes/stats/thread_pool?filter_path=nodes.*.thread_pool.write.rejected' |
+    python3 -c 'import json,sys
+try:
+    d=json.load(sys.stdin)
+    print(sum(int(n["thread_pool"]["write"]["rejected"]) for n in d.get("nodes",{}).values()))
+except Exception:
+    print(-1)')"
+  if [ "${rejected:-0}" -gt 0 ]; then
+    sec_warn "ES write 线程池累计拒绝 ${rejected} 次（曾触发 429/队列满，看 pull_convert 日志）"
+  fi
+
+  heap="$(es_get '/_nodes/stats/jvm?filter_path=nodes.*.jvm.mem.heap_used_percent' |
+    python3 -c 'import json,sys
+try:
+    d=json.load(sys.stdin)
+    print(max(int(n["jvm"]["mem"]["heap_used_percent"]) for n in d.get("nodes",{}).values()))
+except Exception:
+    print(-1)')"
+  if [ "${heap:-0}" -ge 85 ] && [ "${heap:-0}" -le 100 ]; then
+    sec_warn "ES 堆使用 ${heap}%（≥85% 容易出现 429 circuit_breaking）"
+  elif [ "${heap:-0}" -ge 0 ]; then
+    sec_pass "ES 堆使用 ${heap}%"
+  fi
+
+  local alloc
+  alloc="$(es_get '/_cat/allocation?h=disk.percent&format=json' |
+    python3 -c 'import json,sys
+try:
+    d=json.load(sys.stdin)
+    print(max(int(x.get("disk.percent") or 0) for x in d))
+except Exception:
+    print(-1)')"
+  if [ "${alloc:-0}" -ge "$DISK_FAIL" ]; then
+    sec_fail "ES 数据盘使用 ${alloc}%（≥${DISK_FAIL}% 会触发只读/写拒绝）"
+  elif [ "${alloc:-0}" -ge "$DISK_WARN" ]; then
+    sec_warn "ES 数据盘使用 ${alloc}%（建议清理或扩容）"
+  elif [ "${alloc:-0}" -ge 0 ]; then
+    sec_pass "ES 数据盘使用 ${alloc}%"
+  fi
 
   local docs
   docs="$(es_get "/${CONVERT_PREFIX}transaction/_count" | jget count)"
@@ -205,6 +305,7 @@ check_convert() {
     sec_fail "读不到 ${marker}（ES 连不通或索引为空）"
     return
   fi
+  CONVERT_HEIGHT="$height1"
   sec_pass "seq_marker: max seq=${seq1} height=${height1}（文档数 $(es_get "/${marker}/_count" | jget count)）"
 
   local lseq
@@ -344,6 +445,94 @@ check_scanner() {
   fi
 }
 
+
+# ---------- 4b. MySQL 数据健康（回归信号） ----------
+check_data() {
+  echo
+  echo "[data] MySQL 数据新鲜度与回归信号"
+  mysql_resolve
+  if [ "$MYSQL_MODE_RESOLVED" = "skip" ]; then
+    sec_skip "MYSQL_ENABLED!=true 或无 MySQL 访问方式"
+    return
+  fi
+
+  # 1) 是否还在写（transactions 的 created_at 是服务器写入时间，与链时间无关）
+  local age
+  age="$(mysql_query "SELECT COALESCE(TIMESTAMPDIFF(MINUTE, MAX(created_at), NOW()), -1) FROM transactions")"
+  if ! is_num "${age:-}"; then
+    sec_fail "查不到 transactions（MySQL 连不上？）"
+    return
+  elif [ "$age" -lt 0 ]; then
+    sec_warn "transactions 表为空"
+  elif [ "$age" -le 30 ]; then
+    sec_pass "最近一笔交易写入 ${age} 分钟前（仍在写）"
+  elif [ "$age" -le 180 ]; then
+    sec_warn "最近一笔交易写入 ${age} 分钟前（链上无新块？）"
+  else
+    sec_fail "已经 ${age} 分钟没有新交易写入：scanner/pull_convert 可能停写"
+  fi
+
+  # 2) 回归信号：这些数字一旦涨就说明又踩到过的坑
+  local unk nullval nullmeta
+  unk="$(mysql_query "SELECT COUNT(*) FROM contracts WHERE contract_type='UNKNOWN' AND created_at > NOW() - INTERVAL 1 HOUR")"
+  if is_num "${unk:-}"; then
+    if [ "$unk" -gt 50 ]; then
+      sec_warn "近 1 小时新增 UNKNOWN 合约 ${unk} 条（合约判定可能又失败：看 scanner 日志 saving as UNKNOWN）"
+    else
+      sec_pass "近 1 小时新增 UNKNOWN 合约 ${unk} 条"
+    fi
+  fi
+
+  # 只看最近区块，避免全表扫（value 无索引）
+  local maxh fromh
+  maxh="$(mysql_query "SELECT COALESCE(MAX(last_block_number),0) FROM scan_progress WHERE id=1")"
+  if is_num "${maxh:-}" && [ "${maxh:-0}" -gt 1000 ]; then
+    fromh=$((maxh - 2000))
+    nullval="$(mysql_query "SELECT COUNT(*) FROM transactions WHERE block_number > ${fromh} AND value IS NULL AND func_name='eth_transfer'")"
+    if is_num "${nullval:-}"; then
+      if [ "$nullval" -gt 0 ]; then
+        sec_warn "最近 2000 块里有 ${nullval} 条主币转账 value 为 NULL（scanner 版本过旧或写失败）"
+      else
+        sec_pass "最近 2000 块主币转账 value 均已写入"
+      fi
+    fi
+  fi
+
+  nullmeta="$(mysql_query "SELECT COUNT(*) FROM token_balances WHERE last_tx_hash IS NULL")"
+  if is_num "${nullmeta:-}"; then
+    if [ "$nullmeta" -gt 0 ]; then
+      sec_warn "token_balances 有 ${nullmeta} 行 last_tx_hash 为 NULL（老版本 erc20api 会 500，跑过 SQL 或更新 erc20api）"
+    else
+      sec_pass "token_balances 的 last_tx_hash 无 NULL"
+    fi
+  fi
+
+  # 3) 表是否在增长（用近似行数，避免 COUNT(*) 扫大表）
+  local t1 t2
+  t1="$(mysql_query "SELECT COALESCE(table_rows,0) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='transactions'")"
+  sleep "$PROGRESS_WAIT"
+  t2="$(mysql_query "SELECT COALESCE(table_rows,0) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='transactions'")"
+  if is_num "${t1:-}" && is_num "${t2:-}" && [ "$t2" -gt "$t1" ]; then
+    sec_pass "${PROGRESS_WAIT}s 内 transactions 增长 ${t1}→${t2}"
+  elif is_num "${t1:-}" && is_num "${t2:-}"; then
+    sec_warn "${PROGRESS_WAIT}s 内 transactions 行数没变（${t1}）：链没新块或写停"
+  fi
+
+  # 4) 行锁等待（本次事故里出现过 lock wait timeout）
+  local lw1 lw2 delta
+  lw1="$(mysql_query "SHOW GLOBAL STATUS LIKE 'Innodb_row_lock_waits'" | awk '{print $2}')"
+  sleep 2
+  lw2="$(mysql_query "SHOW GLOBAL STATUS LIKE 'Innodb_row_lock_waits'" | awk '{print $2}')"
+  if is_num "${lw1:-}" && is_num "${lw2:-}"; then
+    delta=$((lw2 - lw1))
+    if [ "$delta" -gt 20 ]; then
+      sec_warn "2 秒内新增 ${delta} 次 InnoDB 行锁等待（有长事务/并发争抢）"
+    else
+      sec_pass "行锁等待平稳（2s 内 +${delta}）"
+    fi
+  fi
+}
+
 # ---------- 5. erc20api ----------
 check_erc20api() {
   echo
@@ -382,6 +571,39 @@ check_erc20api() {
     sec_warn "/evmapi/contracts 返回成功但为空"
   else
     sec_fail "/evmapi/contracts 失败：$(printf '%s' "$body" | head -c 160)"
+  fi
+
+  # 代币详情（用列表里的第一个地址）
+  local token_addr detail
+  token_addr="$(printf '%s' "$(api_get '/evmapi/tokens?page=1&size=1')" | jget data.tokens.0.address)"
+  if [ -n "${token_addr:-}" ]; then
+    detail="$(api_get "/evmapi/tokens/${token_addr}")"
+    if [ "$(printf '%s' "$detail" | jget code)" = "0" ] && [ -n "$(printf '%s' "$detail" | jget data.symbol)" ]; then
+      sec_pass "/evmapi/tokens/${token_addr:0:10}… 详情正常（$(printf '%s' "$detail" | jget data.symbol)，总量 $(printf '%s' "$detail" | jget data.total_supply_formatted)）"
+    else
+      sec_warn "/evmapi/tokens/{addr} 详情异常：$(printf '%s' "$detail" | head -c 120)"
+    fi
+  fi
+
+  # 非法地址必须 4xx（5xx 说明又出现了 NULL/空指针这类后端错误）
+  local code_only
+  code_only="$(curl -s -o /dev/null -w '%{http_code}' -m "$CHECK_TIMEOUT" \
+    "$ERC20_API_URL/evmapi/accounts/0xnotanaddress/erc20-balances")"
+  case "$code_only" in
+    4*) sec_pass "非法地址返回 ${code_only}（参数校验正常）" ;;
+    5*) sec_fail "非法地址返回 ${code_only}（服务端错误，可能是 Scan NULL/panic）" ;;
+    *) sec_warn "非法地址返回 ${code_only}（预期 4xx）" ;;
+  esac
+
+  # 响应耗时
+  local cost
+  cost="$(curl -s -o /dev/null -w '%{time_total}' -m "$CHECK_TIMEOUT" "$ERC20_API_URL/evmapi/contracts?page=1&size=20")"
+  if [ -n "${cost:-}" ]; then
+    if awk -v c="$cost" 'BEGIN{exit !(c>2)}'; then
+      sec_warn "/evmapi/contracts 耗时 ${cost}s（>2s，检查 MySQL 慢查询/锁等待）"
+    else
+      sec_pass "/evmapi/contracts 耗时 ${cost}s"
+    fi
   fi
 
   # 拿余额最大的地址验证持仓接口（需要 MySQL）
@@ -447,6 +669,17 @@ check_jrpc() {
     sec_fail "Block.BlockList 返回异常：$(printf '%s' "$body" | head -c 160)"
   fi
 
+  body="$(jrpc_call 'Account.TopAssetCount' '[{}]')"
+  err="$(printf '%s' "$body" | jget error)"
+  count="$(printf '%s' "$body" | jget result)"
+  if [ -n "${err:-}" ]; then
+    sec_warn "Account.TopAssetCount 报错：${err}"
+  elif is_num "${count:-}" && [ "${count:-0}" -gt 0 ]; then
+    sec_pass "Account.TopAssetCount = ${count}"
+  else
+    sec_warn "Account.TopAssetCount 暂无数据"
+  fi
+
   body="$(jrpc_call 'Account.TopAsset' '[{"page":{"number":1,"size":3}}]')"
   err="$(printf '%s' "$body" | jget error)"
   n="$(printf '%s' "$body" | jlen result)"
@@ -457,6 +690,57 @@ check_jrpc() {
   else
     sec_warn "Account.TopAsset 暂无数据（account 索引还没写？）"
   fi
+
+  if is_num "${CONVERT_HEIGHT:-}" && [ "${CONVERT_HEIGHT:-0}" -gt 0 ] && is_num "${first_height:-}"; then
+    local diff=$((CONVERT_HEIGHT - first_height))
+    if [ "$diff" -lt 0 ]; then diff=$((-diff)); fi
+    if [ "$diff" -le 2 ]; then
+      sec_pass "jrpc 最新块高 ${first_height} 与 convert 进度 ${CONVERT_HEIGHT} 一致"
+    else
+      sec_warn "jrpc 最新块高 ${first_height} 与 convert 进度 ${CONVERT_HEIGHT} 相差 ${diff} 块（可能缓存/刷新延迟）"
+    fi
+  fi
+}
+
+
+# ---------- 7. 日志错误扫描 ----------
+check_logs() {
+  echo
+  echo "[logs] 各程序日志最近 ${LOG_LINES} 行的错误信号（${ROOT_DIR}/bin/logs）"
+  local dir="$ROOT_DIR/bin/logs"
+  if [ ! -d "$dir" ]; then
+    sec_skip "没有日志目录 $dir（程序没起过？）"
+    return
+  fi
+  local f n panic
+  for f in "$dir"/*.log; do
+    [ -f "$f" ] || continue
+    case "$f" in *.error.log) continue ;; esac
+    n="$(tail -n "$LOG_LINES" "$f" | grep -cE 'lvl=eror|lvl=crit|level=(ERROR|CRIT)|"level":"(ERROR|CRITICAL)"' 2>/dev/null || true)"
+    panic="$(tail -n "$LOG_LINES" "$f" | grep -cE 'panic:|SIGSEGV' 2>/dev/null || true)"
+    if [ "${panic:-0}" -gt 0 ]; then
+      sec_fail "$(basename "$f") 出现 panic/SIGSEGV ${panic} 次（进程可能反复退出）"
+    elif [ "${n:-0}" -gt 0 ]; then
+      sec_warn "$(basename "$f") 最近 ${LOG_LINES} 行有 ${n} 条 ERROR"
+    else
+      sec_pass "$(basename "$f") 无 ERROR"
+    fi
+  done
+
+  # 历史踩过的坑，出现即提示
+  local kw cnt
+  for kw in "saving as UNKNOWN" "invalid connection" "circuit_breaking" "Lock wait timeout"             "unexpected EOF" "empty return data"; do
+    cnt=0
+    for f in "$dir"/*.log; do
+      [ -f "$f" ] || continue
+      case "$f" in *.error.log) continue ;; esac
+      c="$(tail -n "$LOG_LINES" "$f" | grep -c "$kw" 2>/dev/null || true)"
+      cnt=$((cnt + ${c:-0}))
+    done
+    if [ "$cnt" -gt 0 ]; then
+      sec_warn "日志关键字「${kw}」出现 ${cnt} 次（对应已知故障：合约判定失败/连接被断/ES 429/锁冲突）"
+    fi
+  done
 }
 
 # ---------- main ----------
@@ -475,11 +759,14 @@ echo "erc20api: $ERC20_API_URL"
 echo "jrpc   : $JRPC_URL"
 
 want docker && check_docker
+want runtime && check_runtime
 want es && check_es
 if want progress || want convert; then check_convert; fi
 if want progress || want scanner; then check_scanner; fi
+want data && check_data
 want erc20api && check_erc20api
 want jrpc && check_jrpc
+want logs && check_logs
 
 echo
 echo "=== 汇总：PASS ${PASS}  WARN ${WARN}  FAIL ${FAIL}  SKIP ${SKIP} ==="
