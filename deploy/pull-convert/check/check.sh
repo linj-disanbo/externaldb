@@ -403,7 +403,10 @@ check_scanner() {
   sec_pass "scan_progress: height=${h1} 已处理交易=${tx1} 更新于 ${t1}"
 
   local mk mseq mheight
-  mk="$(mysql_query "SELECT COALESCE(MAX(seq),0), COALESCE(MAX(height),0), COUNT(*) FROM scan_seq_marker")"
+  # scan_seq_marker 每个块一行，COUNT(*) 会全扫；行数用 information_schema 估算
+  mk="$(mysql_query "SELECT COALESCE(MAX(seq),0), COALESCE(MAX(height),0),
+      (SELECT COALESCE(table_rows,0) FROM information_schema.tables
+        WHERE table_schema=DATABASE() AND table_name='scan_seq_marker') FROM scan_seq_marker")"
   mseq="$(printf '%s' "$mk" | awk -F'\t' '{print $1}')"
   mheight="$(printf '%s' "$mk" | awk -F'\t' '{print $2}')"
   if [ "${mseq:-0}" -gt 0 ]; then
@@ -437,9 +440,10 @@ check_scanner() {
   fi
 
   local bal
-  bal="$(mysql_query "SELECT COUNT(*) FROM token_balances")"
+  bal="$(mysql_query "SELECT COALESCE(table_rows,0) FROM information_schema.tables
+      WHERE table_schema=DATABASE() AND table_name='token_balances'")"
   if [ -n "$bal" ] && [ "${bal:-0}" -gt 0 ]; then
-    sec_pass "token_balances ${bal} 行"
+    sec_pass "token_balances 约 ${bal} 行（information_schema 估算）"
   else
     sec_warn "token_balances 为空（还没扫到 ERC20 转账，或余额回填没做）"
   fi
@@ -456,9 +460,12 @@ check_data() {
     return
   fi
 
-  # 1) 是否还在写（transactions 的 created_at 是服务器写入时间，与链时间无关）
+  # 1) 是否还在写（created_at 是服务器写入时间，与链时间无关）
+  #    注意：created_at 没有索引，直接 MAX(created_at) 会全表扫（线上 6000 万行会卡几十秒），
+  #    这里先按 idx_block_number 取最近 5000 行的 created_at 再取最大值。
   local age
-  age="$(mysql_query "SELECT COALESCE(TIMESTAMPDIFF(MINUTE, MAX(created_at), NOW()), -1) FROM transactions")"
+  age="$(mysql_query "SELECT COALESCE(TIMESTAMPDIFF(MINUTE, MAX(created_at), NOW()), -1)
+    FROM (SELECT created_at FROM transactions ORDER BY block_number DESC LIMIT 5000) t")"
   if ! is_num "${age:-}"; then
     sec_fail "查不到 transactions（MySQL 连不上？）"
     return
@@ -498,7 +505,10 @@ check_data() {
     fi
   fi
 
-  nullmeta="$(mysql_query "SELECT COUNT(*) FROM token_balances WHERE last_tx_hash IS NULL")"
+  # last_tx_hash 没有索引，只看最近 5000 行（按主键倒序），避免大表全扫
+  nullmeta="$(mysql_query "SELECT COUNT(*) FROM (
+      SELECT last_tx_hash FROM token_balances ORDER BY id DESC LIMIT 5000) t
+    WHERE t.last_tx_hash IS NULL")"
   if is_num "${nullmeta:-}"; then
     if [ "$nullmeta" -gt 0 ]; then
       sec_warn "token_balances 有 ${nullmeta} 行 last_tx_hash 为 NULL（老版本 erc20api 会 500，跑过 SQL 或更新 erc20api）"

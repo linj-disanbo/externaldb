@@ -94,6 +94,21 @@ ES     : http://127.0.0.1:9200（前缀 db01_）
 结果：通过
 ```
 
+## 查询开销（为什么不会卡）
+
+`data` / `scanner` 段的 SQL 都走索引或带 `LIMIT`，不会全表扫：
+
+| 查询 | 做法 |
+|---|---|
+| 数据新鲜度 | `transactions` 的 `created_at` 没有索引，先按 `idx_block_number` 取最近 5000 行再取 `MAX(created_at)` |
+| 主币转账 `value IS NULL` | 只看最近 2000 个区块（`block_number >` 走索引） |
+| `token_balances.last_tx_hash` | 按主键倒序取最近 5000 行 |
+| 大表行数 | 用 `information_schema.tables.table_rows` 估算，不 `COUNT(*)` |
+| 行锁等待 | `SHOW GLOBAL STATUS`，两次采样差值 |
+
+线上 6000 万行的 `transactions` 上，整段 `data` 约几秒（主要是两次 2~8 秒的采样等待）。
+如果发现某条 SQL 变慢，先 `EXPLAIN` 确认有没有走到索引。
+
 ## 常见问题
 
 | 现象 | 原因 / 处理 |
