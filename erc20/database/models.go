@@ -786,13 +786,15 @@ func (db *DB) ListERC20BalancesByHolderAddress(holder string, minBalance string,
 		return nil, 0, err
 	}
 
+	// last_tx_hash/last_tx_block_number 可能为 NULL（例如回填工具按链上余额直接写行，
+	// 没有对应交易），Scan 到 string/uint64 会报 "converting NULL to string is unsupported"。
 	listQuery := `SELECT tb.contract_address,
 		COALESCE(c.contract_name, ''),
 		COALESCE(c.contract_symbol, ''),
-		c.decimals,
+		COALESCE(c.decimals, 18),
 		tb.balance,
-		tb.last_tx_hash,
-		tb.last_tx_block_number,
+		COALESCE(tb.last_tx_hash, ''),
+		COALESCE(tb.last_tx_block_number, 0),
 		tb.last_updated_at ` + baseWhere + `
 		ORDER BY tb.balance DESC LIMIT ? OFFSET ?`
 	listArgs := append(append([]interface{}(nil), args...), limit, offset)
@@ -1023,9 +1025,9 @@ func (db *DB) ListAllowancesByOwner(owner string, minAmount string, contractFilt
 	listQuery := `SELECT ta.owner, ta.spender, ta.contract_address,
 		COALESCE(c.contract_name, ''),
 		COALESCE(c.contract_symbol, ''),
-		c.decimals,
+		COALESCE(c.decimals, 18),
 		ta.amount,
-		ta.last_tx_hash,
+		COALESCE(ta.last_tx_hash, ''),
 		COALESCE(ta.last_block_number, 0),
 		ta.last_updated_at ` + baseWhere + `
 		ORDER BY ta.amount DESC LIMIT ? OFFSET ?`

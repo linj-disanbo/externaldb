@@ -662,9 +662,13 @@ func runBalances(ctx context.Context, log *slog.Logger, db *sql.DB, p *probe, op
 		log.Info("pairs limited", "pairs", len(filtered))
 	}
 
+	// last_tx_hash/last_tx_block_number 写空值而不是 NULL：接口层是按 string/uint64 扫这两列，
+	// NULL 会让 /evmapi/accounts/{addr}/erc20-balances 直接 500。
 	upSQL := `INSERT INTO token_balances (address, contract_address, balance, last_tx_hash, last_tx_block_number)
-		VALUES (?, ?, ?, NULL, NULL)
-		ON DUPLICATE KEY UPDATE balance=VALUES(balance), last_updated_at=CURRENT_TIMESTAMP`
+		VALUES (?, ?, ?, '', 0)
+		ON DUPLICATE KEY UPDATE balance=VALUES(balance),
+			last_tx_hash=COALESCE(last_tx_hash, ''), last_tx_block_number=COALESCE(last_tx_block_number, 0),
+			last_updated_at=CURRENT_TIMESTAMP`
 
 	var st balanceStats
 	atomic.AddInt64(&st.skipped, int64(skipped))
