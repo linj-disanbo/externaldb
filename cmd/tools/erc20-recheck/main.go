@@ -78,6 +78,7 @@ type options struct {
 	fromBlock   int64
 	afterID     int64
 	batchSize   int
+	contract    string
 	verbose     bool
 }
 
@@ -98,6 +99,7 @@ func main() {
 	flag.Int64Var(&opt.fromBlock, "from-block", 0, "backfill-value 只补 >= 该高度的交易（0=不限）")
 	flag.Int64Var(&opt.afterID, "after-id", 0, "backfill-value 从 id > 该值 开始（断点续跑用，结束时会打印下次的值）")
 	flag.IntVar(&opt.batchSize, "batch-size", 2000, "backfill-value 每页取多少行（内部游标分批，避免每轮重扫）")
+	flag.StringVar(&opt.contract, "contract", "", "backfill-value 只补该 contract_address 的交易（如 NATIVE 哨兵 0xeeee…）")
 	flag.Parse()
 
 	if opt.configPath != "" {
@@ -971,6 +973,10 @@ func runBackfillValue(ctx context.Context, log *slog.Logger, db *sql.DB, p *prob
 	if opt.fromBlock > 0 {
 		base += " AND block_number >= ?"
 		args = append(args, opt.fromBlock)
+	}
+	if opt.contract != "" {
+		base += " AND contract_address = ?"
+		args = append(args, strings.ToLower(strings.TrimSpace(opt.contract)))
 	}
 
 	cursor := opt.afterID
