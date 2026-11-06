@@ -636,6 +636,18 @@ func runBalances(ctx context.Context, log *slog.Logger, db *sql.DB, p *probe, op
 	if err != nil {
 		return fmt.Errorf("load erc20 contracts: %w", err)
 	}
+	// 历史行可能是之前版本写的 last_tx_hash/last_tx_block_number = NULL（接口 Scan 会 500），
+	// 这里顺手归一成 ''/0（幂等、只影响这两列）。
+	if !opt.dryRun {
+		if _, err := db.ExecContext(ctx,
+			`UPDATE token_balances SET last_tx_hash='' WHERE last_tx_hash IS NULL`); err != nil {
+			log.Warn("normalize last_tx_hash failed", "err", err)
+		}
+		if _, err := db.ExecContext(ctx,
+			`UPDATE token_balances SET last_tx_block_number=0 WHERE last_tx_block_number IS NULL`); err != nil {
+			log.Warn("normalize last_tx_block_number failed", "err", err)
+		}
+	}
 	log.Info("balances stage", "erc20Contracts", len(erc20Set))
 	if len(erc20Set) == 0 {
 		log.Warn("contracts 表里没有 ERC20，先跑 -stage contracts")
