@@ -42,7 +42,28 @@ CHAIN_URL="${CHAIN_URL:-${CHAIN_HOST:-}}"
 ERC20_API_URL="${ERC20_API_URL:-http://127.0.0.1:${ERC20_API_PORT:-8080}}"
 # jrpc 绑定的是 0.0.0.0:9993 这类，自检按本机访问
 JRPC_PORT="${JRPC_PORT:-${JRPC_HOST##*:}}"
-JRPC_URL="${JRPC_URL:-http://127.0.0.1:${JRPC_PORT:-9993}}"
+# jrpc 的路由是 /<chain.title>（cmd/jrpc：supports[chain.Title] = server，路径按 withoutSlash 后匹配），
+# 所以自检地址必须带链名，例如主链 /bityuan、平行链 /user.p.XXX.（末尾的点属于链名，不能删）。
+# 优先级：JRPC_TITLE > etc/externaldb.toml 的 [chain].title（jrpc 实际用的配置）> .env 的 CHAIN_TITLE
+JRPC_TITLE="${JRPC_TITLE:-}"
+if [ -z "$JRPC_TITLE" ] && [ -f "$ROOT_DIR/etc/externaldb.toml" ]; then
+  JRPC_TITLE="$(awk '
+    /^[[:space:]]*\[chain\][[:space:]]*$/ { insec = 1; next }
+    /^[[:space:]]*\[/ { insec = 0 }
+    insec && /^[[:space:]]*title[[:space:]]*=/ {
+      line = $0
+      sub(/^[^=]*=[[:space:]]*/, "", line)
+      gsub(/"/, "", line)
+      print line
+      exit
+    }' "$ROOT_DIR/etc/externaldb.toml")"
+fi
+[ -z "$JRPC_TITLE" ] && JRPC_TITLE="${CHAIN_TITLE:-}"
+JRPC_TITLE="${JRPC_TITLE#/}"
+JRPC_TITLE="${JRPC_TITLE%/}"
+JRPC_PATH=""
+[ -n "$JRPC_TITLE" ] && JRPC_PATH="/${JRPC_TITLE}"
+JRPC_URL="${JRPC_URL:-http://127.0.0.1:${JRPC_PORT:-9993}${JRPC_PATH}}"
 MAX_LAG_BLOCKS="${MAX_LAG_BLOCKS:-100}"
 LOG_LINES="${LOG_LINES:-2000}"
 DISK_WARN="${DISK_WARN:-85}"
@@ -654,6 +675,9 @@ jrpc_call() { # $1=method $2=params json
 check_jrpc() {
   echo
   echo "[jrpc] 接口验证（${JRPC_URL}）"
+  if [ -z "${JRPC_TITLE:-}" ]; then
+    sec_warn "拿不到链名（.env 的 CHAIN_TITLE / etc 的 [chain].title）：jrpc 路由是 /<chain.title>，可用 JRPC_URL 或 JRPC_TITLE 指定"
+  fi
   local body err count n first_height
 
   body="$(jrpc_call 'Block.Count' '[{}]')"

@@ -43,6 +43,10 @@ bash check/check.sh data logs       # 只看数据健康与日志信号
 | `jrpc` | `Block.Count`、`Block.BlockList`（最新 height）、`Account.TopAssetCount`、`Account.TopAsset`；与 convert 进度高度**交叉校验** | 有 `error` 或结果为空 → FAIL/WARN；高度不一致 → WARN |
 | `logs` | `bin/logs/*.log` 最近 N 行的 `ERROR`/`panic`/`SIGSEGV` 计数；已知故障关键字（`saving as UNKNOWN`、`invalid connection`、`circuit_breaking`、`Lock wait timeout`、`unexpected EOF`、`empty return data`） | panic → FAIL；ERROR/关键字 → WARN |
 
+> **jrpc 的地址必须带链名**：`cmd/jrpc` 是按 `/<chain.title>` 路由的（主链 `bityuan` → `/bityuan`，
+> 平行链 `user.p.XXX.` → `/user.p.XXX.`，末尾的点属于链名不能删）。脚本会从 `etc/externaldb.toml`
+> 的 `[chain].title` 自动拼出来；拼错时报的是 jrpc 自己返回的 `not support title /xxx`，一眼可改。
+
 > 进度检查特意做“两次采样”：一次采样只能说明“有数据”，两次才能说明“还在动”。
 > 链本身没新块时“不推进”是正常的，所以这类是 WARN 不是 FAIL。
 
@@ -57,7 +61,8 @@ bash check/check.sh data logs       # 只看数据健康与日志信号
 | `ES_URL` | `http://${ES_BIND}:${ES_PORT_HTTP}` | ES 地址（含账号时用 `ES_USER`/`ES_PASSWORD`） |
 | `CHAIN_URL` | `${CHAIN_HOST}` | 节点 HTTP jsonrpc，用来算落后块数；空则跳过落后判定 |
 | `ERC20_API_URL` | `http://127.0.0.1:${ERC20_API_PORT}` | erc20api |
-| `JRPC_URL` | `http://127.0.0.1:<JRPC_HOST 的端口>` | jrpc |
+| `JRPC_URL` | `http://127.0.0.1:<端口>/<chain.title>` | jrpc；**必须带链名路由**（见下） |
+| `JRPC_TITLE` | 空 | 覆盖 jrpc 路由用的链名；优先级：`JRPC_TITLE` > `etc/externaldb.toml` 的 `[chain].title` > `.env` 的 `CHAIN_TITLE` |
 | `CHECK_MYSQL_MODE` | `auto` | `auto`（优先本地 mysql 容器，其次本机 mysql 客户端）/ `docker` / `cli` / `skip` |
 | `MAX_LAG_BLOCKS` | `100` | 落后链尖超过它算 WARN，超过 10 倍算 FAIL |
 | `PROGRESS_WAIT` | `8` | 两次进度采样的间隔秒数 |
